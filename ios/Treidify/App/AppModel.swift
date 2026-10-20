@@ -76,7 +76,7 @@ final class AppModel {
     let settings: AppSettings
     let feedback: InteractionFeedbackManager
 
-    init(settings: AppSettings = AppSettings()) {
+    init(settings: AppSettings) {
         self.settings = settings
         self.feedback = InteractionFeedbackManager(settings: settings)
     }
