@@ -24,6 +24,6 @@ final class OnboardingUITests: XCTestCase {
             app.tabBars.buttons[tab].tap()
             XCTAssertTrue(app.tabBars.buttons[tab].isSelected, tab)
         }
-        XCTAssertTrue(app.staticTexts["Market conditions"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Market Bias"].waitForExistence(timeout: 10))
     }
 }

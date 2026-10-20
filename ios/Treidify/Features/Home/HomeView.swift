@@ -10,11 +10,19 @@ struct HomeView: View {
         NavigationStack {
             ZStack {
                 AmbientBackground()
-                ScrollView {
-                    if let model {
-                        HomeContent(model: model, showsSettings: $showsSettings)
-                    } else {
-                        ProgressView().padding(.top, 120)
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        if let model {
+                            HomeContent(model: model, showsSettings: $showsSettings)
+                        } else {
+                            ProgressView().padding(.top, 120)
+                        }
+                    }
+                    .task(id: model == nil) {
+                        // Screenshot runs can open Home scrolled to the chart.
+                        guard model != nil, LaunchOptions.scrollsToChart else { return }
+                        try? await Task.sleep(for: .seconds(1.5))
+                        proxy.scrollTo(HomeAnchor.chart, anchor: .top)
                     }
                 }
                 .scrollIndicators(.hidden)
@@ -31,6 +39,8 @@ struct HomeView: View {
         }
     }
 }
+
+enum HomeAnchor: Hashable { case chart }
 
 enum HomeSection: String, CaseIterable, Hashable {
     case overview = "Overview", news = "News", analysis = "Analysis"
@@ -62,6 +72,7 @@ private struct HomeContent: View {
                     }
                     MarketBiasCard(bias: model.bias, isDemo: model.isDemo)
                     MainChartCard(model: model)
+                        .id(HomeAnchor.chart)
                     KeyNewsCard(events: model.keyEvents)
                 case .news:
                     NewsPreviewCard(stories: model.stories)
@@ -90,10 +101,6 @@ private struct HomeContent: View {
 
     private var header: some View {
         HStack(alignment: .center, spacing: Spacing.s) {
-            Image(systemName: greetingSymbol)
-                .symbolRenderingMode(.multicolor)
-                .font(.title2)
-                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(model.greeting)
                     .font(.tdTitle)
@@ -113,15 +120,6 @@ private struct HomeContent: View {
             }
         }
         .padding(.top, Spacing.xs)
-    }
-
-    private var greetingSymbol: String {
-        let hour = Calendar.current.component(.hour, from: .now)
-        switch hour {
-        case 5..<12: return "sun.max.fill"
-        case 12..<18: return "sun.haze.fill"
-        default: return "moon.stars.fill"
-        }
     }
 }
 

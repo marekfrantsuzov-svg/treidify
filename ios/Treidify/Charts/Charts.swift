@@ -63,7 +63,7 @@ struct CandlestickChartView: View {
                         yEnd: .value("Zone high", min(max(zone.upper, zone.lower + minBody), domain.upperBound))
                     )
                     .foregroundStyle(zone.kind.color.opacity(0.16))
-                    .annotation(position: .overlay, alignment: .topTrailing, spacing: 0) {
+                    .annotation(position: .overlay, alignment: .topLeading, spacing: 0) {
                         if labelledZoneIDs.contains(zone.id) {
                             ZoneTag(zone: zone, instrument: instrument)
                         }
@@ -180,7 +180,7 @@ private struct ZoneTag: View {
     let instrument: Instrument
 
     var body: some View {
-        VStack(alignment: .trailing, spacing: 0) {
+        VStack(alignment: .leading, spacing: 0) {
             Text(zone.kind.label)
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(zone.kind.color)

@@ -52,10 +52,14 @@ jobs:
             xcrun simctl ui "$UDID" appearance "$look"
             for tab in home markets news journal more; do
               xcrun simctl terminate "$UDID" app.treidify.ios || true
-              xcrun simctl launch "$UDID" app.treidify.ios -skip-onboarding -appearance "$look" -tab "$tab"
+              xcrun simctl launch "$UDID" app.treidify.ios -skip-onboarding -demo-account -appearance "$look" -tab "$tab"
               sleep 6
               xcrun simctl io "$UDID" screenshot "screenshots/$look-$tab.png"
             done
+            xcrun simctl terminate "$UDID" app.treidify.ios || true
+            xcrun simctl launch "$UDID" app.treidify.ios -skip-onboarding -demo-account -appearance "$look" -tab home -scroll-to-chart
+            sleep 8
+            xcrun simctl io "$UDID" screenshot "screenshots/$look-home-chart.png"
           done
           ls -la screenshots
       - name: Publish screenshots to the screenshots branch

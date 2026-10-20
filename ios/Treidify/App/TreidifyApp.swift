@@ -12,6 +12,7 @@ struct TreidifyApp: App {
             settings.acceptedDisclosureVersion = AppSettings.currentDisclosureVersion
         }
         if let appearance = LaunchOptions.appearance { settings.appearance = appearance }
+        if LaunchOptions.connectsDemoAccount { settings.demoAccountConnected = true }
         return AppModel(settings: settings)
     }
 
@@ -107,13 +108,18 @@ struct MainTabView: View {
 }
 
 /// Launch arguments used by UI tests and the CI screenshot step:
-/// `-ui-testing` (clean state), `-skip-onboarding`, `-appearance dark|light`, `-tab journal`.
+/// `-ui-testing` (clean state), `-skip-onboarding`, `-appearance dark|light`, `-tab journal`,
+/// `-demo-account`, `-scroll-to-chart`.
 enum LaunchOptions {
     private static let arguments = ProcessInfo.processInfo.arguments
 
     static var skipsOnboarding: Bool { arguments.contains("-skip-onboarding") }
 
     static var appearance: AppSettings.Appearance? { value(after: "-appearance").flatMap(AppSettings.Appearance.init(rawValue:)) }
+
+    static var scrollsToChart: Bool { arguments.contains("-scroll-to-chart") }
+
+    static var connectsDemoAccount: Bool { arguments.contains("-demo-account") }
 
     static var initialTab: AppTab? { value(after: "-tab").flatMap(AppTab.init(rawValue:)) }
 
