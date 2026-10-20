@@ -1,0 +1,52 @@
+# Archives a signed build and uploads it to TestFlight. Run it from the Actions tab.
+# Repository secrets (see docs/TESTFLIGHT.md):
+#   APPLE_TEAM_ID, ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8 (the full contents of the .p8 file)
+name: TestFlight
+on:
+  workflow_dispatch:
+jobs:
+  upload:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select the newest installed Xcode
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)"
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate the Xcode project
+        working-directory: ios
+        run: xcodegen generate
+      - name: Check that the app icon exists
+        run: |
+          ls ios/Treidify/Resources/Assets.xcassets/AppIcon.appiconset/*.png >/dev/null 2>&1 || {
+            echo "::error::App Store Connect rejects builds without an app icon. Add the approved logo (tools/make_app_icon.py) first."; exit 1; }
+      - name: Write the API key
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          printf '%s' "${{ secrets.ASC_KEY_P8 }}" > ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8
+      - name: Archive
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild archive -project Treidify.xcodeproj -scheme Treidify \
+            -destination generic/platform=iOS -archivePath build/Treidify.xcarchive \
+            DEVELOPMENT_TEAM=${{ secrets.APPLE_TEAM_ID }} CODE_SIGN_STYLE=Automatic \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }} \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8 \
+            -authenticationKeyID ${{ secrets.ASC_KEY_ID }} \
+            -authenticationKeyIssuerID ${{ secrets.ASC_ISSUER_ID }}
+      - name: Upload to TestFlight
+        working-directory: ios
+        run: |
+          sed "s/TEAM_ID/${{ secrets.APPLE_TEAM_ID }}/" ci/ExportOptions.plist > build/ExportOptions.plist
+          xcodebuild -exportArchive -archivePath build/Treidify.xcarchive \
+            -exportOptionsPlist build/ExportOptions.plist -exportPath build/export \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8 \
+            -authenticationKeyID ${{ secrets.ASC_KEY_ID }} \
+            -authenticationKeyIssuerID ${{ secrets.ASC_ISSUER_ID }}
+      - name: Remove the API key
+        if: always()
+        run: rm -rf ~/.appstoreconnect

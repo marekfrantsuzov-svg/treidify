@@ -1,0 +1,85 @@
+# Builds the app and runs every test on GitHub's macOS runners. Needs no Apple account.
+name: iOS build and tests
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build-and-test:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select the newest installed Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate the Xcode project
+        working-directory: ios
+        run: xcodegen generate
+      - name: Core package tests
+        working-directory: ios/Packages/TreidifyCore
+        run: swift test
+      - name: Pick a simulator
+        id: sim
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(x['udid'] for k,v in sorted(d.items(), reverse=True) if 'iOS' in k for x in v if x['name'].startswith('iPhone')))")
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+      - name: Build and test the app
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild test -project Treidify.xcodeproj -scheme Treidify \
+            -destination "id=${{ steps.sim.outputs.udid }}" -derivedDataPath build/dd \
+            -resultBundlePath build/Tests.xcresult CODE_SIGNING_ALLOWED=NO | tee build.log
+      - name: Capture Simulator screenshots of every tab, dark and light
+        if: always()
+        working-directory: ios
+        run: |
+          UDID=${{ steps.sim.outputs.udid }}
+          APP=$(ls -d build/dd/Build/Products/Debug-iphonesimulator/Treidify.app)
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl status_bar "$UDID" override --time 9:41 --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3 || true
+          xcrun simctl install "$UDID" "$APP"
+          mkdir -p screenshots
+          for look in dark light; do
+            xcrun simctl ui "$UDID" appearance "$look"
+            for tab in home markets news journal more; do
+              xcrun simctl terminate "$UDID" app.treidify.ios || true
+              xcrun simctl launch "$UDID" app.treidify.ios -skip-onboarding -appearance "$look" -tab "$tab"
+              sleep 6
+              xcrun simctl io "$UDID" screenshot "screenshots/$look-$tab.png"
+            done
+          done
+          ls -la screenshots
+      - name: Publish screenshots to the screenshots branch
+        if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        working-directory: ios
+        run: |
+          mkdir -p screenshots
+          SHA=$(git rev-parse --short HEAD)
+          TMP=$(mktemp -d)
+          cp screenshots/*.png "$TMP"/ 2>/dev/null || true
+          [ -f build.log ] && tail -c 400000 build.log > "$TMP/build.log"
+          cd "$TMP"
+          git init -q -b screenshots
+          git config user.name "treidify-ci"
+          git config user.email "ci@users.noreply.github.com"
+          echo "$SHA" > COMMIT
+          git add -A && git commit -qm "Screenshots for $SHA"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" screenshots
+      - name: Upload logs and test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-test-results
+          path: |
+            ios/build.log
+            ios/build/Tests.xcresult
+            ios/screenshots
