@@ -2,14 +2,16 @@
 
 *Your Trading Intelligence.* A native iOS trading-intelligence and performance-analytics app for XAUUSD and DXY. Treidify does not execute trades, hold funds, sell signals or give personalised investment advice.
 
-**Status: Milestone 1 (native app foundation) is written and partly verified.** The SwiftUI app has **not been compiled or run yet**, because the build environment was Linux with no Xcode or iOS SDK. Everything that could run on Linux was run, and all of it passed. See [docs/MILESTONE_1_STATUS.md](docs/MILESTONE_1_STATUS.md).
+**Run it on your Mac or iPhone:** see [docs/RUN_ON_MAC.md](docs/RUN_ON_MAC.md). Open `ios/Treidify.xcodeproj` in Xcode and press ⌘R. A free Apple ID is enough to install it on your own iPhone.
+
+**Status: Milestone 1.** On every push, CI builds the committed Xcode project on macOS with Xcode 26, for the Simulator and for a device, and also checks that it builds with Xcode 16. It runs 37 core tests, 4 app tests and 1 UI test. See [docs/MILESTONE_1_STATUS.md](docs/MILESTONE_1_STATUS.md).
 
 ## Repository layout
 
 ```
 ios/
-  project.yml                 XcodeGen spec (source of truth for the project)
-  Treidify.xcodeproj          generated from project.yml (XcodeGen 2.46.0)
+  Treidify.xcodeproj          open this in Xcode (committed; no XcodeGen needed)
+  project.yml                 XcodeGen spec; regenerate the project only after adding or removing files
   Packages/TreidifyCore/      platform-independent domain logic + 37 unit tests
   Treidify/                   SwiftUI app
     App/                      entry point, AppModel, settings, tabs

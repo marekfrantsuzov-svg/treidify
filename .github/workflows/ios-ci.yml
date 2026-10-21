@@ -17,11 +17,8 @@ jobs:
           XCODE=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
           sudo xcode-select -s "$XCODE"
           xcodebuild -version
-      - name: Install XcodeGen
-        run: brew install xcodegen
-      - name: Generate the Xcode project
-        working-directory: ios
-        run: xcodegen generate
+      # The committed ios/Treidify.xcodeproj is built exactly as a fresh clone has it,
+      # so this run proves the repository opens and builds without XcodeGen.
       - name: Core package tests
         working-directory: ios/Packages/TreidifyCore
         run: swift test
@@ -37,6 +34,12 @@ jobs:
           xcodebuild test -project Treidify.xcodeproj -scheme Treidify \
             -destination "id=${{ steps.sim.outputs.udid }}" -derivedDataPath build/dd \
             -resultBundlePath build/Tests.xcresult CODE_SIGNING_ALLOWED=NO | tee build.log
+      - name: Compile for a physical iPhone (unsigned)
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild build -project Treidify.xcodeproj -scheme Treidify -destination generic/platform=iOS \
+            -derivedDataPath build/device CODE_SIGNING_ALLOWED=NO | tail -5
       - name: Capture Simulator screenshots of every tab, dark and light
         if: always()
         working-directory: ios
@@ -87,3 +90,24 @@ jobs:
             ios/build.log
             ios/build/Tests.xcresult
             ios/screenshots
+
+  # Older Macs may only run Xcode 16 (macOS 15.0 to 15.5). This proves the
+  # committed project still builds there, for the Simulator and for a device.
+  xcode16-compatibility:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode 16
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_16*.app | sort -V | tail -1)
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+      - name: Build for the Simulator and for a device
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild build -project Treidify.xcodeproj -scheme Treidify -destination "generic/platform=iOS Simulator" \
+            -derivedDataPath build/sim CODE_SIGNING_ALLOWED=NO | tail -5
+          xcodebuild build -project Treidify.xcodeproj -scheme Treidify -destination generic/platform=iOS \
+            -derivedDataPath build/device CODE_SIGNING_ALLOWED=NO | tail -5
