@@ -537,7 +537,9 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = app.treidify.ios;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = 1;
+				SUPPORTS_MACCATALYST = YES;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -591,7 +593,9 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = app.treidify.ios;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = 1;
+				SUPPORTS_MACCATALYST = YES;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};

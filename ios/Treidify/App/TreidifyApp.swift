@@ -1,5 +1,8 @@
 import SwiftUI
 import TreidifyCore
+#if targetEnvironment(macCatalyst)
+import UIKit
+#endif
 
 @main
 struct TreidifyApp: App {
@@ -50,6 +53,17 @@ struct RootView: View {
         .animation(.easeInOut(duration: 0.35), value: app.settings.needsOnboarding)
         .preferredColorScheme(app.settings.appearance.colorScheme)
         .tint(Theme.accent)
+        .onAppear(perform: Self.constrainMacWindow)
+    }
+
+    /// The Mac test build keeps a phone-shaped window, so layouts match the iPhone.
+    private static func constrainMacWindow() {
+        #if targetEnvironment(macCatalyst)
+        for scene in UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }) {
+            scene.sizeRestrictions?.minimumSize = CGSize(width: 393, height: 760)
+            scene.sizeRestrictions?.maximumSize = CGSize(width: 520, height: 1_100)
+        }
+        #endif
     }
 }
 
