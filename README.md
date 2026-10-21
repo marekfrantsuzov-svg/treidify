@@ -2,7 +2,7 @@
 
 *Your Trading Intelligence.* A native iOS trading-intelligence and performance-analytics app for XAUUSD and DXY. Treidify does not execute trades, hold funds, sell signals or give personalised investment advice.
 
-**Run it on your Mac or iPhone:** see [docs/RUN_ON_MAC.md](docs/RUN_ON_MAC.md). Open `ios/Treidify.xcodeproj` in Xcode and press ⌘R. A free Apple ID is enough to install it on your own iPhone.
+**Test it without Xcode:** download the Mac DMG or the iPhone IPA from the **Test builds** workflow. See [docs/INSTALL_TEST_BUILDS.md](docs/INSTALL_TEST_BUILDS.md). **With Xcode:** see [docs/RUN_ON_MAC.md](docs/RUN_ON_MAC.md). Open `ios/Treidify.xcodeproj` in Xcode and press ⌘R. A free Apple ID is enough to install it on your own iPhone.
 
 **Status: Milestone 1.** On every push, CI builds the committed Xcode project on macOS with Xcode 26, for the Simulator and for a device, and also checks that it builds with Xcode 16. It runs 37 core tests, 4 app tests and 1 UI test. See [docs/MILESTONE_1_STATUS.md](docs/MILESTONE_1_STATUS.md).
 
