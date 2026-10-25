@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronDown, LogOut, Moon, Sun, X } from "lucide-react";
+import { Bell, CalendarDays, LayoutGrid, Check, ChevronDown, LogOut, Moon, Search, Sun, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
@@ -11,7 +11,7 @@ import { cn } from "@/lib/cn";
 import { PERIOD_IDS, PERIOD_NAMES, readPeriod } from "@/lib/period-param";
 import { GlassIcon, Glyph } from "@/components/icons/glass-icon";
 import { Wordmark } from "@/components/ui/wordmark";
-import { appNav, isActive, mobileTabs } from "./nav";
+import { appNav, isActive, mobileTabs, primaryNav, toolNav, type NavItem } from "./nav";
 
 export interface ShellUser { name: string; username: string | null; email: string; avatar: string | null; isAdmin: boolean }
 export interface ShellPlan { plan: "free" | "premium"; source: string; trialEndsAt: string | null }
@@ -69,17 +69,18 @@ function DateSelector() {
   const [from, setFrom] = useState(current.custom?.from ?? today.slice(0, 8) + "01");
   const [to, setTo] = useState(current.custom?.to ?? today);
   const ref = useDismiss<HTMLDivElement>(open, () => setOpen(false));
-  const go = (q: string) => { setOpen(false); router.push(`${path === "/app" ? "/app" : "/app"}?${q}`, { scroll: false }); };
+  // Pages that read the period keep it; everywhere else the period opens the dashboard.
+  const go = (q: string) => { setOpen(false); router.push(`${["/app", "/app/performance", "/app/journal"].includes(path) ? path : "/app"}?${q}`, { scroll: false }); };
   const label = current.id === "CUSTOM" && current.custom ? `${current.custom.from.slice(5)} to ${current.custom.to.slice(5)}` : PERIOD_NAMES[current.id];
   return (
     <div ref={ref} className="relative">
-      <button onClick={() => setOpen(!open)} aria-haspopup="listbox" aria-expanded={open} className="glass flex h-11 items-center gap-2 rounded-full pl-2 pr-3.5 text-sm font-medium text-ink">
-        <GlassIcon name="calendar" size={30} />
+      <button onClick={() => setOpen(!open)} aria-haspopup="listbox" aria-expanded={open} className="glass flex h-11 items-center gap-2.5 rounded-full pl-4 pr-3.5 text-sm font-medium text-ink">
+        <CalendarDays className="h-[18px] w-[18px] text-ink-2" />
         <span className="whitespace-nowrap">{label}</span>
         <ChevronDown className="h-4 w-4 text-ink-3" />
       </button>
       {open && (
-        <div role="listbox" aria-label="Period" className="glass glass-strong absolute right-0 top-13 z-50 w-64 rounded-2xl p-1.5 shadow-[var(--shadow-lg)]">
+        <div role="listbox" aria-label="Period" className="glass glass-strong absolute right-0 top-13 z-50 w-64 max-lg:left-0 max-lg:right-auto rounded-2xl p-1.5 shadow-[var(--shadow-lg)]">
           {PERIOD_IDS.filter((id) => id !== "CUSTOM").map((id) => (
             <button key={id} role="option" aria-selected={current.id === id} onClick={() => go(`period=${id}`)} className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm text-ink-2 hover:bg-accent-soft hover:text-ink">
               {PERIOD_NAMES[id]}{current.id === id && <Check className="h-4 w-4 text-accent" />}
@@ -158,6 +159,18 @@ function SearchPalette({ open, onClose }: { open: boolean; onClose: () => void }
   );
 }
 
+function ThemeItem({ className }: { className: string }) {
+  const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const dark = mounted && resolvedTheme === "dark";
+  return (
+    <button role="menuitem" onClick={() => setTheme(dark ? "light" : "dark")} className={cn(className, "w-full")}>
+      {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}{dark ? "Light mode" : "Dark mode"}
+    </button>
+  );
+}
+
 function UserMenu({ user, plan }: { user: ShellUser; plan: ShellPlan }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
@@ -179,6 +192,7 @@ function UserMenu({ user, plan }: { user: ShellUser; plan: ShellPlan }) {
           <Link role="menuitem" href="/app/settings/profile" onClick={() => setOpen(false)} className={item}><Glyph name="profile" size={18} />Profile and privacy</Link>
           <Link role="menuitem" href="/app/settings/plan" onClick={() => setOpen(false)} className={item}><Glyph name="spark" size={18} />Plan</Link>
           <Link role="menuitem" href="/app/settings/security" onClick={() => setOpen(false)} className={item}><Glyph name="shield" size={18} />Security</Link>
+          <ThemeItem className={item} />
           <div className="my-1 h-px bg-[var(--border)]" />
           <button role="menuitem" onClick={async () => { await authClient.signOut(); router.replace("/login"); router.refresh(); }} className={cn(item, "w-full hover:bg-down-soft hover:text-down")}><LogOut className="h-4 w-4" />Sign out</button>
         </div>
@@ -193,6 +207,7 @@ function MoreSheet({ open, onClose, path }: { open: boolean; onClose: () => void
     <div className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm lg:hidden" onClick={onClose}>
       <div role="dialog" aria-label="More" className="glass glass-strong safe-bottom absolute inset-x-3 bottom-3 rounded-[28px] p-4 shadow-[var(--shadow-lg)]" onClick={(e) => e.stopPropagation()}>
         <div className="mb-3 flex items-center justify-between px-1"><span className="text-sm font-semibold text-ink">All sections</span><button onClick={onClose} aria-label="Close" className="grid h-8 w-8 place-items-center rounded-full text-ink-3"><X className="h-4 w-4" /></button></div>
+        <div className="mb-4 flex items-center gap-2 px-1"><DateSelector /><ThemeSwitch /></div>
         <div className="grid grid-cols-4 gap-y-4">
           {appNav.map((n) => (
             <Link key={n.href} href={n.href} onClick={onClose} className="grid justify-items-center gap-1.5 text-center text-[11px] font-medium text-ink-2">
@@ -209,11 +224,7 @@ export function AppShell({ user, plan, account, timezone, greeting, unread, chil
   const path = usePathname();
   const [search, setSearch] = useState(false);
   const [more, setMore] = useState(false);
-  const [line, setLine] = useState("Here’s your market overview. Stay disciplined.");
-  useEffect(() => {
-    const tick = () => setLine(`Here’s your market overview. ${sessionLine(new Date())}`);
-    tick(); const t = setInterval(tick, 60_000); return () => clearInterval(t);
-  }, [timezone]);
+  const line = "Here’s your market overview. Stay disciplined.";
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setSearch(true); } };
     window.addEventListener("keydown", onKey); return () => window.removeEventListener("keydown", onKey);
@@ -228,23 +239,18 @@ export function AppShell({ user, plan, account, timezone, greeting, unread, chil
 
       <aside className="fixed inset-y-3 left-3 z-40 hidden w-[228px] flex-col lg:flex" aria-label="Main">
         <div className="glass flex h-full flex-col rounded-[28px] px-3 pb-3 pt-5">
-          <div className="px-3 pb-6"><Wordmark href="/app" className="text-[22px]" /></div>
-          <nav className="grid gap-0.5 overflow-y-auto">
-            {appNav.map(({ href, label, icon }) => {
-              const active = isActive(path, href);
-              return (
-                <Link key={href} href={href} aria-current={active ? "page" : undefined} className={cn("flex items-center gap-3 rounded-2xl px-2 py-1.5 text-[14.5px] text-ink-2 transition-colors hover:bg-[var(--surface-inset)] hover:text-ink", active && "bg-[var(--surface-strong)] font-semibold text-ink shadow-[var(--shadow)]")}>
-                  <GlassIcon name={icon} size={32} active={active} />{label}
-                </Link>
-              );
-            })}
+          <div className="px-3 pb-6"><Wordmark href="/app" className="text-[23px]" /></div>
+          <nav className="grid gap-1 overflow-y-auto [scrollbar-width:none]">
+            {primaryNav.map((n) => <SideLink key={n.href} item={n} path={path} />)}
+            <div className="mx-3 my-2 h-px bg-[var(--border)]" />
+            {toolNav.map((n) => <SideLink key={n.href} item={n} path={path} />)}
           </nav>
           <div className="mt-auto grid gap-2 pt-3">
-            <Link href={account ? "/app" : "/app/accounts"} className="inset flex items-center gap-2.5 rounded-2xl px-3 py-2.5">
-              <span className={cn("h-2.5 w-2.5 rounded-full", account?.status === "connected" ? "bg-up shadow-[0_0_10px_var(--up)]" : account?.sample ? "bg-warn" : "bg-ink-3")} />
+            <Link href="/app/accounts" className="glass glass-strong flex items-center gap-3 rounded-2xl px-3.5 py-3">
+              <span className={cn("h-3 w-3 shrink-0 rounded-full", account?.status === "connected" ? "bg-up shadow-[0_0_10px_var(--up)]" : account?.sample ? "bg-warn shadow-[0_0_10px_var(--warn)]" : "bg-[var(--border-strong)]")} />
               <span className="min-w-0">
-                <span className="block truncate text-[13px] font-semibold text-ink">{account ? (account.sample ? "Sample account" : account.status === "connected" ? "Connected" : "Connecting") : "No account connected"}</span>
-                <span className="block truncate text-[11.5px] text-ink-3">{account ? account.label : "Connect MetaTrader"}</span>
+                <span className="block truncate text-[13px] font-semibold text-ink">{account ? (account.sample ? "Sample account" : account.status === "connected" ? "Connected" : "Connecting") : "Not connected"}</span>
+                <span className="block truncate text-[11.5px] text-ink-3">{account ? (account.sample ? "Demo data, not live" : account.label.startsWith("MT4") ? "MetaTrader 4" : "MetaTrader 5") : "Connect MetaTrader"}</span>
               </span>
             </Link>
           </div>
@@ -255,29 +261,25 @@ export function AppShell({ user, plan, account, timezone, greeting, unread, chil
         <div className="flex items-center gap-3 rounded-full py-1 max-lg:glass max-lg:h-14 max-lg:pl-4 max-lg:pr-1.5">
           <div className="lg:hidden"><Wordmark href="/app" /></div>
           <div className="hidden min-w-0 lg:block">
-            <p className="truncate text-[26px] font-semibold leading-tight tracking-[-0.03em] text-ink">{greeting}, {first}</p>
-            <p className="truncate text-sm text-ink-3">{line}</p>
+            <p className="truncate text-[27px] font-bold leading-tight tracking-[-0.03em] text-ink">{greeting}, {first} <span aria-hidden>👋</span></p>
+            <p className="truncate text-[15px] text-ink-3">{line}</p>
           </div>
-          <div className="ml-auto flex items-center gap-2">
-            <button onClick={() => setSearch(true)} className="glass hidden h-11 w-[min(340px,28vw)] items-center gap-2.5 rounded-full px-4 text-sm text-ink-3 xl:flex">
-              <Glyph name="search" size={18} />
+          <div className="ml-auto flex items-center gap-2.5">
+            <button onClick={() => setSearch(true)} className="glass hidden h-11 w-[min(400px,30vw)] items-center gap-2.5 rounded-full px-4 text-sm text-ink-3 xl:flex">
+              <Search className="h-[18px] w-[18px] text-ink-2" />
               <span className="flex-1 truncate text-left">Search markets, news, or ask AI…</span>
               <kbd className="inset rounded-md px-1.5 py-0.5 text-[11px] font-medium text-ink-3">⌘K</kbd>
             </button>
-            <button onClick={() => setSearch(true)} aria-label="Search" className="glass grid h-11 w-11 place-items-center rounded-full xl:hidden max-lg:hidden"><Glyph name="search" size={18} /></button>
+            <button onClick={() => setSearch(true)} aria-label="Search" className="glass grid h-11 w-11 place-items-center rounded-full xl:hidden max-lg:hidden"><Search className="h-[18px] w-[18px] text-ink-2" /></button>
             <div className="hidden lg:block"><DateSelector /></div>
-            <div className="hidden lg:block"><ThemeSwitch /></div>
             <Link href="/app/notifications" aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"} className="relative grid h-11 w-11 place-items-center rounded-full lg:glass">
-              <Glyph name="bell" size={22} />
+              <Bell className="h-5 w-5 text-ink-2" />
               {unread > 0 && <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-down ring-2 ring-[var(--surface-strong)]" />}
             </Link>
             <UserMenu user={user} plan={plan} />
           </div>
         </div>
-        <div className="mt-4 px-1 lg:hidden">
-          <p className="text-[22px] font-semibold tracking-[-0.03em] text-ink">{greeting}, {first}</p>
-          <div className="mt-2 flex items-center gap-2 overflow-x-auto [scrollbar-width:none]"><DateSelector /><ThemeSwitch /><button onClick={() => setSearch(true)} aria-label="Search" className="glass grid h-11 w-11 shrink-0 place-items-center rounded-full"><Glyph name="search" size={18} /></button></div>
-        </div>
+        <p className="mt-4 px-1 text-[22px] font-bold tracking-[-0.03em] text-ink lg:hidden">{greeting}, {first} <span aria-hidden>👋</span></p>
       </header>
 
       <main id="main" className="mx-auto w-full max-w-[1400px] px-3 pb-36 pt-4 sm:px-5 lg:pb-12">{children}</main>
@@ -288,13 +290,13 @@ export function AppShell({ user, plan, account, timezone, greeting, unread, chil
             const n = appNav.find((x) => x.href === href)!;
             const active = isActive(path, href);
             return (
-              <Link key={href} href={href} aria-current={active ? "page" : undefined} className={cn("flex flex-col items-center gap-1 rounded-[22px] py-1.5 text-[10.5px] font-medium text-ink-3", active && "text-accent")}>
-                <GlassIcon name={n.icon} size={30} active={active} />{n.short}
+              <Link key={href} href={href} aria-current={active ? "page" : undefined} className={cn("flex flex-col items-center gap-1 rounded-[22px] py-2 text-[10.5px] font-medium text-ink-3", active && "text-accent")}>
+                <n.line className="h-[22px] w-[22px]" strokeWidth={active ? 2.2 : 1.8} />{n.short}
               </Link>
             );
           })}
-          <button onClick={() => setMore(true)} aria-label="More sections" className={cn("flex flex-col items-center gap-1 rounded-[22px] py-1.5 text-[10.5px] font-medium text-ink-3", moreActive && "text-accent")}>
-            <GlassIcon name="more" size={30} active={moreActive} />More
+          <button onClick={() => setMore(true)} aria-label="More sections" className={cn("flex flex-col items-center gap-1 rounded-[22px] py-2 text-[10.5px] font-medium text-ink-3", moreActive && "text-accent")}>
+            <LayoutGrid className="h-[22px] w-[22px]" strokeWidth={moreActive ? 2.2 : 1.8} />More
           </button>
         </div>
       </nav>
@@ -302,5 +304,19 @@ export function AppShell({ user, plan, account, timezone, greeting, unread, chil
       <MoreSheet open={more} onClose={() => setMore(false)} path={path} />
       <SearchPalette open={search} onClose={() => setSearch(false)} />
     </div>
+  );
+}
+
+/** Sidebar entry as in the approved design: a line icon, and a blue glass disc with a white glyph when active. */
+function SideLink({ item, path }: { item: NavItem; path: string }) {
+  const active = isActive(path, item.href);
+  const Icon = item.line;
+  return (
+    <Link href={item.href} aria-current={active ? "page" : undefined} className={cn("flex items-center gap-3 rounded-2xl px-2 py-1.5 text-[15px] text-ink-2 transition-colors hover:bg-[var(--surface-inset)] hover:text-ink", active && "bg-[var(--surface-strong)] font-semibold text-ink shadow-[var(--shadow)]")}>
+      <span className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-full", active && "bg-[radial-gradient(circle_at_35%_25%,#9cc7ff,#2f6df6_55%,#1d4fd8)] text-white shadow-[0_6px_14px_-6px_#2563eb,inset_0_1px_0_rgba(255,255,255,0.6)]")}>
+        <Icon className="h-[19px] w-[19px]" strokeWidth={active ? 2.1 : 1.7} />
+      </span>
+      {item.label}
+    </Link>
   );
 }

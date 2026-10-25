@@ -60,7 +60,7 @@ test("sign up, verify, onboard, dashboard, profile, two-step sign-in", async ({ 
   await expect(firstSection).toContainText("Your Account Health");
   // Without a market-data provider nothing pretends to be live: charts are badged and explained.
   await expect(page.getByText(/sample candles until the market-data provider is connected/)).toBeVisible();
-  await expect(page.getByText(/Nothing is invented in the meantime/)).toBeVisible();
+  await expect(page.getByText(/Example headlines and illustrations that show the layout/)).toBeVisible();
 
   // Every section in the navigation opens a real page.
   for (const [path, heading] of [["/app/macro", "Macro Desk"], ["/app/markets", "Markets"], ["/app/news", "Global News"], ["/app/ai-analysis", "AI Chart Analysis"], ["/app/journal", "Trading Journal"], ["/app/performance", "Performance"], ["/app/coach", "AI Coach"], ["/app/community", "Community"], ["/app/calendar", "Economic Calendar"], ["/app/accounts", "Account connections"], ["/app/settings/accounts", "Account connections"]] as const) {
@@ -79,7 +79,7 @@ test("sign up, verify, onboard, dashboard, profile, two-step sign-in", async ({ 
   await expect(page.getByRole("button", { name: "Remove demo account" })).toBeVisible();
 
   await page.goto("/app");
-  await expect(page.getByText("Sample account", { exact: true }).filter({ visible: true }).first()).toBeVisible();
+  await expect(page.getByText(/^Sample( account)?$/).filter({ visible: true }).first()).toBeVisible();
   await expect(page.getByRole("heading", { name: "Today’s outlook" })).toBeVisible();
 
   await page.goto("/app/performance?period=ALL");

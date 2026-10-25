@@ -28,14 +28,44 @@ export function InstrumentCard({ symbol, defaultTf = "4H", height = 300, explora
     [zone, a, symbol, tf, d],
   );
   const up = a.change >= 0;
-  const buy = a.levels.zones.filter((z) => z.kind === "support").sort((x, y) => y.upper - x.upper)[0];
-  const sell = a.levels.zones.filter((z) => z.kind === "resistance").sort((x, y) => x.lower - y.lower)[0];
+  // Compact cards show the nearest support fully below price and the nearest resistance fully above it.
+  // Prefer zones at least one ATR away so the two bands and their labels never collide.
+  const gap = compact ? (a.levels.atr ?? 0) : 0;
+  const pick = (kind: PriceZone["kind"], ok: (z: PriceZone, g: number) => boolean, order: (x: PriceZone, y: PriceZone) => number) => {
+    const all = a.levels.zones.filter((z) => z.kind === kind).sort(order);
+    return all.find((z) => ok(z, gap)) ?? all.find((z) => ok(z, 0));
+  };
+  const buy = compact ? pick("support", (z, g) => z.upper < a.last - g, (x, y) => y.upper - x.upper) : a.levels.zones.filter((z) => z.kind === "support").sort((x, y) => y.upper - x.upper)[0];
+  const sell = compact ? pick("resistance", (z, g) => z.lower > a.last + g, (x, y) => x.lower - y.lower) : a.levels.zones.filter((z) => z.kind === "resistance").sort((x, y) => x.lower - y.lower)[0];
   // Compact cards show only the nearest buy and sell areas plus the nearest liquidity pool, so labels stay legible.
   const liq = a.levels.zones.filter((z) => z.kind.endsWith("Liquidity")).sort((x, y) => Math.abs((x.lower + x.upper) / 2 - a.last) - Math.abs((y.lower + y.upper) / 2 - a.last))[0];
-  const zones = compact ? [buy, sell, liq].filter((z): z is PriceZone => !!z) : a.levels.zones;
+  const zones = compact ? [buy, sell].filter((z): z is PriceZone => !!z) : a.levels.zones;
+  void liq;
 
   return (
     <Glass className={cn("relative overflow-hidden p-4 sm:p-5", className)}>
+      {compact ? (
+        <div className="@container">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2">
+              <InstrumentIcon symbol={symbol} className="h-7 w-7 text-[10px]" />
+              <h3 className="text-[16px] font-semibold text-ink">{symbol}</h3>
+            </div>
+            <div role="tablist" aria-label="Timeframe" className="inset flex shrink-0 rounded-full p-0.5">
+              {tfs.map((t) => (
+                <button key={t} role="tab" aria-selected={tf === t} onClick={() => { setTf(t); setZone(null); }} className={cn("rounded-full px-2 py-0.5 text-[11px] font-medium text-ink-3 hover:text-ink @[420px]:px-2.5 @[420px]:py-1", tf === t && "bg-accent text-white shadow-[0_4px_10px_-4px_var(--accent)] hover:text-white")}>
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="relative mt-1.5">
+            <SampleBadge label="Sample" className="absolute right-0 top-1" />
+            <div className="num text-[28px] font-semibold leading-tight tracking-[-0.025em] text-ink">{fmtNumber(a.last, d)}</div>
+            <div className={cn("num text-[14px] font-medium", up ? "text-up" : "text-down")}>{up ? "+" : "−"}{fmtNumber(Math.abs(a.change), d)} ({fmtPct(a.changePct, 2, true)})</div>
+          </div>
+        </div>
+      ) : (
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <InstrumentIcon symbol={symbol} className="h-9 w-9 text-xs" />
@@ -43,7 +73,6 @@ export function InstrumentCard({ symbol, defaultTf = "4H", height = 300, explora
             <div className="flex items-center gap-2">
               <h3 className="text-[15px] font-semibold text-ink">{symbol}</h3>
               <span className="text-xs text-ink-3">{names[symbol]}</span>
-              {compact && <SampleBadge label="Sample" />}
             </div>
             <div className="flex items-baseline gap-2">
               <span className="num text-2xl font-semibold tracking-[-0.02em] text-ink">{fmtNumber(a.last, d)}</span>
@@ -53,8 +82,8 @@ export function InstrumentCard({ symbol, defaultTf = "4H", height = 300, explora
             </div>
           </div>
         </div>
-        <div className={cn("flex flex-col items-end gap-2", compact && "max-sm:w-full max-sm:items-start")}>
-          {!compact && <SampleBadge />}
+        <div className="flex flex-col items-end gap-2">
+          <SampleBadge />
           <div role="tablist" aria-label="Timeframe" className="inset flex rounded-full p-0.5">
             {tfs.map((t) => (
               <button key={t} role="tab" aria-selected={tf === t} onClick={() => { setTf(t); setZone(null); }} className={cn("rounded-full px-2.5 py-1 text-xs font-medium text-ink-3 hover:text-ink", tf === t && "bg-accent text-white hover:text-white")}>
@@ -64,6 +93,7 @@ export function InstrumentCard({ symbol, defaultTf = "4H", height = 300, explora
           </div>
         </div>
       </div>
+      )}
 
       <div className={cn("mt-3 flex flex-wrap items-center gap-2 text-xs", compact && "hidden")}>
         <Pill tone={a.bias.bias === "bullish" ? "up" : a.bias.bias === "bearish" ? "down" : "neutral"}>{tf} bias: {a.bias.bias === "insufficientData" ? "insufficient data" : a.bias.bias}</Pill>
@@ -80,7 +110,9 @@ export function InstrumentCard({ symbol, defaultTf = "4H", height = 300, explora
           label={`${symbol} ${tf} sample chart`}
           onZoneSelect={explorable ? setZone : undefined}
           selectedZoneId={zone?.id}
-          timeLabel={(t) => new Date(t * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+          timeLabel={(t) => new Date(t * 1000).toLocaleDateString("en-GB", compact ? { day: "numeric" } : { day: "numeric", month: "short" })}
+          look={compact ? "design" : "default"}
+          tagTone={up ? "up" : "down"}
         />
       </div>
       {explorable && !compact && <p className="mt-1 flex items-center gap-1.5 text-xs text-ink-3"><Info className="h-3.5 w-3.5" /> Tap a zone to see why it matters, what confirms it and what invalidates it.</p>}

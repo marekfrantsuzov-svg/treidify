@@ -21,7 +21,7 @@ import { requireOnboarded } from "@/server/session";
 
 export const metadata = { title: "Dashboard" };
 
-const TFS = ["1M", "5M", "15M", "1H", "4H"] as const;
+const TFS = ["1M", "5M", "15M", "1H", "4H", "1D"] as const;
 
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ account?: string; welcome?: string; period?: string; from?: string; to?: string }> }) {
   const s = await requireOnboarded("/app");
@@ -89,7 +89,6 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         </section>
       )}
 
-      <OutlookCard lines={outlook} date={today} sample={!providers.marketData && sample ? "Sample candles and account" : !providers.marketData ? "Structure from sample candles" : sample ? "Sample account" : null} />
 
       <nav aria-label="Quick links" className="grid grid-cols-4 gap-2 lg:hidden">
         {([["/app/markets", "markets", "Markets"], ["/app/news", "news", "News"], ["/app/ai-analysis", "ai", "AI"], ["/app/journal", "journal", "Journal"]] as const).map(([href, icon, label]) => (
@@ -112,7 +111,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         <CommunityCard />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1.45fr_1fr]">
+      <div className="grid gap-4 xl:grid-cols-[1.65fr_1fr]">
         <PositionsCard
           rows={(overview?.positions ?? []).map((p) => ({ id: p.id, symbol: p.symbol, side: p.side, volume: p.volume, openPrice: p.openPrice, currentPrice: p.currentPrice, floatingPnl: p.floatingPnl, stopLoss: p.stopLoss, takeProfit: p.takeProfit }))}
           currency={overview?.account.currency ?? "USD"}
@@ -126,6 +125,8 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           nowIso={nowIso}
         />
       </div>
+
+      <OutlookCard lines={outlook} date={today} sample={!providers.marketData && sample ? "Sample candles and account" : !providers.marketData ? "Structure from sample candles" : sample ? "Sample account" : null} />
     </div>
   );
 }

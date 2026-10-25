@@ -31,7 +31,9 @@ export function sampleCandles({ seed, count, start, vol, drift = 0, stepSeconds 
     const wick = vol * price * 0.6;
     const h = Math.max(o, c) + rnd() * wick;
     const l = Math.min(o, c) - rnd() * wick;
-    out.push({ t: end - (count - i) * stepSeconds, o: round(o), h: round(h), l: round(l), c: round(c) });
+    // Volume follows the candle's range, with a deterministic wobble so no extra random draws shift the series.
+    const v = Math.round(((h - l) / (vol * price)) * 600 + ((i * 37) % 97) * 3);
+    out.push({ t: end - (count - i) * stepSeconds, o: round(o), h: round(h), l: round(l), c: round(c), v });
     price = c;
   }
   return out;

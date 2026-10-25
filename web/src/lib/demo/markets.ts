@@ -2,7 +2,7 @@ import { analyzeLevels, evaluateBias, type Candle } from "@/lib/analytics";
 import { sampleCandles } from "./sample";
 
 export type SampleSymbol = "XAUUSD" | "DXY" | "XAGUSD";
-export type SampleTf = "4H" | "1H" | "15M" | "5M" | "1M";
+export type SampleTf = "1D" | "4H" | "1H" | "15M" | "5M" | "1M";
 
 const profile: Record<SampleSymbol, { start: number; vol: number; drift: number; seed: number; digits: number }> = {
   XAUUSD: { start: 3920, vol: 0.0042, drift: 0.04, seed: 7, digits: 2 },
@@ -10,6 +10,7 @@ const profile: Record<SampleSymbol, { start: number; vol: number; drift: number;
   XAGUSD: { start: 47.2, vol: 0.0065, drift: 0.03, seed: 23, digits: 3 },
 };
 const tfScale: Record<SampleTf, { step: number; volMul: number; seedAdd: number }> = {
+  "1D": { step: 86_400, volMul: 2.2, seedAdd: 500 },
   "4H": { step: 14_400, volMul: 1, seedAdd: 0 },
   "1H": { step: 3600, volMul: 0.55, seedAdd: 100 },
   "15M": { step: 900, volMul: 0.3, seedAdd: 200 },

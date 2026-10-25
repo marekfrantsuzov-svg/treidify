@@ -24,17 +24,24 @@ export interface CandleChartProps {
   selectedZoneId?: string | null;
   label: string;
   timeLabel?: (t: number) => string;
+  /** "design" is the dashboard look: zone bands from mid-chart with two-line labels, volume bars, coloured price tag. */
+  look?: "default" | "design";
+  tagTone?: "up" | "down";
 }
 
 /**
  * Candlestick chart with conditional zones. Zones are buttons: keyboard and screen-reader reachable.
  * Hover or touch shows an OHLC readout. Drawn at true pixel width for crisp labels.
  */
-export function CandleChart({ candles, zones = [], height = 320, digits = 2, visible = 90, onZoneSelect, selectedZoneId, label, timeLabel }: CandleChartProps) {
+export function CandleChart({ candles, zones = [], height = 320, digits = 2, visible = 90, onZoneSelect, selectedZoneId, label, timeLabel, look = "default", tagTone }: CandleChartProps) {
+  const design = look === "design";
   const [ref, width] = useWidth<HTMLDivElement>();
   const [hover, setHover] = useState<number | null>(null);
-  const data = candles.slice(-Math.min(visible, Math.max(30, Math.floor(width / 6))));
+  const data = candles.slice(-Math.min(visible, Math.max(30, Math.floor(width / (design ? 8 : 6)))));
   const axisW = 64, padT = 12, padB = 24;
+  const hasVol = design && data.some((c) => c.v);
+  // In the design look the bottom fifth of the plot carries volume, below the price action.
+  const volH = hasVol ? (height - padT - padB) * 0.2 : 0;
   const plotW = width - axisW;
   const { min, max } = useMemo(() => {
     const lows = data.map((c) => c.l), highs = data.map((c) => c.h);
@@ -42,15 +49,18 @@ export function CandleChart({ candles, zones = [], height = 320, digits = 2, vis
     let lo = Math.min(...lows), hi = Math.max(...highs);
     // Include zones only if they are near the visible range, so far-away levels don't flatten the chart.
     const range = hi - lo;
-    for (const v of [...zl, ...zh]) if (v > lo - range * 0.25 && v < hi + range * 0.25) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
-    const pad = (hi - lo) * 0.06;
+    const reach = design ? 0.6 : 0.25;
+    for (const v of [...zl, ...zh]) if (v > lo - range * reach && v < hi + range * reach) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
+    const pad = (hi - lo) * (design ? 0.1 : 0.06);
     return { min: lo - pad, max: hi + pad };
-  }, [data, zones]);
-  const y = (p: number) => padT + (1 - (p - min) / (max - min)) * (height - padT - padB);
+  }, [data, zones, design]);
+  const y = (p: number) => padT + (1 - (p - min) / (max - min)) * (height - padT - padB - volH);
+  const zoneX = design ? plotWFor(width, axisW) * 0.42 : 0;
   const step = plotW / data.length;
   const bodyW = Math.max(1.5, step * 0.62);
   const last = data.at(-1);
-  const ticks = Array.from({ length: 5 }, (_, i) => min + ((max - min) * (i + 0.5)) / 5);
+  const ticks = Array.from({ length: design ? 4 : 5 }, (_, i) => min + ((max - min) * (i + 0.5)) / (design ? 4 : 5));
+  const maxVol = hasVol ? Math.max(...data.map((c) => c.v ?? 0)) || 1 : 1;
   const visibleZones = zones.filter((z) => z.upper >= min && z.lower <= max);
   const h = hover !== null ? data[hover] : null;
   // Hide labels that would collide; the zone band stays visible and clickable.
@@ -85,17 +95,38 @@ export function CandleChart({ candles, zones = [], height = 320, digits = 2, vis
         {ticks.map((p) => (
           <g key={p}>
             <line x1={0} x2={plotW} y1={y(p)} y2={y(p)} stroke="var(--chart-grid)" />
-            <text x={width - 6} y={y(p) + 4} textAnchor="end" fontSize="11" className="num" fill="var(--text-3)">
+            {Math.abs(y(p) - y(last.c)) > 14 && <text x={width - 6} y={y(p) + 4} textAnchor="end" fontSize="11" className="num" fill="var(--text-3)">
               {fmtNumber(p, digits)}
-            </text>
+            </text>}
           </g>
         ))}
+        {design && data.map((c, i) => (i % Math.ceil(data.length / 7) === 0 ? <line key={`v${c.t}`} x1={i * step + step / 2} x2={i * step + step / 2} y1={padT} y2={height - padB} stroke="var(--chart-grid)" /> : null))}
+        {hasVol && data.map((c, i) => {
+          const hv = ((c.v ?? 0) / maxVol) * volH * 0.95;
+          return <rect key={`vol${c.t}`} x={i * step + step * 0.18} width={step * 0.64} y={height - padB - hv} height={hv} fill={c.c >= c.o ? "var(--up)" : "var(--down)"} opacity={0.22} />;
+        })}
         {visibleZones.map((z) => {
           const s = zoneStyle[z.kind];
           const liquidity = z.kind.endsWith("Liquidity");
           const top = y(z.upper), bottom = y(z.lower);
-          const hgt = Math.max(liquidity ? 0 : 6, bottom - top);
           const selected = selectedZoneId === z.id;
+          if (design && !liquidity) {
+            const hgt = Math.max(30, bottom - top);
+            const mid = (top + bottom) / 2, y0 = mid - hgt / 2;
+            return (
+              <g key={z.id}>
+                <defs>
+                  <linearGradient id={`zg-${z.id}`} x1="0" x2="1" y1="0" y2="0">
+                    <stop offset="0" stopColor={s.stroke} stopOpacity="0.04" />
+                    <stop offset="0.35" stopColor={s.stroke} stopOpacity={selected ? 0.3 : 0.2} />
+                    <stop offset="1" stopColor={s.stroke} stopOpacity={selected ? 0.32 : 0.22} />
+                  </linearGradient>
+                </defs>
+                <rect x={zoneX} width={plotW - zoneX} y={y0} height={hgt} fill={`url(#zg-${z.id})`} />
+              </g>
+            );
+          }
+          const hgt = Math.max(liquidity ? 0 : 6, bottom - top);
           return (
             <g key={z.id}>
               {liquidity ? (
@@ -121,9 +152,21 @@ export function CandleChart({ candles, zones = [], height = 320, digits = 2, vis
             </g>
           );
         })}
-        <line x1={0} x2={plotW} y1={y(last.c)} y2={y(last.c)} stroke="var(--accent)" strokeDasharray="2 3" opacity="0.7" />
+        {design && visibleZones.filter((z) => !z.kind.endsWith("Liquidity")).map((z) => {
+          const s = zoneStyle[z.kind];
+          const top = y(z.upper), bottom = y(z.lower);
+          const y0 = (top + bottom) / 2 - Math.max(30, bottom - top) / 2;
+          const halo = { paintOrder: "stroke" as const, stroke: "var(--bg-0)", strokeWidth: 2.5, strokeOpacity: 0.6 };
+          return (
+            <g key={`lbl-${z.id}`}>
+              <text x={plotW - 8} y={y0 + 13} textAnchor="end" fontSize="11" fontWeight="500" fill={s.text} {...halo}>{zoneLabel[z.kind]}</text>
+              <text x={plotW - 8} y={y0 + 26} textAnchor="end" fontSize="11" fontWeight="500" fill={s.text} className="num" {...halo}>{fmtNumber(z.lower, digits)} - {fmtNumber(z.upper, digits)}</text>
+            </g>
+          );
+        })}
+        <line x1={0} x2={plotW} y1={y(last.c)} y2={y(last.c)} stroke={design ? (tagTone === "down" ? "var(--down)" : "var(--up)") : "var(--accent)"} strokeDasharray="2 3" opacity="0.7" />
         <g transform={`translate(${plotW + 2}, ${y(last.c) - 10})`}>
-          <rect width={axisW - 4} height={20} rx={6} fill="var(--accent)" />
+          <rect width={axisW - 4} height={20} rx={design ? 4 : 6} fill={design ? (tagTone === "down" ? "var(--down)" : "var(--up)") : "var(--accent)"} />
           <text x={(axisW - 4) / 2} y={14} textAnchor="middle" fontSize="11" fontWeight="600" fill="#fff" className="num">
             {fmtNumber(last.c, digits)}
           </text>
@@ -172,3 +215,5 @@ export function CandleChart({ candles, zones = [], height = 320, digits = 2, vis
     </div>
   );
 }
+
+const plotWFor = (width: number, axisW: number) => width - axisW;

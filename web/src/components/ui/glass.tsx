@@ -1,6 +1,6 @@
 import { cn } from "@/lib/cn";
 
-type GlassProps = React.HTMLAttributes<HTMLDivElement> & { strong?: boolean; as?: "div" | "section" | "article" | "aside" };
+type GlassProps = React.HTMLAttributes<HTMLElement> & { strong?: boolean; as?: "div" | "section" | "article" | "aside" | "button"; type?: "button" };
 
 /** Liquid-glass card: translucent surface, hairline border, soft top reflection. */
 export function Glass({ className, strong, as: Tag = "div", ...props }: GlassProps) {

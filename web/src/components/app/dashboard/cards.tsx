@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Lock } from "lucide-react";
+import { ArrowRight, Expand, Lock, MessageSquare, ThumbsUp } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -10,7 +10,8 @@ import { cn } from "@/lib/cn";
 import { fmtNumber, fmtPct, fmtSignedMoney } from "@/lib/format";
 import { Sparkline } from "@/components/charts/sparkline";
 import { GlassIcon, type GlassIconName } from "@/components/icons/glass-icon";
-import { InstrumentIcon } from "@/components/previews/parts";
+import { Flag, InstrumentIcon } from "@/components/previews/parts";
+import { DemoPhotoArt, type DemoPhoto } from "./demo-photos";
 import { Glass } from "@/components/ui/glass";
 import { Pill, SampleBadge } from "@/components/ui/pill";
 
@@ -40,12 +41,6 @@ function Tabs({ tabs, value, onChange, label }: { tabs: string[]; value: string;
 
 /* ───────── News ───────── */
 
-const NEWS_CATEGORIES: { icon: GlassIconName; title: string; note: string; hue: string }[] = [
-  { icon: "dollar", title: "Central banks", note: "Fed, ECB and other speakers, decisions and minutes", hue: "from-[#1d5cf5]/30 via-[#6aa2ff]/15" },
-  { icon: "macro", title: "Geopolitics", note: "Conflicts, sanctions and tariffs that move gold and the dollar", hue: "from-[#e0394a]/25 via-[#ff8a5b]/12" },
-  { icon: "markets", title: "Energy and yields", note: "Oil supply, Treasury yields, inflation and jobs data", hue: "from-[#b7791f]/30 via-[#f5b44a]/12" },
-];
-
 /** Branded category illustration, used whenever a licensed article photo is unavailable. */
 export function NewsArt({ icon, hue, className }: { icon: GlassIconName; hue: string; className?: string }) {
   return (
@@ -57,24 +52,38 @@ export function NewsArt({ icon, hue, className }: { icon: GlassIconName; hue: st
   );
 }
 
+/** Example rows that show the layout until a licensed news feed is connected. Badged Demo, never shown as live. */
+const DEMO_NEWS: { title: string; note: string; impact: "High" | "Medium"; photo: DemoPhoto }[] = [
+  { title: "Fed Member Speaks", note: "Hawkish tone signals higher for USD, pressure on Gold.", impact: "High", photo: "podium" },
+  { title: "Middle East tensions rise", note: "Reports of new strikes increase safe haven demand.", impact: "High", photo: "skyline" },
+  { title: "Crude Oil Inventories", note: "Larger than expected build, USD stronger.", impact: "Medium", photo: "rigs" },
+];
+
 export function NewsCard({ connected }: { connected: boolean }) {
   return (
     <Glass className="flex min-w-0 flex-col p-4 sm:p-5">
-      <CardHead title="Next Important News" href="/app/news" />
-      <ul className="mt-3 grid flex-1 gap-2.5">
-        {NEWS_CATEGORIES.map((c) => (
-          <li key={c.title}>
-            <Link href="/app/news" className="group flex items-center gap-3 rounded-2xl p-1.5 transition-colors hover:bg-[var(--surface-inset)]">
-              <NewsArt icon={c.icon} hue={c.hue} className="h-[62px] w-[92px]" />
-              <div className="min-w-0">
-                <div className="text-sm font-semibold text-ink">{c.title}</div>
-                <div className="line-clamp-2 text-xs text-ink-3">{c.note}</div>
+      <CardHead title="Next Important News" href="/app/news">{!connected && <SampleBadge label="Demo" />}</CardHead>
+      <ul className="mt-3 grid flex-1 content-start gap-3">
+        {DEMO_NEWS.map((n) => (
+          <li key={n.title}>
+            <Link href="/app/news" className="group relative flex gap-3 rounded-2xl transition-colors hover:bg-[var(--surface-inset)]">
+              <DemoPhotoArt kind={n.photo} className="h-[66px] w-[104px] shrink-0 rounded-xl" />
+              <div className="min-w-0 flex-1 pr-1">
+                <div className="flex items-start justify-between gap-2">
+                  <span className="truncate text-[13px] font-semibold text-ink">{n.title}</span>
+                  <Expand className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-3" aria-hidden />
+                </div>
+                <p className="line-clamp-2 text-[11.5px] leading-snug text-ink-3">{n.note}</p>
+                <div className="mt-1 flex items-center justify-between gap-2">
+                  <span className="inline-flex items-center gap-1.5 text-[11px] text-ink-3"><Flag country="us" className="h-3.5 w-3.5" />Example</span>
+                  <Pill tone={n.impact === "High" ? "down" : "warn"} className="px-2 text-[10.5px]">{n.impact}</Pill>
+                </div>
               </div>
             </Link>
           </li>
         ))}
       </ul>
-      <p className="mt-3 text-xs text-ink-3">{connected ? "Latest events with sources and timestamps." : "Live headlines with sources, licensed photos and impact on gold and the dollar appear here once the news feed is connected. Nothing is invented in the meantime."}</p>
+      <p className="mt-3 text-[11px] leading-snug text-ink-3">{connected ? "Latest events with sources and timestamps." : "Example headlines and illustrations that show the layout. Real headlines with sources and licensed photos appear once the news feed is connected."}</p>
     </Glass>
   );
 }
@@ -84,35 +93,31 @@ export function NewsCard({ connected }: { connected: boolean }) {
 const MACRO = [
   { id: "XAUUSD", name: "XAUUSD", series: () => sampleSeries("XAUUSD", "4H").map((c) => c.c), digits: 2, icon: "XAUUSD" },
   { id: "DXY", name: "DXY", series: () => sampleSeries("DXY", "4H").map((c) => c.c), digits: 3, icon: "DXY" },
-  { id: "SILVER", name: "Silver", series: () => sampleSeries("XAGUSD", "4H").map((c) => c.c), digits: 2, icon: "XAGUSD" },
-  { id: "US10Y", name: "US 10Y", series: () => sampleCandles({ seed: 77, count: 140, start: 4.31, vol: 0.006, drift: 0.01 }).map((c) => c.c), digits: 3, icon: "US10Y", pct: true },
+  { id: "SILVER", name: "SILVER", series: () => sampleSeries("XAGUSD", "4H").map((c) => c.c), digits: 2, icon: "XAGUSD" },
+  { id: "US10Y", name: "US10Y", series: () => sampleCandles({ seed: 77, count: 140, start: 4.31, vol: 0.006, drift: 0.01 }).map((c) => c.c), digits: 2, icon: "US10Y", pct: true },
 ] as const;
 
 export function MacroCard() {
   const [tab, setTab] = useState("Overview");
   const router = useRouter();
   const rows = useMemo(() => MACRO.map((m) => { const v = m.series().slice(-40); const last = v.at(-1)!, first = v[0]!; return { ...m, values: v, last, chg: ((last - first) / first) * 100 }; }), []);
-  const shown = tab === "Overview" ? rows : rows.filter((r) => r.name.toLowerCase().includes(tab.toLowerCase().replace("yields", "10y")));
+  const shown = tab === "Overview" ? rows : rows.filter((r) => (tab === "Yields" ? r.id === "US10Y" : r.id === tab.toUpperCase()));
   return (
-    <Glass className="min-w-0 p-4 sm:p-5">
+    <Glass className="flex min-w-0 flex-col p-4 sm:p-5">
       <CardHead title="Macro Desk" href="/app/macro"><SampleBadge label="Sample" /></CardHead>
       <Tabs label="Macro view" tabs={["Overview", "XAUUSD", "DXY", "Silver", "Yields"]} value={tab} onChange={setTab} />
-      <div className="mt-3 grid grid-cols-2 gap-2.5">
+      <div className="mt-2 grid flex-1 grid-cols-2 content-around gap-x-3">
         {shown.map((r) => {
           const up = r.chg >= 0;
           return (
-            <button key={r.id} onClick={() => router.push(`/app/macro#${r.id.toLowerCase()}`)} className="inset min-w-0 rounded-2xl p-3 text-left transition-shadow hover:shadow-[var(--shadow)]">
-              <div className="flex items-center gap-2">
-                {r.id === "US10Y" ? <GlassIcon name="yield" size={24} /> : <InstrumentIcon symbol={r.icon} className="h-6 w-6 text-[9px]" />}
-                <span className="truncate text-[11.5px] font-semibold text-ink-2">{r.name}</span>
+            <button key={r.id} onClick={() => router.push(`/app/macro#${r.id.toLowerCase()}`)} className="flex min-w-0 items-center gap-2 rounded-2xl px-1 py-3.5 text-left transition-colors hover:bg-[var(--surface-inset)]">
+              <InstrumentIcon symbol={r.icon} className="h-7 w-7 self-start text-[10px]" />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[10.5px] font-semibold uppercase tracking-wide text-ink-2">{r.name}</div>
+                <div className="num truncate text-[13.5px] font-semibold text-ink">{fmtNumber(r.last, r.digits)}{"pct" in r && "%"}</div>
+                <div className={cn("num text-[11px] font-medium", up ? "text-up" : "text-down")}>{fmtPct(r.chg, 2, true)}</div>
               </div>
-              <div className="mt-1.5 flex items-end justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="num truncate text-[14px] font-semibold text-ink">{fmtNumber(r.last, r.digits)}{"pct" in r && "%"}</div>
-                  <div className={cn("num text-[11px] font-medium", up ? "text-up" : "text-down")}>{fmtPct(r.chg, 2, true)}</div>
-                </div>
-                <Sparkline values={r.values} up={up} width={60} height={28} className="h-7 w-[38%] max-w-[72px] shrink-0" />
-              </div>
+              <Sparkline values={r.values} up={up} width={60} height={30} className="h-8 w-[30%] max-w-[78px] shrink-0" />
             </button>
           );
         })}
@@ -123,45 +128,73 @@ export function MacroCard() {
 
 /* ───────── AI Chart Analysis ───────── */
 
+/** Small dark candle chart for example thumbnails. Drawn from sample candles, labelled Example. */
+function ExampleChartThumb({ seed, label }: { seed: number; label: string }) {
+  const c = useMemo(() => sampleCandles({ seed, count: 34, start: 100, vol: 0.006, drift: 0.04 }), [seed]);
+  const lo = Math.min(...c.map((k) => k.l)), hi = Math.max(...c.map((k) => k.h));
+  const y = (p: number) => 6 + (1 - (p - lo) / (hi - lo)) * 48;
+  return (
+    <div className="relative overflow-hidden rounded-xl border border-white/10 bg-[linear-gradient(180deg,#0f1626,#070b14)]">
+      <svg viewBox="0 0 120 60" preserveAspectRatio="none" className="block h-full w-full" aria-hidden>
+        {[15, 30, 45].map((g) => <line key={g} x1="0" x2="120" y1={g} y2={g} stroke="#ffffff" strokeOpacity="0.06" />)}
+        {c.map((k, i) => {
+          const x = 3 + i * 3.42, col = k.c >= k.o ? "#22c55e" : "#ef4444";
+          return <g key={k.t}><line x1={x} x2={x} y1={y(k.h)} y2={y(k.l)} stroke={col} strokeWidth="0.6" /><rect x={x - 1} width="2" y={y(Math.max(k.o, k.c))} height={Math.max(0.6, y(Math.min(k.o, k.c)) - y(Math.max(k.o, k.c)))} fill={col} /></g>;
+        })}
+      </svg>
+      <span className="absolute left-1.5 top-1 text-[8px] font-medium text-white/60">{label}</span>
+    </div>
+  );
+}
+
 export function AiAnalysisCard({ aiConnected, recent }: { aiConnected: boolean; recent: { id: string; thumb: string | null }[] }) {
   const router = useRouter();
   const [drag, setDrag] = useState(false);
   const open = () => router.push("/app/ai-analysis");
   return (
-    <Glass className="min-w-0 p-4 sm:p-5">
+    <Glass className="flex min-w-0 flex-col p-4 sm:p-5">
       <CardHead title="AI Chart Analysis" href="/app/ai-analysis">{!aiConnected && <Pill>Not connected</Pill>}</CardHead>
-      <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto]">
-        <button
-          onClick={open}
-          onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
-          onDragLeave={() => setDrag(false)}
-          onDrop={(e) => { e.preventDefault(); setDrag(false); open(); }}
-          className={cn("inset grid place-items-center gap-2 rounded-2xl border-dashed px-4 py-6 text-center transition-colors", drag && "border-accent bg-accent-soft")}
-        >
-          <GlassIcon name="ai" size={44} />
-          <span className="text-sm text-ink-2">Drag and drop a chart screenshot<br />or upload an image</span>
-          <span className="text-[11px] text-ink-3">PNG, JPG or WebP up to 10 MB</span>
-        </button>
-        <div className="hidden w-[118px] grid-rows-3 gap-2 sm:grid">
+      <div className="mt-3 grid flex-1 gap-3 sm:grid-cols-[1fr_minmax(0,0.62fr)]">
+        <div className="grid grid-rows-[1fr_auto] gap-3">
+          <button
+            onClick={open}
+            onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+            onDragLeave={() => setDrag(false)}
+            onDrop={(e) => { e.preventDefault(); setDrag(false); open(); }}
+            className={cn("inset grid place-items-center gap-1.5 rounded-2xl px-4 py-5 text-center transition-colors", drag && "border-accent bg-accent-soft")}
+          >
+            <span className="grid h-10 w-10 place-items-center rounded-full bg-[radial-gradient(circle_at_35%_30%,#9cc2ff,#2f6bff_55%,#1b3fc0)] text-[12px] font-bold text-white shadow-[0_6px_16px_-4px_rgba(47,107,255,0.6),inset_0_1px_0_rgba(255,255,255,0.5)]">AI</span>
+            <span className="text-[12.5px] leading-snug text-ink-2">Drag &amp; drop a chart screenshot<br />or upload image</span>
+            <span className="text-[10.5px] text-ink-3">PNG, JPG up to 10MB</span>
+          </button>
+          <button onClick={open} className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(180deg,#16203a,#0b1222)] text-sm font-medium text-white shadow-[0_8px_20px_-8px_rgba(10,20,40,0.6)] dark:bg-[linear-gradient(180deg,#2a63f0,#1a4fd0)]">
+            <span className="grid h-6 w-6 place-items-center rounded-full bg-[radial-gradient(circle_at_35%_30%,#9cc2ff,#2f6bff)] text-[9px] font-bold">AI</span> Analyse with AI <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="hidden grid-rows-3 gap-2 sm:grid">
           {[0, 1, 2].map((i) => {
             const r = recent[i];
             return r?.thumb ? (
               // eslint-disable-next-line @next/next/no-img-element -- user's own re-encoded thumbnail
               <Link key={r.id} href={`/app/ai-analysis/${r.id}`}><img src={r.thumb} alt="Analysed chart" className="h-full w-full rounded-xl object-cover" /></Link>
             ) : (
-              <div key={i} className="inset grid place-items-center rounded-xl text-[10px] text-ink-3">{i === 0 && "Your charts"}</div>
+              <ExampleChartThumb key={i} seed={31 + i * 17} label="Example" />
             );
           })}
         </div>
       </div>
-      <button onClick={open} className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(180deg,#16203a,#0b1222)] text-sm font-medium text-white shadow-[0_8px_20px_-8px_rgba(10,20,40,0.6)] dark:bg-[linear-gradient(180deg,#2a63f0,#1a4fd0)]">
-        <GlassIcon name="ai" size={26} active /> Analyse with AI <ArrowRight className="h-4 w-4" />
-      </button>
     </Glass>
   );
 }
 
 /* ───────── Community ───────── */
+
+/** Example posts that show the feed layout. Fictional handles, badged Demo; real posts arrive with the community phase. */
+const DEMO_POSTS = [
+  { handle: "trader_jay", ago: "12m", text: "XAUUSD long idea, looking for 2,670 break", likes: 24, comments: 5, seed: 41, hue: "#f5a524" },
+  { handle: "mark_trades", ago: "1h", text: "DXY analysis for this week", likes: 32, comments: 8, seed: 52, hue: "#22c55e" },
+  { handle: "silverhunter", ago: "2h", text: "My gold analysis, key levels", likes: 18, comments: 3, seed: 63, hue: "#8b9bb4" },
+];
 
 export function CommunityCard() {
   const [tab, setTab] = useState("General");
@@ -174,19 +207,48 @@ export function CommunityCard() {
   const r = rooms[tab]!;
   return (
     <Glass className="flex min-w-0 flex-col p-4 sm:p-5">
-      <CardHead title="Community" href="/app/community" />
+      <CardHead title="Community" href="/app/community"><SampleBadge label="Demo" /></CardHead>
       <Tabs label="Community room" tabs={Object.keys(rooms)} value={tab} onChange={setTab} />
-      <div className="mt-3 flex flex-1 flex-col justify-between gap-3 rounded-2xl p-1">
-        <div className="flex gap-3">
-          <GlassIcon name={r.locked ? "shield" : "community"} size={40} />
-          <p className="text-sm leading-relaxed text-ink-2">{r.rule}</p>
+      {tab === "General" ? (
+        <ul className="mt-2 grid flex-1 grid-cols-[minmax(0,1fr)] content-start">
+          {DEMO_POSTS.map((p) => (
+            <li key={p.handle} className="flex items-center gap-3 border-t border-line py-2.5 first:border-t-0">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[12px] font-bold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]" style={{ background: `linear-gradient(135deg, ${p.hue}, #1b2333)` }} aria-hidden>{p.handle[0]!.toUpperCase()}</span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 text-[12px]"><span className="truncate font-semibold text-ink">@{p.handle}</span><span className="text-ink-3">{p.ago}</span></div>
+                <p className="truncate text-[11.5px] text-ink-2">{p.text}</p>
+                <div className="mt-0.5 flex items-center gap-3 text-[10.5px] text-ink-3">
+                  <span className="inline-flex items-center gap-1"><ThumbsUp className="h-3 w-3" />{p.likes}</span>
+                  <span className="inline-flex items-center gap-1"><MessageSquare className="h-3 w-3" />{p.comments}</span>
+                </div>
+              </div>
+              <PostChart seed={p.seed} />
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div className="mt-3 flex flex-1 flex-col justify-between gap-3 rounded-2xl p-1">
+          <div className="flex gap-3">
+            <GlassIcon name={r.locked ? "shield" : "community"} size={40} />
+            <p className="text-sm leading-relaxed text-ink-2">{r.rule}</p>
+          </div>
+          <div className="flex items-center justify-between gap-2 text-xs text-ink-3">
+            <span className="inline-flex items-center gap-1.5">{r.locked && <Lock className="h-3.5 w-3.5" />}{r.locked ? "Verification required" : "Posting opens in the community phase"}</span>
+            <Link href="/app/settings/profile" className="font-medium text-accent hover:underline">Set up profile</Link>
+          </div>
         </div>
-        <div className="flex items-center justify-between gap-2 text-xs text-ink-3">
-          <span className="inline-flex items-center gap-1.5">{r.locked && <Lock className="h-3.5 w-3.5" />}{r.locked ? "Verification required" : "Posting opens in the community phase"}</span>
-          <Link href="/app/settings/profile" className="font-medium text-accent hover:underline">Set up profile</Link>
-        </div>
-      </div>
+      )}
+      {tab === "General" && <p className="mt-1 text-[11px] text-ink-3">Example posts that show the feed. Posting opens in the community phase.</p>}
     </Glass>
+  );
+}
+
+function PostChart({ seed }: { seed: number }) {
+  const v = useMemo(() => sampleCandles({ seed, count: 30, start: 100, vol: 0.008, drift: 0.05 }).map((c) => c.c), [seed]);
+  return (
+    <div className="hidden h-[42px] w-[76px] shrink-0 overflow-hidden rounded-lg bg-[var(--surface-inset)] p-1 min-[400px]:block">
+      <Sparkline values={v} up={v.at(-1)! >= v[0]!} width={68} height={34} className="h-full w-full" />
+    </div>
   );
 }
 
@@ -205,8 +267,8 @@ export function PositionsCard({ rows, currency, sample, connected }: { rows: Pos
         <p className="mt-6 pb-4 text-center text-sm text-ink-3">{connected ? "No open positions right now." : "Open positions appear here once your MetaTrader account is connected."}</p>
       ) : (
         <div className="mt-3 overflow-x-auto">
-          <table className="w-full min-w-[620px] text-left text-sm">
-            <thead><tr className="text-[11px] text-ink-3">{["Symbol", "Side", "Size", "Entry", "Current", "P&L", "SL", "TP"].map((h) => <th key={h} className="pb-2 font-medium">{h}</th>)}</tr></thead>
+          <table className="w-full min-w-[680px] text-left text-sm">
+            <thead><tr className="text-[11px] text-ink-3">{["Symbol", "Side", "Size", "Entry", "Current", "P&L", "SL", "TP", "Actions"].map((h) => <th key={h} className={cn("pb-2 font-medium", h === "Actions" && "text-center")}>{h}</th>)}</tr></thead>
             <tbody className="num">
               {rows.map((r) => (
                 <tr key={r.id} className="border-t border-line">
@@ -218,6 +280,7 @@ export function PositionsCard({ rows, currency, sample, connected }: { rows: Pos
                   <td className={cn("font-semibold", (r.floatingPnl ?? 0) >= 0 ? "text-up" : "text-down")}>{r.floatingPnl === null ? "—" : fmtSignedMoney(r.floatingPnl, currency)}</td>
                   <td className="text-ink-3">{r.stopLoss === null ? "—" : fmtNumber(r.stopLoss, dp(r.symbol))}</td>
                   <td className="text-ink-3">{r.takeProfit === null ? "—" : fmtNumber(r.takeProfit, dp(r.symbol))}</td>
+                  <td className="text-center"><Link href={`/app/journal?symbol=${encodeURIComponent(r.symbol)}`} className="inset inline-flex h-7 items-center rounded-lg px-3.5 font-sans text-[11.5px] font-medium text-ink-2 hover:text-ink" aria-label={`View ${r.symbol} history`}>View</Link></td>
                 </tr>
               ))}
             </tbody>
@@ -231,6 +294,16 @@ export function PositionsCard({ rows, currency, sample, connected }: { rows: Pos
 function ago(iso: string, now: number) {
   const s = Math.max(0, (now - new Date(iso).getTime()) / 1000);
   return s < 3600 ? `${Math.max(1, Math.round(s / 60))}m ago` : s < 86_400 ? `${Math.round(s / 3600)}h ago` : `${Math.round(s / 86_400)}d ago`;
+}
+
+/** Shape-only line for sample trades, which have no recorded price path. Real trades show none. */
+function TradeSpark({ id, up }: { id: string; up: boolean }) {
+  const v = useMemo(() => {
+    let seed = 0;
+    for (const ch of id) seed = (seed * 31 + ch.charCodeAt(0)) % 9973;
+    return sampleCandles({ seed, count: 24, start: 100, vol: 0.006, drift: up ? 0.3 : -0.3 }).map((c) => c.c);
+  }, [id, up]);
+  return <Sparkline values={v} up={up} width={56} height={20} className="ml-auto hidden h-5 w-14 shrink-0 min-[400px]:block" />;
 }
 
 export function RecentTradesCard({ rows, currency, sample, nowIso }: { rows: TradeRow[]; currency: string; sample: boolean; nowIso: string }) {
@@ -247,6 +320,7 @@ export function RecentTradesCard({ rows, currency, sample, nowIso }: { rows: Tra
               <InstrumentIcon symbol={t.symbol} className="h-6 w-6 text-[9px]" />
               <span className="w-16 font-medium text-ink">{t.symbol}</span>
               <span className={cn("w-10 font-medium", t.side === "buy" ? "text-up" : "text-down")}>{t.side === "buy" ? "Buy" : "Sell"}</span>
+              {sample && <TradeSpark id={t.id} up={t.net >= 0} />}
               <span className={cn("ml-auto font-semibold", t.net >= 0 ? "text-up" : "text-down")}>{fmtSignedMoney(t.net, currency)}</span>
               <span className="w-16 text-right text-xs text-ink-3">{ago(t.closeTime, now)}</span>
             </li>

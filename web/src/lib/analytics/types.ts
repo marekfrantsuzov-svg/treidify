@@ -5,6 +5,8 @@ export interface Candle {
   h: number;
   l: number;
   c: number;
+  /** Tick or real volume when the source provides it. */
+  v?: number;
 }
 
 export interface SwingPoint {
