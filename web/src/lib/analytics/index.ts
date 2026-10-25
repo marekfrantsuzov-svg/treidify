@@ -11,3 +11,5 @@ export * from "./coach";
 export * from "./health";
 export * from "./zone-explainer";
 export * from "./periods";
+export * from "./breakdown";
+export * from "./outlook";

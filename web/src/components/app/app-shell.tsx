@@ -240,7 +240,7 @@ export function AppShell({ user, plan, account, timezone, greeting, unread, chil
             })}
           </nav>
           <div className="mt-auto grid gap-2 pt-3">
-            <Link href={account ? "/app" : "/app/settings/accounts"} className="inset flex items-center gap-2.5 rounded-2xl px-3 py-2.5">
+            <Link href={account ? "/app" : "/app/accounts"} className="inset flex items-center gap-2.5 rounded-2xl px-3 py-2.5">
               <span className={cn("h-2.5 w-2.5 rounded-full", account?.status === "connected" ? "bg-up shadow-[0_0_10px_var(--up)]" : account?.sample ? "bg-warn" : "bg-ink-3")} />
               <span className="min-w-0">
                 <span className="block truncate text-[13px] font-semibold text-ink">{account ? (account.sample ? "Sample account" : account.status === "connected" ? "Connected" : "Connecting") : "No account connected"}</span>

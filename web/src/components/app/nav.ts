@@ -9,9 +9,11 @@ export const appNav: NavItem[] = [
   { href: "/app/news", label: "Global News", short: "News", icon: "news" },
   { href: "/app/ai-analysis", label: "AI Chart Analysis", short: "AI", icon: "ai" },
   { href: "/app/journal", label: "Trading Journal", short: "Journal", icon: "journal" },
+  { href: "/app/performance", label: "Performance", short: "Stats", icon: "yield" },
   { href: "/app/coach", label: "AI Coach", short: "Coach", icon: "coach" },
   { href: "/app/community", label: "Community", short: "Community", icon: "community" },
   { href: "/app/calendar", label: "Economic Calendar", short: "Calendar", icon: "calendar" },
+  { href: "/app/accounts", label: "Accounts", short: "Accounts", icon: "link" },
   { href: "/app/settings", label: "Settings", short: "Settings", icon: "settings" },
 ];
 

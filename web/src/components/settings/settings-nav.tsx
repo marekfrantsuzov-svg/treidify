@@ -7,7 +7,7 @@ import { cn } from "@/lib/cn";
 export const settingsNav = [
   { href: "/app/settings/profile", label: "Profile and privacy" },
   { href: "/app/settings/preferences", label: "Preferences" },
-  { href: "/app/settings/accounts", label: "Trading accounts" },
+  { href: "/app/accounts", label: "Trading accounts" },
   { href: "/app/settings/security", label: "Security" },
   { href: "/app/settings/plan", label: "Plan" },
 ] as const;

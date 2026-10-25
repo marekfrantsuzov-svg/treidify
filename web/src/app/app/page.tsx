@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { HealthRow } from "@/components/app/dashboard/health-row";
+import { OutlookCard } from "@/components/app/dashboard/outlook-card";
 import { AiAnalysisCard, CommunityCard, MacroCard, NewsCard, PositionsCard, RecentTradesCard } from "@/components/app/dashboard/cards";
 import { AccountPicker } from "@/components/app/account-picker";
 import { Alert } from "@/components/auth/auth-ui";
@@ -8,7 +9,11 @@ import { InstrumentCard } from "@/components/previews/zone-explorer";
 import { Glass } from "@/components/ui/glass";
 import { ButtonLink } from "@/components/ui/button";
 import { TRIAL_HOURS } from "@/config/plans";
+import { dailyOutlook } from "@/lib/analytics";
+import { sampleAnalysis } from "@/lib/demo/markets";
 import { readPeriod } from "@/lib/period-param";
+import { eq } from "drizzle-orm";
+import { db, schema } from "@/server/db";
 import { accountOverview, listAccounts } from "@/server/account-data";
 import { getPlanState } from "@/server/entitlements";
 import { providerStatus } from "@/server/providers";
@@ -29,6 +34,13 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const nowIso = new Date().toISOString();
   const sample = overview?.account.source === "sample";
   const tf = s.profile.dashboardPrefs.defaultTimeframe;
+  const [rules] = await db.select({ max: schema.rulebook.maxTradesPerDay }).from(schema.rulebook).where(eq(schema.rulebook.userId, s.user.id));
+  // Structure lines use the zone engine on sample candles until market data is connected, and say so.
+  const outlook = dailyOutlook({
+    now: new Date(), tz, trades: overview?.trades ?? [], currency: overview?.account.currency, maxTradesPerDay: rules?.max ?? undefined,
+    ...(providers.marketData ? {} : { gold: sampleAnalysis("XAUUSD", "4H").bias.bias, dollar: sampleAnalysis("DXY", "4H").bias.bias }),
+  });
+  const today = new Date().toLocaleDateString("en-GB", { timeZone: tz, weekday: "long", day: "numeric", month: "long" });
 
   return (
     <div className="grid gap-4">
@@ -71,11 +83,13 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                 <p className="text-xl font-semibold tracking-[-0.02em] text-ink sm:text-2xl">Connect MetaTrader to see your real Account Health.</p>
                 <p className="mt-1 max-w-2xl text-sm text-ink-2">Health score, balance, net P&amp;L and win rate are calculated from your own synced deals with a read-only investor password. Nothing here is estimated.</p>
               </div>
-              <ButtonLink href="/app/settings/accounts" size="lg">Connect account</ButtonLink>
+              <ButtonLink href="/app/accounts" size="lg">Connect account</ButtonLink>
             </div>
           </Glass>
         </section>
       )}
+
+      <OutlookCard lines={outlook} date={today} sample={!providers.marketData && sample ? "Sample candles and account" : !providers.marketData ? "Structure from sample candles" : sample ? "Sample account" : null} />
 
       <nav aria-label="Quick links" className="grid grid-cols-4 gap-2 lg:hidden">
         {([["/app/markets", "markets", "Markets"], ["/app/news", "news", "News"], ["/app/ai-analysis", "ai", "AI"], ["/app/journal", "journal", "Journal"]] as const).map(([href, icon, label]) => (
