@@ -19,7 +19,7 @@ export const auth = betterAuth({
   appName: "Treidify",
   baseURL: process.env.BETTER_AUTH_URL ?? site.url,
   secret: process.env.BETTER_AUTH_SECRET,
-  trustedOrigins: [site.url, ...(apple ? ["https://appleid.apple.com"] : [])],
+  trustedOrigins: [site.url, ...(process.env.NEXT_PUBLIC_APP_URL ? [process.env.NEXT_PUBLIC_APP_URL] : []), ...(apple ? ["https://appleid.apple.com"] : [])],
   database: drizzleAdapter(db, {
     provider: "pg",
     schema: { user: schema.user, session: schema.session, account: schema.account, verification: schema.verification, twoFactor: schema.twoFactor },
@@ -67,7 +67,12 @@ export const auth = betterAuth({
     max: 100,
     customRules: { "/sign-in/email": { window: 60, max: 8 }, "/sign-up/email": { window: 3600, max: 10 }, "/request-password-reset": { window: 3600, max: 5 }, "/two-factor/*": { window: 60, max: 10 } },
   },
-  advanced: { useSecureCookies: process.env.NODE_ENV === "production", ipAddress: { ipAddressHeaders: ["x-forwarded-for", "x-real-ip"] } },
+  advanced: {
+    useSecureCookies: process.env.NODE_ENV === "production",
+    // Share the session between treidify.com and app.treidify.com, e.g. AUTH_COOKIE_DOMAIN=treidify.com.
+    ...(process.env.AUTH_COOKIE_DOMAIN ? { crossSubDomainCookies: { enabled: true, domain: process.env.AUTH_COOKIE_DOMAIN } } : {}),
+    ipAddress: { ipAddressHeaders: ["x-forwarded-for", "x-real-ip"] },
+  },
   databaseHooks: {
     user: {
       create: {

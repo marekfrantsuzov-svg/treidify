@@ -18,7 +18,7 @@ export interface Plan {
   highlights: string[];
 }
 
-const num = (v: string | undefined, fallback: number) => (v && !Number.isNaN(Number(v)) ? Number(v) : fallback);
+const num = (v: string | undefined, fallback: number | null) => (v && !Number.isNaN(Number(v)) ? Number(v) : fallback);
 
 export const TRIAL_HOURS = 72;
 
@@ -44,8 +44,8 @@ export const plans: Plan[] = [
     id: "premium",
     name: "Premium",
     tagline: "The complete Treidify trading intelligence platform.",
-    monthly: num(process.env.NEXT_PUBLIC_PRICE_MONTHLY, 29),
-    annual: num(process.env.NEXT_PUBLIC_PRICE_ANNUAL, 290),
+    monthly: num(process.env.NEXT_PUBLIC_PRICE_MONTHLY, null),
+    annual: num(process.env.NEXT_PUBLIC_PRICE_ANNUAL, null),
     currency: "USD",
     features: [
       "market.basic", "market.advanced", "news.basic", "news.global", "charts.basic", "charts.ai", "account.overview",
@@ -63,4 +63,5 @@ export const plans: Plan[] = [
   },
 ];
 
-export const pricesAreFinal = process.env.NEXT_PUBLIC_PRICES_FINAL === "true";
+// Prices show only once approved and set, so an unapproved number never reaches the site.
+export const pricesAreFinal = process.env.NEXT_PUBLIC_PRICES_FINAL === "true" && plans.every((p) => p.monthly !== null && p.annual !== null);
