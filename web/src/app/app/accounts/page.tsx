@@ -1,5 +1,7 @@
-import { PageHeader, StatusCard } from "@/components/app/status";
+import { PageHeader } from "@/components/app/status";
+import { ConnectForm } from "@/components/app/accounts/connect-form";
 import { DemoControls } from "@/components/app/accounts/demo-controls";
+import { Alert } from "@/components/auth/auth-ui";
 import { GlassIcon } from "@/components/icons/glass-icon";
 import { Glass } from "@/components/ui/glass";
 import { Pill, SampleBadge } from "@/components/ui/pill";
@@ -43,10 +45,12 @@ export default async function Accounts() {
         </Glass>
 
         <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
-          <StatusCard title="Connect MT5" icon={<GlassIcon name="shield" size={32} />} status={sync ? "Available" : "Sync not switched on"}>
-            You enter your broker server, login and the read-only investor password. Treidify never asks for your master password and cannot place trades or withdraw. Balance, equity, open positions and full history then sync automatically, with the time of the last sync shown.
-            {!sync && " Connecting opens once the sync provider (MetaApi) is configured and tested end to end with a real account. Until then nothing here claims to be live."}
-          </StatusCard>
+          <Glass className="p-5">
+            <h2 className="flex items-center gap-2.5 text-[15px] font-semibold text-ink"><GlassIcon name="shield" size={32} />Connect MetaTrader, read-only</h2>
+            <p className="mt-3 text-sm leading-relaxed text-ink-2">Treidify only ever uses the investor password, which can view the account but cannot place trades or withdraw. It goes straight to the sync provider and is not stored by Treidify. Balance, equity, open positions and full history then sync automatically.</p>
+            {!sync && <div className="mt-3"><Alert tone="warn">Account sync is not switched on yet. Connecting opens once the sync provider is configured and tested end to end with a real account. Until then nothing here claims to be live.</Alert></div>}
+            <div className="mt-4"><ConnectForm enabled={sync} /></div>
+          </Glass>
           <Glass className="p-5">
             <h2 className="flex items-center gap-2.5 text-[15px] font-semibold text-ink"><GlassIcon name="spark" size={32} />Explore with a demo account</h2>
             <p className="mt-3 text-sm leading-relaxed text-ink-2">See every screen working with a generated account: dashboard, journal, performance analytics and coaching. It is visible only to you, always marked Sample, and can never count toward community verification.</p>

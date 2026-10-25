@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { track } from "@/lib/track";
 import { loadDemoAccount, removeDemoAccount } from "@/server/actions/accounts";
 import type { ActionResult } from "@/server/actions/settings";
 import { Alert, Spinner } from "@/components/auth/auth-ui";
@@ -12,13 +13,13 @@ export function DemoControls({ hasDemo }: { hasDemo: boolean }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [r, setR] = useState<ActionResult | null>(null);
-  const run = (fn: () => Promise<ActionResult>) => start(async () => { const x = await fn(); setR(x); if (x.ok) router.refresh(); });
+  const run = (fn: () => Promise<ActionResult>, event: string) => start(async () => { const x = await fn(); setR(x); if (x.ok) { track(event); router.refresh(); } });
   return (
     <div className="grid gap-3">
       <div className="flex flex-wrap items-center gap-3">
         {hasDemo
-          ? <Button variant="secondary" onClick={() => run(removeDemoAccount)} disabled={pending}>{pending && <Spinner />}Remove demo account</Button>
-          : <Button onClick={() => run(loadDemoAccount)} disabled={pending}>{pending && <Spinner />}Load demo account</Button>}
+          ? <Button variant="secondary" onClick={() => run(removeDemoAccount, "Demo account removed")} disabled={pending}>{pending && <Spinner />}Remove demo account</Button>
+          : <Button onClick={() => run(loadDemoAccount, "Demo account loaded")} disabled={pending}>{pending && <Spinner />}Load demo account</Button>}
         <span className="text-sm text-ink-3">140 generated trades, labelled Sample on every screen.</span>
       </div>
       {r && <Alert tone={r.ok ? "up" : "down"}>{r.ok ? r.message : r.error}</Alert>}
