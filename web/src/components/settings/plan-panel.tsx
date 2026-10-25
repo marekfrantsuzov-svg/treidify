@@ -52,9 +52,14 @@ export function PlanPanel({ plan, source, trialAvailable, trialEndsAt, billing, 
           {premium.highlights.map((h) => <li key={h} className="flex gap-2.5 text-sm text-ink-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-accent" />{h}</li>)}
         </ul>
         <div className="mt-5 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-          <span className="num text-xl font-semibold text-ink">${premium.monthly}<span className="text-sm font-normal text-ink-3"> / month</span></span>
-          <span className="num text-sm text-ink-2">or ${premium.annual} / year</span>
-          {!pricesFinal && <Pill tone="warn">Proposed price</Pill>}
+          {pricesFinal ? (
+            <>
+              <span className="num text-xl font-semibold text-ink">${premium.monthly}<span className="text-sm font-normal text-ink-3"> / month</span></span>
+              <span className="num text-sm text-ink-2">or ${premium.annual} / year</span>
+            </>
+          ) : (
+            <span className="text-base font-semibold text-ink">Price announced at launch</span>
+          )}
         </div>
         <p className="mt-3 text-sm text-ink-3">
           {billing ? "Upgrade from here once checkout opens." : "Paid upgrades open when secure checkout is connected. Nobody is ever charged without choosing a plan and confirming payment."}

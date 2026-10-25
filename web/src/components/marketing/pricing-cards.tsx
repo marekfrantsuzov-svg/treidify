@@ -12,7 +12,7 @@ export function PricingCards() {
   const [annual, setAnnual] = useState(true);
   return (
     <div>
-      <div className="flex justify-center">
+      <div className={cn("flex justify-center", !pricesAreFinal && "hidden")}>
         <div role="radiogroup" aria-label="Billing period" className="glass inline-flex rounded-full p-1">
           {[false, true].map((a) => (
             <button key={String(a)} role="radio" aria-checked={annual === a} onClick={() => setAnnual(a)} className={cn("rounded-full px-5 py-2 text-sm font-medium text-ink-2 transition-all", annual === a && "bg-accent text-white shadow")}>
@@ -33,10 +33,16 @@ export function PricingCards() {
               </div>
               <p className="mt-2 text-sm text-ink-2">{p.tagline}</p>
               <div className="mt-6 flex items-baseline gap-1">
-                <span className="num text-5xl font-semibold tracking-[-0.03em] text-ink">${price}</span>
-                <span className="text-sm text-ink-3">{premium ? (annual ? "/ year" : "/ month") : "forever"}</span>
+                {premium && !pricesAreFinal ? (
+                  <span className="text-3xl font-semibold tracking-[-0.03em] text-ink">Price announced at launch</span>
+                ) : (
+                  <>
+                    <span className="num text-5xl font-semibold tracking-[-0.03em] text-ink">${price}</span>
+                    <span className="text-sm text-ink-3">{premium ? (annual ? "/ year" : "/ month") : "forever"}</span>
+                  </>
+                )}
               </div>
-              {premium && annual && p.monthly && p.annual ? (
+              {premium && pricesAreFinal && annual && p.monthly && p.annual ? (
                 <p className="mt-1 text-xs text-up">Save {Math.round((1 - p.annual / (p.monthly * 12)) * 100)}% versus monthly</p>
               ) : <p className="mt-1 text-xs text-transparent">.</p>}
               <ul className="mt-6 grid flex-1 gap-3">
@@ -55,7 +61,7 @@ export function PricingCards() {
           );
         })}
       </div>
-      {!pricesAreFinal && <p className="mt-6 text-center text-xs text-ink-3">Launch pricing. Prices may change before general availability; existing subscribers keep their price for the billing period they paid for.</p>}
+      {!pricesAreFinal && <p className="mt-6 text-center text-xs text-ink-3">Premium pricing is being finalised. You can try every Premium feature now with the 72-hour trial, no card needed.</p>}
     </div>
   );
 }

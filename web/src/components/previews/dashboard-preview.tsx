@@ -11,17 +11,22 @@ import { GlassIcon, Glyph } from "@/components/icons/glass-icon";
 import { WindowChrome } from "./parts";
 import { InstrumentCard } from "./zone-explorer";
 
-const START = 25_000;
+export const PREVIEW_START = 25_000;
 // Fixed clock so the preview renders identically on server and client.
-const NOW = "2026-10-21T14:00:00.000Z";
+export const PREVIEW_NOW = "2026-10-21T14:00:00.000Z";
+const START = PREVIEW_START;
+const NOW = PREVIEW_NOW;
+
+/** Sample trades shifted so the latest one closed two hours before the preview clock. */
+export function previewTrades() {
+  const t = sampleTrades(140);
+  const shift = Math.floor(new Date(NOW).getTime() / 1000) - 7200 - t.at(-1)!.closeTime;
+  return t.map((x) => ({ ...x, openTime: x.openTime + shift, closeTime: x.closeTime + shift }));
+}
 
 /** The hero product shot: the real dashboard components from the app, running on labelled sample data. */
 export function DashboardPreview() {
-  const trades = useMemo(() => {
-    const t = sampleTrades(140);
-    const shift = Math.floor(new Date(NOW).getTime() / 1000) - 7200 - t.at(-1)!.closeTime;
-    return t.map((x) => ({ ...x, openTime: x.openTime + shift, closeTime: x.closeTime + shift }));
-  }, []);
+  const trades = useMemo(previewTrades, []);
   const balance = START + trades.reduce((a, t) => a + netProfit(t), 0);
   return (
     <WindowChrome title="app.treidify.com" className="text-left">

@@ -6,6 +6,7 @@ import { useRef } from "react";
 import { ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { DashboardPreview } from "@/components/previews/dashboard-preview";
+import { HeroWidgets } from "./hero-widgets";
 
 export function Hero() {
   const ref = useRef<HTMLDivElement>(null);
@@ -25,17 +26,17 @@ export function Hero() {
         </div>
         <h1
           style={{ "--d": "0.06s" } as React.CSSProperties}
-          className="rise text-gradient mx-auto mt-7 max-w-5xl text-[2.6rem] font-semibold leading-[1.02] tracking-[-0.045em] sm:text-7xl lg:text-[5.5rem]"
+          className="rise text-gradient mx-auto mt-7 max-w-6xl text-[2.4rem] font-semibold leading-[1.03] tracking-[-0.045em] sm:text-6xl lg:text-[4.75rem]"
         >
-          Your Trading
+          Your Trading <span className="text-accent-gradient">Intelligence.</span>
           <br />
-          <span className="text-accent-gradient">Intelligence.</span>
+          All in One Place.
         </h1>
         <p
           style={{ "--d": "0.12s" } as React.CSSProperties}
           className="rise mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-ink-2 sm:text-xl"
         >
-          Understand your performance. Analyze global markets. Find important price levels. Improve every trading decision with intelligent insights.
+          Understand the markets, track your performance, analyze your decisions, and become a more disciplined trader, powered by intelligent market insights.
         </p>
         <div style={{ "--d": "0.18s" } as React.CSSProperties} className="rise mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <ButtonLink href="/signup" size="lg">Get Started Free <ArrowRight className="h-4 w-4" /></ButtonLink>
@@ -46,11 +47,14 @@ export function Hero() {
         </p>
       </Container>
       <div className="mt-14 px-3 sm:px-6 [perspective:1600px]">
-        <motion.div style={{ rotateX, scale, transformOrigin: "50% 0%", "--d": "0.24s" } as never} className="rise mx-auto max-w-[1240px]">
-          <DashboardPreview />
-        </motion.div>
+        <div className="relative mx-auto max-w-[1240px] xl:max-w-[1060px] 2xl:max-w-[1180px]">
+          <motion.div style={{ rotateX, scale, transformOrigin: "50% 0%", "--d": "0.24s" } as never} className="rise">
+            <DashboardPreview />
+          </motion.div>
+          <HeroWidgets />
+        </div>
         <p className="mx-auto mt-4 max-w-[1240px] text-center text-xs text-ink-3">
-          The real Treidify dashboard, shown with generated sample data. Every value marked “Illustrative” or “Sample” is not live.
+          The real Treidify dashboard, shown with generated sample data. Every value marked “Demo”, “Illustrative” or “Sample” is not live. The session clock uses your device time.
         </p>
       </div>
     </section>

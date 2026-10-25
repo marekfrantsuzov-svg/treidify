@@ -262,6 +262,23 @@ body {
   .rise { animation: none; }
 }
 
+/* Slow drift for the hero's floating widgets. */
+@keyframes floaty {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, -12px, 0); }
+}
+.float-y {
+  animation: floaty 7s ease-in-out infinite;
+  animation-delay: var(--fd, 0s);
+}
+@media (prefers-reduced-motion: reduce) {
+  .float-y { animation: none; }
+}
+/* Floating widgets sit over busy content, where backdrop blur is unreliable, so they carry their own fill. */
+.glass-float {
+  background: linear-gradient(var(--surface-strong), var(--surface-strong)), var(--bg-0);
+}
+
 /* Dimensional glass icon tile. The glyph inside is an SVG with its own gradients. */
 .glass-icon {
   position: relative;

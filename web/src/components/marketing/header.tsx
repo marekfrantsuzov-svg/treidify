@@ -88,7 +88,7 @@ export function Header() {
         <div className="ml-auto flex items-center gap-2">
           <ThemeToggle className="hidden md:inline-flex" />
           <Link href="/login" className="hidden rounded-full px-3 py-2 text-sm text-ink-2 hover:text-ink sm:block">
-            Sign in
+            Log In
           </Link>
           <ButtonLink href="/signup" size="sm" className="hidden sm:inline-flex">
             Get Started Free
@@ -128,7 +128,7 @@ export function Header() {
               <div className="mt-3 flex items-center justify-between gap-3 px-1">
                 <ThemeToggle />
                 <div className="flex gap-2">
-                  <ButtonLink href="/login" variant="secondary" size="sm">Sign in</ButtonLink>
+                  <ButtonLink href="/login" variant="secondary" size="sm">Log In</ButtonLink>
                   <ButtonLink href="/signup" size="sm">Get Started Free</ButtonLink>
                 </div>
               </div>

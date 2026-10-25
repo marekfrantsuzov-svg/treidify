@@ -33,7 +33,7 @@ export const footerNav = [
       { href: "/brokers", title: "Supported brokers" },
       { href: "/pricing", title: "Pricing" },
       { href: "/signup", title: "Get started free" },
-      { href: "/login", title: "Sign in" },
+      { href: "/login", title: "Log In" },
     ],
   },
   {
