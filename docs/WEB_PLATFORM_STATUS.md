@@ -1,39 +1,45 @@
 # Web platform status
 
-Updated 2026-10-25. Honest record of what works, what is labelled sample, and what waits on accounts only Marek can create.
+Updated 2026-10-25, after the "Public website + private trading platform" update. This file records what works now, what is labelled as sample data, and what is still waiting on accounts that only Marek can create.
 
 ## Working now (tested)
 
 | Area | State | Evidence |
 | --- | --- | --- |
-| Public site | 19 pages, dark and light, mobile and desktop | production build, no horizontal overflow at 390 and 1440 px |
-| Email sign-up and sign-in | Verification required, 10+ character passwords, rate limits, reset flow | Playwright Journey A |
-| Two-step sign-in (TOTP) | Set up with QR or key, backup codes, required at next sign-in | Playwright Journey A |
-| Sessions | List devices, sign out one or all others; password change signs out others | manual check |
-| Onboarding | 7 steps, resumable, risk acknowledgement required, AI consent optional | Playwright Journey A |
-| 72-hour trial | Server-side, one per account, no card, ends on its own | Playwright Journey A, `entitlements.ts` conditional update |
-| Dashboard | Account Health first; periods 7D, 30D, 90D, This Month (user time zone), Custom, All | unit tests for periods; screenshots with a sample account |
-| Profile and privacy | Username, bio, photo upload (re-encoded), 8 privacy toggles defaulting to private, position delay | Playwright Journey A |
-| Preferences | Time zone, markets, dashboard options, AI consent | manual check |
-| Data rights | JSON export without secrets; account deletion | route returns 401 when signed out (e2e) |
-| Contact form | Stored as a support ticket; emailed when Resend is configured | code path |
+| Public homepage | Hero "Your Trading Intelligence. All in One Place." with the real dashboard and 8 floating widgets labelled "Demo". The session clock is the only live widget, because it is computed from the visitor's own clock. Eight sections, the final CTA, and a footer with every required link | `e2e/site.spec.ts`; screenshots at 390 and 1440 px in light and dark |
+| Pricing | Free and Premium. The Premium price shows "Price announced at launch" until `NEXT_PUBLIC_PRICES_FINAL=true` and both prices are set. The 72-hour trial needs no card and does not bill automatically | `e2e/site.spec.ts` checks that no `$29` or `$290` appears |
+| Two hosts | `treidify.com` (site), `app.treidify.com` (app), www redirect, one shared session | `src/lib/hosts.test.ts` |
+| Sign-up, sign-in, two-step sign-in, sessions | Email verification, TOTP, backup codes, device list | Playwright Journey A |
+| Onboarding and the 72-hour trial | 7 steps. The trial is enforced on the server, once per account | Playwright Journey A |
+| Overview (dashboard) | Account Health first, with periods. Today's outlook is built from the market clock, structure and the user's own trades; it gives no price predictions | `outlook.test.ts`; Journey A |
+| Performance Analytics | 12 metrics, equity curve, drawdown from peak, net profit by month, and breakdowns by instrument, session, weekday and direction | `breakdown.test.ts`; Journey A |
+| Trading Journal | Closed trades filtered by instrument, direction, outcome, session and review state, 25 per page. Each trade can carry notes, setup tags, mistake tags and a lesson, saved per user with an ownership check | Journey A saves an entry and filters on it |
+| Account Connections | Account list with sync status, a read-only MT4/MT5 connect form (turned off until sync is configured), and one-click load or removal of the demo account | Journey A |
+| Live News | Coverage categories, impact legend, link to the economic calendar. No headlines until a feed is connected | Journey A |
+| Settings, profile, privacy, export, deletion | As before | Journey A |
+| Error handling | Error boundaries for the app, the site and the whole page, each with a reference ID. Server errors are reported through `onRequestError`. Loading skeletons for app pages | build; code path |
+| Integration interfaces | Typed contracts for sync, market data, news, AI and billing. Each service is reported as configured or not, and as verified or not | `integrations.test.ts` |
+| Secret storage | AES-256-GCM sealing with `DATA_ENCRYPTION_KEY` | `secret-box.test.ts` |
 
-## Labelled sample (never shown as live)
+Totals: 45 unit tests and 6 Playwright runs (3 journeys, each on desktop and mobile), all passing. The production build is clean.
 
-- Markets page charts run the real engine on generated candles, badged "Illustrative data".
-- Journal and community previews use a sample account, badged "Sample account".
-- Development seed accounts use `source = "sample"` and are badged on the dashboard.
+## Labelled as sample data (never shown as live)
 
-## Not built yet, and what each needs
+- **Homepage widgets:** marked "Demo". The economic calendar widget says it is "Example schedule, not this week's events".
+- **Market charts and the Overview "Structure" line:** they run the real zone engine on generated candles and are badged as sample candles.
+- **Demo account:** generated trades with `source = "sample"`, badged "Sample" on every screen. It never counts toward community verification.
 
-| Feature | Needs |
-| --- | --- |
-| MT4/MT5 account sync | MetaApi token and a test MT5 account (investor password) |
-| Live XAUUSD and DXY prices | Market-data vendor and key, DXY decision |
-| News and calendar engine | News vendor and key |
-| AI coach, Macro Desk, chart analysis | Anthropic API key |
-| Payments | Stripe account; price confirmation (proposed $29/month, $290/year) |
-| Google and Apple sign-in | Google OAuth client; Apple Developer membership for Sign in with Apple |
-| Real email delivery | Resend account and a verified sending domain |
-| Hosting | Vercel and Neon (recommended) or equivalent, plus the domain |
-| Community rooms, alerts, search, admin panel | Built in later stages on top of the schema already in place |
+## Remaining integrations, and what each needs
+
+| Integration | What is built | What it still needs |
+| --- | --- | --- |
+| MT4/MT5 sync (MetaApi) | Interface, read-only connect form and action, `provider_connection` and `sync_run` tables | A MetaApi token and a test MT5 account with its investor password. Then the adapter, the sync worker on a non-Vercel host, and an end-to-end test |
+| Market data (XAUUSD, DXY, silver, yields) | Interface, zone and bias engines | Choice of vendor, an API key, and a decision on how DXY is sourced. Then the adapter and the candle cache |
+| News and economic calendar | Interface (with licensed-image fields), schema, UI states | Choice of news vendor and a key with image licensing. Then the news worker |
+| AI (chart reading, coach reviews, Macro Desk Q&A) | Interface, chart upload validation, coach observations | An Anthropic API key. Then the adapter, prompt evaluations and usage limits |
+| Payments | Interface, webhook endpoint (answers 503 until connected), entitlements | A Stripe account, approved prices, and the Price IDs for monthly and annual |
+| Email | Resend sender with a development outbox | A Resend account and a verified domain |
+| Google and Apple sign-in | Wired, turned on by environment variables | A Google OAuth client. For Apple, a Developer membership, later |
+| Error monitoring | `reportError` hook and an optional webhook | Optional: a Sentry DSN, to connect inside `src/lib/monitoring.ts` |
+| Hosting and domain | `docs/DEPLOYMENT.md` | Vercel and Neon accounts and the treidify.com domain. There is no preview URL until hosting exists |
+| Community rooms, alerts, search, admin panel | Schema and rules | Built on top of verified sync data |

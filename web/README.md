@@ -15,11 +15,14 @@ npm run dev                       # http://localhost:3000
 Without `RESEND_API_KEY`, emails (verification, password reset, account deletion) are not sent. In development they
 appear at `/dev/outbox`, which returns 404 in production.
 
-To see the dashboard with data before account sync exists, attach a clearly badged sample account to a user:
+To see every module with data before account sync exists, sign in and press **Load demo account** under Accounts
+(it can be removed there too), or attach one from the command line:
 
 ```bash
 npm run seed:sample -- you@example.com   # development only; rows use source = "sample"
 ```
+
+Deployment (Vercel + Neon, treidify.com and app.treidify.com, Cloudflare DNS): see `../docs/DEPLOYMENT.md`.
 
 ## Scripts
 
@@ -40,9 +43,13 @@ CI (`.github/workflows/web-ci.yml`) runs typecheck, unit tests and build, then t
 src/app/(marketing)     public site
 src/app/(auth)          sign up, sign in, two-step sign-in, password reset
 src/app/onboarding      7-step onboarding
-src/app/app             signed-in app: dashboard, markets, journal, community, notifications, settings
-src/app/api             auth, contact, data export
-src/server              auth, database, entitlements (trial), provider status, server actions
+src/app/app             signed-in app: overview, macro, markets, news, AI analysis, journal, performance,
+                        coach, community, calendar, accounts, settings
+src/app/api             auth, contact, data export, client error intake, billing webhook
+src/server              auth, database, entitlements (trial), provider status, server actions, secret box
+src/server/integrations typed contracts for sync, market data, news, AI and billing
+src/lib/hosts.ts        treidify.com / app.treidify.com routing, used by src/proxy.ts
+src/lib/monitoring.ts   error reporting hook; src/lib/track.ts analytics events
 src/lib/analytics       deterministic engines (bias, levels, zones, performance, health, periods)
 e2e/                    Playwright journeys
 scripts/                development-only helpers

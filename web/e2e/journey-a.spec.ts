@@ -63,10 +63,42 @@ test("sign up, verify, onboard, dashboard, profile, two-step sign-in", async ({ 
   await expect(page.getByText(/Nothing is invented in the meantime/)).toBeVisible();
 
   // Every section in the navigation opens a real page.
-  for (const [path, heading] of [["/app/macro", "Macro Desk"], ["/app/markets", "Markets"], ["/app/news", "Global News"], ["/app/ai-analysis", "AI Chart Analysis"], ["/app/journal", "Journal"], ["/app/coach", "AI Coach"], ["/app/community", "Community"], ["/app/calendar", "Economic Calendar"], ["/app/settings/accounts", "Settings"]] as const) {
+  for (const [path, heading] of [["/app/macro", "Macro Desk"], ["/app/markets", "Markets"], ["/app/news", "Global News"], ["/app/ai-analysis", "AI Chart Analysis"], ["/app/journal", "Trading Journal"], ["/app/performance", "Performance"], ["/app/coach", "AI Coach"], ["/app/community", "Community"], ["/app/calendar", "Economic Calendar"], ["/app/accounts", "Account connections"], ["/app/settings/accounts", "Account connections"]] as const) {
     await page.goto(path);
     await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
   }
+
+  // Without a sync provider the connect form is shown but cannot send anything.
+  await page.goto("/app/accounts");
+  await expect(page.getByText(/Account sync is not switched on yet/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Connect read-only" })).toBeDisabled();
+
+  // One click adds a labelled demo account, and every module then works on it.
+  await page.getByRole("button", { name: "Load demo account" }).click();
+  await expect(page.getByText(/Demo account added with 140 sample trades/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Remove demo account" })).toBeVisible();
+
+  await page.goto("/app");
+  await expect(page.getByText("Sample account", { exact: true }).filter({ visible: true }).first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Today’s outlook" })).toBeVisible();
+
+  await page.goto("/app/performance?period=ALL");
+  await expect(page.getByRole("heading", { name: "Equity curve" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "By session" })).toBeVisible();
+  await expect(page.getByText("140", { exact: true })).toBeVisible();
+
+  await page.goto("/app/journal?period=ALL");
+  await expect(page.getByText("0 / 140")).toBeVisible();
+  await page.getByRole("button", { name: /Add notes/ }).first().click();
+  await page.getByLabel("Notes", { exact: true }).fill("Waited for the London open retest.");
+  await page.getByLabel("Setup tags").fill("retest, london open");
+  await page.getByRole("button", { name: "Save entry" }).click();
+  await expect(page.getByText("1 / 140")).toBeVisible();
+  await page.getByRole("combobox", { name: "Journal notes" }).selectOption("with");
+  await expect(page).toHaveURL(/notes=with/);
+  await expect(page.getByRole("button", { name: /retest, london open/ })).toBeVisible();
+  await expect(page.locator("tbody tr")).toHaveCount(1);
+
   await page.goto("/app");
 
   // Onboarding is finished, so it now redirects to the app.
