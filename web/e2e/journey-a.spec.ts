@@ -58,8 +58,16 @@ test("sign up, verify, onboard, dashboard, profile, two-step sign-in", async ({ 
   // Account Health is the first section of the dashboard.
   const firstSection = page.locator("main section").first();
   await expect(firstSection).toContainText("Your Account Health");
-  // Without a market-data provider nothing pretends to be live.
-  await expect(page.getByText("Data not connected").first()).toBeVisible();
+  // Without a market-data provider nothing pretends to be live: charts are badged and explained.
+  await expect(page.getByText(/sample candles until the market-data provider is connected/)).toBeVisible();
+  await expect(page.getByText(/Nothing is invented in the meantime/)).toBeVisible();
+
+  // Every section in the navigation opens a real page.
+  for (const [path, heading] of [["/app/macro", "Macro Desk"], ["/app/markets", "Markets"], ["/app/news", "Global News"], ["/app/ai-analysis", "AI Chart Analysis"], ["/app/journal", "Journal"], ["/app/coach", "AI Coach"], ["/app/community", "Community"], ["/app/calendar", "Economic Calendar"], ["/app/settings/accounts", "Settings"]] as const) {
+    await page.goto(path);
+    await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
+  }
+  await page.goto("/app");
 
   // Onboarding is finished, so it now redirects to the app.
   await page.goto("/onboarding");

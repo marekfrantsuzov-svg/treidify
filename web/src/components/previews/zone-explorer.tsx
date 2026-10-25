@@ -15,8 +15,8 @@ import { BiasChip, InstrumentIcon } from "./parts";
 const TFS: SampleTf[] = ["4H", "1H", "15M"];
 const names: Record<SampleSymbol, string> = { XAUUSD: "Gold", DXY: "US Dollar Index", XAGUSD: "Silver" };
 
-export function InstrumentCard({ symbol, defaultTf = "4H", height = 300, explorable = true, showMtf = true, className }: {
-  symbol: SampleSymbol; defaultTf?: SampleTf; height?: number; explorable?: boolean; showMtf?: boolean; className?: string;
+export function InstrumentCard({ symbol, defaultTf = "4H", height = 300, explorable = true, showMtf = true, compact = false, tfs = TFS, className }: {
+  symbol: SampleSymbol; defaultTf?: SampleTf; height?: number; explorable?: boolean; showMtf?: boolean; compact?: boolean; tfs?: SampleTf[]; className?: string;
 }) {
   const [tf, setTf] = useState<SampleTf>(defaultTf);
   const [zone, setZone] = useState<PriceZone | null>(null);
@@ -30,6 +30,9 @@ export function InstrumentCard({ symbol, defaultTf = "4H", height = 300, explora
   const up = a.change >= 0;
   const buy = a.levels.zones.filter((z) => z.kind === "support").sort((x, y) => y.upper - x.upper)[0];
   const sell = a.levels.zones.filter((z) => z.kind === "resistance").sort((x, y) => x.lower - y.lower)[0];
+  // Compact cards show only the nearest buy and sell areas plus the nearest liquidity pool, so labels stay legible.
+  const liq = a.levels.zones.filter((z) => z.kind.endsWith("Liquidity")).sort((x, y) => Math.abs((x.lower + x.upper) / 2 - a.last) - Math.abs((y.lower + y.upper) / 2 - a.last))[0];
+  const zones = compact ? [buy, sell, liq].filter((z): z is PriceZone => !!z) : a.levels.zones;
 
   return (
     <Glass className={cn("relative overflow-hidden p-4 sm:p-5", className)}>
@@ -40,6 +43,7 @@ export function InstrumentCard({ symbol, defaultTf = "4H", height = 300, explora
             <div className="flex items-center gap-2">
               <h3 className="text-[15px] font-semibold text-ink">{symbol}</h3>
               <span className="text-xs text-ink-3">{names[symbol]}</span>
+              {compact && <SampleBadge label="Sample" />}
             </div>
             <div className="flex items-baseline gap-2">
               <span className="num text-2xl font-semibold tracking-[-0.02em] text-ink">{fmtNumber(a.last, d)}</span>
@@ -49,10 +53,10 @@ export function InstrumentCard({ symbol, defaultTf = "4H", height = 300, explora
             </div>
           </div>
         </div>
-        <div className="flex flex-col items-end gap-2">
-          <SampleBadge />
+        <div className={cn("flex flex-col items-end gap-2", compact && "max-sm:w-full max-sm:items-start")}>
+          {!compact && <SampleBadge />}
           <div role="tablist" aria-label="Timeframe" className="inset flex rounded-full p-0.5">
-            {TFS.map((t) => (
+            {tfs.map((t) => (
               <button key={t} role="tab" aria-selected={tf === t} onClick={() => { setTf(t); setZone(null); }} className={cn("rounded-full px-2.5 py-1 text-xs font-medium text-ink-3 hover:text-ink", tf === t && "bg-accent text-white hover:text-white")}>
                 {t}
               </button>
@@ -61,7 +65,7 @@ export function InstrumentCard({ symbol, defaultTf = "4H", height = 300, explora
         </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+      <div className={cn("mt-3 flex flex-wrap items-center gap-2 text-xs", compact && "hidden")}>
         <Pill tone={a.bias.bias === "bullish" ? "up" : a.bias.bias === "bearish" ? "down" : "neutral"}>{tf} bias: {a.bias.bias === "insufficientData" ? "insufficient data" : a.bias.bias}</Pill>
         {buy && <Pill tone="up">Next buy area {fmtNumber(buy.lower, d)}–{fmtNumber(buy.upper, d)}</Pill>}
         {sell && <Pill tone="down">Next sell area {fmtNumber(sell.lower, d)}–{fmtNumber(sell.upper, d)}</Pill>}
@@ -70,7 +74,7 @@ export function InstrumentCard({ symbol, defaultTf = "4H", height = 300, explora
       <div className="mt-3">
         <CandleChart
           candles={a.candles}
-          zones={a.levels.zones}
+          zones={zones}
           height={height}
           digits={d}
           label={`${symbol} ${tf} sample chart`}
@@ -79,7 +83,7 @@ export function InstrumentCard({ symbol, defaultTf = "4H", height = 300, explora
           timeLabel={(t) => new Date(t * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
         />
       </div>
-      {explorable && <p className="mt-1 flex items-center gap-1.5 text-xs text-ink-3"><Info className="h-3.5 w-3.5" /> Tap a zone to see why it matters, what confirms it and what invalidates it.</p>}
+      {explorable && !compact && <p className="mt-1 flex items-center gap-1.5 text-xs text-ink-3"><Info className="h-3.5 w-3.5" /> Tap a zone to see why it matters, what confirms it and what invalidates it.</p>}
 
       {showMtf && (
         <div className="mt-4 grid grid-cols-5 gap-1.5">

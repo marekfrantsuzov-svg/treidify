@@ -26,6 +26,7 @@ export interface AccountOverview {
   snapshotAt: string | null;
   startingEquity: number;
   trades: ClosedTrade[];
+  positions: (typeof S.position.$inferSelect)[];
 }
 
 /** The user's trading accounts with their sync state. Only the owner's rows are ever read. */
@@ -57,6 +58,7 @@ export async function accountOverview(userId: string, accountId: string | undefi
 
   const [snap] = await db.select().from(S.accountSnapshot).where(eq(S.accountSnapshot.tradingAccountId, account.id)).orderBy(desc(S.accountSnapshot.at)).limit(1);
   const rows = await db.select().from(S.closedTrade).where(eq(S.closedTrade.tradingAccountId, account.id)).orderBy(asc(S.closedTrade.closeTime));
+  const positions = await db.select().from(S.position).where(eq(S.position.tradingAccountId, account.id)).orderBy(desc(S.position.openedAt));
   const flows = await db.select({ amount: S.cashFlow.amount }).from(S.cashFlow).where(and(eq(S.cashFlow.tradingAccountId, account.id), inArray(S.cashFlow.kind, ["deposit", "withdrawal", "transfer_in", "transfer_out"])));
 
   const trades: ClosedTrade[] = rows.map((r) => ({
@@ -84,5 +86,6 @@ export async function accountOverview(userId: string, accountId: string | undefi
     snapshotAt: snap?.at.toISOString() ?? null,
     startingEquity,
     trades,
+    positions,
   };
 }

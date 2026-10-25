@@ -69,7 +69,7 @@ export function FeaturePage(p: FeaturePageProps) {
             {p.capabilities.map(({ Icon, title, body }, i) => (
               <Reveal key={title} delay={i * 0.04}>
                 <Glass className="h-full p-6">
-                  <span className="grid h-10 w-10 place-items-center rounded-2xl bg-accent-soft text-accent"><Icon className="h-5 w-5" /></span>
+                  <span className="glass-icon h-11 w-11 rounded-[14px] text-accent"><Icon className="relative z-[2] h-5 w-5" strokeWidth={2.2} /></span>
                   <h3 className="mt-4 text-base font-semibold text-ink">{title}</h3>
                   <p className="mt-1.5 text-[15px] leading-relaxed text-ink-2">{body}</p>
                 </Glass>

@@ -20,26 +20,26 @@ export function Hero() {
         <div className="rise">
           <span className="glass inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-[13px] text-ink-2">
             <span className="h-1.5 w-1.5 rounded-full bg-accent shadow-[0_0_10px_var(--accent)]" />
-            Treidify · Your Trading Intelligence.
+            Account health, markets, news and AI in one place
           </span>
         </div>
         <h1
           style={{ "--d": "0.06s" } as React.CSSProperties}
           className="rise text-gradient mx-auto mt-7 max-w-5xl text-[2.6rem] font-semibold leading-[1.02] tracking-[-0.045em] sm:text-7xl lg:text-[5.5rem]"
         >
-          Trade With Intelligence.
+          Your Trading
           <br />
-          <span className="text-accent-gradient">Not Guesswork.</span>
+          <span className="text-accent-gradient">Intelligence.</span>
         </h1>
         <p
           style={{ "--d": "0.12s" } as React.CSSProperties}
           className="rise mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-ink-2 sm:text-xl"
         >
-          Connect your trading account. Understand your performance. Analyze global markets. Discover important price levels. Improve your decisions with AI.
+          Understand your performance. Analyze global markets. Find important price levels. Improve every trading decision with intelligent insights.
         </p>
         <div style={{ "--d": "0.18s" } as React.CSSProperties} className="rise mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <ButtonLink href="/signup" size="lg">Get Started Free <ArrowRight className="h-4 w-4" /></ButtonLink>
-          <ButtonLink href="#explore" size="lg" variant="secondary">Explore Treidify</ButtonLink>
+          <ButtonLink href="/features" size="lg" variant="secondary">Explore Features</ButtonLink>
         </div>
         <p style={{ "--d": "0.3s" } as React.CSSProperties} className="rise mt-4 text-sm text-ink-3">
           Free account, no card. 72-hour Premium trial, no automatic billing.

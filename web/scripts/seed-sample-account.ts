@@ -33,6 +33,11 @@ await db.insert(schema.closedTrade).values(trades.map((t) => ({
   profit: t.profit, commission: t.commission, swap: t.swap, fee: t.fees, netUsd: t.profit + t.commission + t.swap + t.fees,
 })));
 const net = trades.reduce((a, t) => a + t.profit + t.commission + t.swap + t.fees, 0);
+await db.insert(schema.position).values([
+  { tradingAccountId: acct!.id, externalId: "S1", symbol: "XAUUSD", side: "buy", volume: 1, openPrice: 3962.4, currentPrice: 3968.6, stopLoss: 3948, takeProfit: 3995, floatingPnl: 620, openedAt: new Date(Date.now() - 5 * 3600_000) },
+  { tradingAccountId: acct!.id, externalId: "S2", symbol: "XAGUSD", side: "sell", volume: 0.5, openPrice: 48.12, currentPrice: 48.31, stopLoss: 48.6, takeProfit: 47.2, floatingPnl: -475.8, openedAt: new Date(Date.now() - 9 * 3600_000) },
+  { tradingAccountId: acct!.id, externalId: "S3", symbol: "EURUSD", side: "buy", volume: 1.5, openPrice: 1.16420, currentPrice: 1.16447, stopLoss: 1.1610, takeProfit: 1.1700, floatingPnl: 40, openedAt: new Date(Date.now() - 2 * 3600_000) },
+]);
 await db.insert(schema.accountSnapshot).values({ tradingAccountId: acct!.id, at: new Date(), balance: START + net, equity: START + net + 184.2, floatingPnl: 184.2 });
 console.log(`Seeded sample account ${acct!.id} for ${email}: ${trades.length} trades, net ${net.toFixed(2)}`);
 await sql.end();
