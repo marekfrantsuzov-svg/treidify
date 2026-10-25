@@ -10,3 +10,4 @@ export * from "./sessions";
 export * from "./coach";
 export * from "./health";
 export * from "./zone-explainer";
+export * from "./periods";

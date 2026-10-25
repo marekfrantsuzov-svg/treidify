@@ -1,6 +1,8 @@
 # Treidify
 
-*Your Trading Intelligence.* A native iOS trading-intelligence and performance-analytics app for XAUUSD and DXY. Treidify does not execute trades, hold funds, sell signals or give personalised investment advice.
+*Your Trading Intelligence.* A trading-intelligence and performance-analytics platform for XAUUSD and DXY. Treidify does not execute trades, hold funds, sell signals or give personalised investment advice.
+
+**Now building: the web platform first** (`web/`, Next.js). See [web/README.md](web/README.md) for setup and [docs/WEB_PLATFORM_STATUS.md](docs/WEB_PLATFORM_STATUS.md) for what is real today. The native iOS and macOS apps below are paused and kept intact.
 
 **Test it without Xcode:** download the Mac DMG or the iPhone IPA from the **Test builds** workflow. See [docs/INSTALL_TEST_BUILDS.md](docs/INSTALL_TEST_BUILDS.md). **With Xcode:** see [docs/RUN_ON_MAC.md](docs/RUN_ON_MAC.md). Open `ios/Treidify.xcodeproj` in Xcode and press ⌘R. A free Apple ID is enough to install it on your own iPhone.
 
@@ -23,6 +25,7 @@ ios/
     Resources/                Assets.xcassets, original sounds, Info.plist, privacy manifest
   TreidifyTests/              app unit tests (view models, settings)
   TreidifyUITests/            onboarding + navigation UI test
+web/                          Next.js web platform (current focus)
 backend/                      Python (FastAPI) analytics API + 15 tests
 shared/test-vectors/          JSON vectors both the Swift and Python engines must match
 tools/                        vector, sound and app-icon generators; Linux check script
