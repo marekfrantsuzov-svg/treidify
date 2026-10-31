@@ -21,7 +21,7 @@ Updated 2026-10-25, after the "Public website + private trading platform" update
 | Integration interfaces | Typed contracts for sync, market data, news, AI and billing. Each service is reported as configured or not, and as verified or not | `integrations.test.ts` |
 | Secret storage | AES-256-GCM sealing with `DATA_ENCRYPTION_KEY` | `secret-box.test.ts` |
 
-Totals: 45 unit tests and 6 Playwright runs (3 journeys, each on desktop and mobile), all passing. The production build is clean.
+Totals: 52 unit tests and 6 Playwright runs (3 journeys, each on desktop and mobile), all passing. The production build is clean.
 
 ## Visual system (2026-10-31 redesign)
 
@@ -51,5 +51,5 @@ Every animation is switched off under reduced motion.
 | Email | Resend sender with a development outbox | A Resend account and a verified domain |
 | Google and Apple sign-in | Wired, turned on by environment variables | A Google OAuth client. For Apple, a Developer membership, later |
 | Error monitoring | `reportError` hook and an optional webhook | Optional: a Sentry DSN, to connect inside `src/lib/monitoring.ts` |
-| Hosting and domain | `docs/DEPLOYMENT.md` | Vercel and Neon accounts and the treidify.com domain. There is no preview URL until hosting exists |
+| Hosting and domain | `docs/DEPLOYMENT.md`, `web/vercel.json`, production preflight and automatic migrations (`web/scripts/predeploy.ts`), `/api/health` | Marek's Vercel project (linked to GitHub) with a Neon database, the env values entered in Vercel, and the DNS records at the registrar. The domain is bought (2026-10-31) |
 | Community rooms, alerts, search, admin panel | Schema and rules | Built on top of verified sync data |
