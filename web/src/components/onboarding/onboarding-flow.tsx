@@ -6,6 +6,7 @@ import { useMemo, useState, useTransition } from "react";
 import { experienceChoices, instrumentChoices, onboardingSteps } from "@/config/onboarding";
 import { TRIAL_HOURS } from "@/config/plans";
 import { cn } from "@/lib/cn";
+import { SlidingPill } from "@/components/ui/sliding-pill";
 import { saveOnboardingStep, type StepInput } from "@/server/actions/onboarding";
 import { Alert, Field, Spinner, UsernameInput, inputClass } from "@/components/auth/auth-ui";
 import { Button } from "@/components/ui/button";
@@ -48,9 +49,10 @@ export function Segmented<T extends string>({ label, value, options, onChange }:
   return (
     <div className="grid gap-1.5">
       <span className="text-sm font-medium text-ink">{label}</span>
-      <div role="radiogroup" aria-label={label} className="inset grid auto-cols-fr grid-flow-col rounded-full p-1">
+      <div role="radiogroup" aria-label={label} className="inset relative grid auto-cols-fr grid-flow-col rounded-full p-1">
+        <SlidingPill watch={value} className="rounded-full bg-[var(--surface-strong)] shadow-[var(--shadow),0_0_0_1px_color-mix(in_oklab,var(--accent)_14%,transparent)]" />
         {options.map((o) => (
-          <button key={o.id} type="button" role="radio" aria-checked={value === o.id} onClick={() => onChange(o.id)} className={cn("h-9 rounded-full text-sm text-ink-2 transition-colors", value === o.id && "bg-surface-strong font-medium text-ink shadow-sm")}>
+          <button key={o.id} type="button" role="radio" aria-checked={value === o.id} data-active={value === o.id} onClick={() => onChange(o.id)} className={cn("relative z-[1] h-9 rounded-full text-sm text-ink-2 transition-[color,transform] duration-200 hover:text-ink active:scale-[0.97]", value === o.id && "font-medium text-accent")}>
             {o.label}
           </button>
         ))}

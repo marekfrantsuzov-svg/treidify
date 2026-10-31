@@ -15,7 +15,7 @@ export default async function Macro() {
     <>
       <PageHeader title="Macro Desk" subtitle="Gold, the dollar, silver and yields, read together from the 4H direction to the 1M trigger." />
       {!p.marketData && <div className="mb-4"><Alert tone="warn">Market data is not connected, so the charts below use labelled sample candles. Bias, zones and explanations come from the real engine.</Alert></div>}
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-2">
         <div id="xauusd"><InstrumentCard symbol="XAUUSD" defaultTf={tf} height={300} /></div>
         <div id="dxy"><InstrumentCard symbol="DXY" defaultTf={tf} height={300} /></div>
         <div id="silver"><InstrumentCard symbol="XAGUSD" defaultTf={tf} height={300} /></div>

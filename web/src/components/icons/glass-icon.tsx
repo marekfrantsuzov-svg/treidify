@@ -59,13 +59,13 @@ export function GlassIconDefs() {
     <svg width="0" height="0" aria-hidden className="absolute">
       <defs>
         <linearGradient id="gi-body" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" style={{ stopColor: "var(--gi-top, #6b9dff)" }} />
-          <stop offset="1" style={{ stopColor: "var(--gi-bottom, #1a52e0)" }} />
+          <stop offset="0" style={{ stopColor: "var(--gi-top, #8d7cff)" }} />
+          <stop offset="1" style={{ stopColor: "var(--gi-bottom, #4a34e8)" }} />
         </linearGradient>
         <linearGradient id="gi-rim" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor="#ffffff" stopOpacity="0.95" />
-          <stop offset="0.5" style={{ stopColor: "var(--gi-rim-mid, #9cc0ff)" }} />
-          <stop offset="1" style={{ stopColor: "var(--gi-bottom, #1d5cf5)" }} />
+          <stop offset="0.5" style={{ stopColor: "var(--gi-rim-mid, #d9b8ff)" }} />
+          <stop offset="1" style={{ stopColor: "var(--gi-bottom, #533ff5)" }} />
         </linearGradient>
         <linearGradient id="gi-shine" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#ffffff" stopOpacity="0.85" />
@@ -96,12 +96,12 @@ export function Glyph({ name, size = 20, className }: { name: GlassIconName; siz
   );
 }
 
-/** A glyph seated in a rounded glass tile. `active` lights the tile in Treidify blue. */
+/** A glyph seated in a rounded glass tile. `active` lights the tile in Treidify violet. */
 export function GlassIcon({ name, size = 36, active, className, label }: { name: GlassIconName; size?: number; active?: boolean; className?: string; label?: string }) {
   return (
     <span
       className={cn("glass-icon", active && "is-active", className)}
-      style={{ width: size, height: size, borderRadius: size * 0.3, ...(active ? ({ "--gi-top": "#ffffff", "--gi-bottom": "#d6e5ff", "--gi-rim-mid": "#ffffff", "--gi-detail": "#2463f4", "--gi-detail-out": "#ffffff" } as React.CSSProperties) : {}) }}
+      style={{ width: size, height: size, borderRadius: size * 0.3, ...(active ? ({ "--gi-top": "#ffffff", "--gi-bottom": "#f3dcff", "--gi-rim-mid": "#ffffff", "--gi-detail": "#533ff5", "--gi-detail-out": "#ffffff" } as React.CSSProperties) : {}) }}
       role={label ? "img" : undefined}
       aria-label={label}
       aria-hidden={label ? undefined : true}

@@ -11,6 +11,7 @@ import { Sparkline } from "@/components/charts/sparkline";
 import { HealthRing } from "@/components/previews/account-health-preview";
 import { Glass } from "@/components/ui/glass";
 import { SampleBadge } from "@/components/ui/pill";
+import { CountUp } from "@/components/ui/count-up";
 
 export interface HealthRowProps {
   label: string;
@@ -76,7 +77,7 @@ export function HealthRow(p: HealthRowProps) {
       <h2 id="health-title" className="sr-only">Your Account Health. {p.label}</h2>
 
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-[1fr_1.12fr_1.12fr_1fr]">
-        <Card title={<><span className="truncate">Your Account Health</span><span title={`Health ${HEALTH_ALGORITHM}: drawdown 30 pts, profit factor 25, expectancy 20, sizing consistency 15, losing streaks 10, across all history. Needs 20 closed trades.`} className="inset grid h-7 w-7 shrink-0 place-items-center rounded-full max-sm:hidden"><ScanLine className="h-3.5 w-3.5 text-ink-2" /></span></>}>
+        <Card title={<><span className="truncate">Your Account Health</span><span title={`Health ${HEALTH_ALGORITHM}: drawdown 30 pts, profit factor 25, expectancy 20, sizing consistency 15, losing streaks 10, across all history. Needs 20 closed trades.`} className="inset grid h-7 w-7 shrink-0 place-items-center rounded-full max-sm:hidden @max-[250px]:hidden"><ScanLine className="h-3.5 w-3.5 text-ink-2" /></span></>}>
           <div className="mt-2 flex items-center gap-3 @[230px]:gap-4">
             <HealthRing score={health.score} size={62} />
             <div className="min-w-0">
@@ -92,7 +93,7 @@ export function HealthRow(p: HealthRowProps) {
         <Card button={{ onClick: () => setOpen(!open), "aria-expanded": open, "aria-controls": "health-detail", title: "Show equity curve and risk detail" }} title={<>Total Balance <ChevronDown className={cn("h-4 w-4 text-ink-3 transition-transform max-sm:hidden", open && "rotate-180")} /></>} className="block w-full">
             <div className="mt-1.5 flex items-end justify-between gap-2">
               <div className="min-w-0">
-                <div className="num truncate text-[clamp(1.1rem,10cqw,1.75rem)] font-semibold tracking-[-0.025em] text-ink">{p.balance === null ? "—" : money(p.balance)}</div>
+                <div className="num truncate text-[clamp(1.1rem,10cqw,1.75rem)] font-semibold tracking-[-0.025em] text-ink">{p.balance === null ? "—" : <CountUp value={p.balance} format={money} />}</div>
                 <div className={cn("num truncate text-[13px] font-medium", up ? "text-up" : "text-down")}>{p.balance === null ? "Waiting for first sync" : `${pnlPct === null ? "" : fmtPct(pnlPct, 1, true)} (${fmtSignedMoney(m.netProfit, p.currency, 0)})`}</div>
               </div>
               <Sparkline values={series.map((s) => s.equity)} up={up} width={110} height={44} className="hidden h-11 w-[34%] max-w-[110px] shrink-0 @[230px]:block" />
@@ -102,7 +103,7 @@ export function HealthRow(p: HealthRowProps) {
         <Card title="Net P&L">
           <div className="mt-1.5 flex items-end justify-between gap-2">
             <div className="min-w-0">
-              <div className={cn("num truncate text-[clamp(1.1rem,10cqw,1.75rem)] font-semibold tracking-[-0.025em]", m.netProfit > 0 ? "text-ink" : m.netProfit < 0 ? "text-down" : "text-ink")}>{fmtSignedMoney(m.netProfit, p.currency)}</div>
+              <div className={cn("num truncate text-[clamp(1.1rem,10cqw,1.75rem)] font-semibold tracking-[-0.025em]", m.netProfit > 0 ? "text-ink" : m.netProfit < 0 ? "text-down" : "text-ink")}>{<CountUp value={m.netProfit} format={(v) => fmtSignedMoney(v, p.currency)} />}</div>
               <div className={cn("num truncate text-[13px] font-medium", up ? "text-up" : "text-down")}>{pnlPct === null ? `${m.tradeCount} trades` : fmtPct(pnlPct, 1, true)}<span className="font-normal text-ink-3"> · {period}</span></div>
             </div>
             <Sparkline values={cumulative} up={up} width={110} height={44} className="hidden h-11 w-[34%] max-w-[110px] shrink-0 @[230px]:block" />
@@ -112,7 +113,7 @@ export function HealthRow(p: HealthRowProps) {
         <Card title="Win Rate">
           <div className="mt-1 flex items-center justify-between gap-2">
             <div className="min-w-0">
-              <div className="num text-[clamp(1.1rem,10cqw,1.75rem)] font-semibold tracking-[-0.025em] text-ink">{m.winRate === null ? "—" : `${(m.winRate * 100).toFixed(1)}%`}</div>
+              <div className="num text-[clamp(1.1rem,10cqw,1.75rem)] font-semibold tracking-[-0.025em] text-ink">{m.winRate === null ? "—" : <CountUp value={m.winRate * 100} format={(v) => `${v.toFixed(1)}%`} />}</div>
               <div className="num text-[13px] text-ink-3">{m.wins}W / {m.losses}L</div>
             </div>
             <WinRing rate={m.winRate} />

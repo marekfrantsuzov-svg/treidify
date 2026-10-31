@@ -9,7 +9,7 @@ export function Sparkline({ values, up, className, width = 120, height = 40 }: {
   const color = up ? "var(--up)" : "var(--down)";
   const id = `spark-${up ? "u" : "d"}-${values.length}-${Math.round(values[0]! * 100)}`;
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className={cn("overflow-visible", className)} aria-hidden>
+    <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className={cn("reveal-x overflow-visible", className)} aria-hidden>
       <defs>
         <linearGradient id={id} x1="0" x2="0" y1="0" y2="1">
           <stop offset="0" stopColor={color} stopOpacity="0.28" />

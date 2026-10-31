@@ -4,6 +4,7 @@ import { Check } from "lucide-react";
 import { useState } from "react";
 import { plans, pricesAreFinal, TRIAL_HOURS } from "@/config/plans";
 import { cn } from "@/lib/cn";
+import { SlidingPill } from "@/components/ui/sliding-pill";
 import { ButtonLink } from "@/components/ui/button";
 import { Glass } from "@/components/ui/glass";
 import { Pill } from "@/components/ui/pill";
@@ -13,9 +14,10 @@ export function PricingCards() {
   return (
     <div>
       <div className={cn("flex justify-center", !pricesAreFinal && "hidden")}>
-        <div role="radiogroup" aria-label="Billing period" className="glass inline-flex rounded-full p-1">
+        <div role="radiogroup" aria-label="Billing period" className="glass relative inline-flex rounded-full p-1">
+          <SlidingPill watch={annual} className="bg-brand rounded-full shadow-[0_6px_16px_-6px_var(--accent-glow)]" />
           {[false, true].map((a) => (
-            <button key={String(a)} role="radio" aria-checked={annual === a} onClick={() => setAnnual(a)} className={cn("rounded-full px-5 py-2 text-sm font-medium text-ink-2 transition-all", annual === a && "bg-accent text-white shadow")}>
+            <button key={String(a)} role="radio" aria-checked={annual === a} data-active={annual === a} onClick={() => setAnnual(a)} className={cn("relative z-[1] rounded-full px-5 py-2 text-sm font-medium text-ink-2 transition-[color,transform] duration-200 hover:text-ink active:scale-[0.97]", annual === a && "text-white hover:text-white")}>
               {a ? "Annual" : "Monthly"}
             </button>
           ))}

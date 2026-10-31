@@ -13,7 +13,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
         <div style={{ textAlign: "center", maxWidth: 420, padding: 24 }}>
           <h1 style={{ fontSize: 22 }}>Treidify could not load.</h1>
           <p style={{ opacity: 0.75 }}>The error has been logged.{error.digest ? ` Reference ${error.digest}.` : ""}</p>
-          <button onClick={reset} style={{ marginTop: 16, padding: "10px 18px", borderRadius: 999, border: 0, background: "#3b82f6", color: "white", fontWeight: 600 }}>Try again</button>
+          <button onClick={reset} style={{ marginTop: 16, padding: "10px 18px", borderRadius: 999, border: 0, background: "#533ff5", color: "white", fontWeight: 600 }}>Try again</button>
         </div>
       </body>
     </html>

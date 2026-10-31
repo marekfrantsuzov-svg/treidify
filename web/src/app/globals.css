@@ -4,89 +4,94 @@
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 /*
-  Treidify design tokens. Dark and light are tuned separately, not inverted.
-  Dark: midnight navy, sapphire reflections. Light: frosted white, silver, blue highlights.
-*/
-/*
-  Approved design (2026-10-25): white and black liquid glass.
-  Light: frosted white over silver, restrained blue. Dark: black and midnight navy, silver reflections, blue edges.
+  Treidify design tokens (2026-10-31 redesign).
+  Brand: Marshmallow White #F0F0F0, Galactic Violet #533FF5, Bubblegum Pink #ED74CE.
+  The violet and pink are sampled from Marek's reference swatches; the printed labels on them were wrong.
+  Green and red stay reserved for profit, loss, bullish and bearish.
 */
 :root,
 [data-theme="light"] {
-  --bg-0: #eef1f6;
-  --bg-1: #e2e7ef;
-  --glow-a: rgba(90, 140, 255, 0.14);
-  --glow-b: rgba(255, 255, 255, 0.9);
-  --ribbon-a: rgba(255, 255, 255, 0.85);
-  --ribbon-b: rgba(178, 192, 214, 0.55);
-  --ribbon-c: rgba(120, 160, 255, 0.18);
-  --surface: rgba(255, 255, 255, 0.7);
-  --surface-strong: rgba(255, 255, 255, 0.88);
-  --surface-inset: rgba(240, 243, 249, 0.78);
-  --border: rgba(15, 30, 60, 0.07);
-  --border-strong: rgba(15, 30, 60, 0.13);
+  --brand-violet: #533ff5;
+  --brand-pink: #ed74ce;
+  --brand-white: #f0f0f0;
+  --bg-0: #f0f0f0;
+  --bg-1: #ebe8f1;
+  --glow-a: rgba(83, 63, 245, 0.13);
+  --glow-b: rgba(237, 116, 206, 0.14);
+  --ribbon-a: rgba(255, 255, 255, 0.9);
+  --ribbon-b: rgba(196, 184, 240, 0.4);
+  --ribbon-c: rgba(237, 116, 206, 0.14);
+  --surface: rgba(255, 255, 255, 0.62);
+  --surface-strong: rgba(255, 255, 255, 0.86);
+  --surface-inset: rgba(244, 242, 249, 0.8);
+  --border: rgba(40, 24, 90, 0.07);
+  --border-strong: rgba(40, 24, 90, 0.13);
   --edge: rgba(255, 255, 255, 0.95);
   --highlight: rgba(255, 255, 255, 1);
-  --shadow: 0 1px 2px rgba(20, 30, 60, 0.04), 0 14px 34px -14px rgba(30, 45, 90, 0.16);
-  --shadow-lg: 0 2px 4px rgba(20, 30, 60, 0.04), 0 40px 80px -32px rgba(30, 50, 110, 0.28);
-  --text: #0b1220;
-  --text-2: #424d63;
-  --text-3: #707b90;
-  --accent: #1d5cf5;
-  --accent-2: #4f8bff;
-  --accent-ice: #2a6cf5;
-  --accent-soft: rgba(29, 92, 245, 0.09);
+  --shadow: 0 1px 2px rgba(30, 20, 70, 0.04), 0 14px 34px -14px rgba(60, 40, 140, 0.16);
+  --shadow-lg: 0 2px 4px rgba(30, 20, 70, 0.04), 0 40px 80px -32px rgba(70, 45, 160, 0.26);
+  --text: #13111c;
+  --text-2: #4b4759;
+  --text-3: #767186;
+  --accent: #533ff5;
+  --accent-2: #ed74ce;
+  --accent-ice: #8a6dff;
+  --accent-soft: rgba(83, 63, 245, 0.09);
+  --accent-glow: rgba(83, 63, 245, 0.42);
+  --accent-grad: linear-gradient(120deg, #4a36f0 0%, #6d4df7 45%, #b45fe0 80%, #ed74ce 100%);
   --on-accent: #ffffff;
-  --silver: #8f9aae;
+  --silver: #9a96ab;
   --up: #12a36d;
   --up-soft: rgba(18, 163, 109, 0.11);
   --down: #e0394a;
   --down-soft: rgba(224, 57, 74, 0.09);
   --warn: #b7791f;
   --warn-soft: rgba(214, 144, 30, 0.13);
-  --chart-grid: rgba(15, 30, 60, 0.06);
-  --icon-face: linear-gradient(160deg, rgba(255, 255, 255, 0.98), rgba(226, 234, 248, 0.75) 55%, rgba(205, 218, 242, 0.7));
+  --chart-grid: rgba(40, 24, 90, 0.06);
+  --icon-face: linear-gradient(160deg, rgba(255, 255, 255, 0.98), rgba(236, 232, 250, 0.78) 55%, rgba(222, 214, 246, 0.72));
   --icon-rim: rgba(255, 255, 255, 1);
-  --icon-shadow: 0 6px 14px -6px rgba(30, 60, 140, 0.35), 0 1px 2px rgba(30, 50, 100, 0.12);
+  --icon-shadow: 0 6px 14px -6px rgba(83, 63, 245, 0.32), 0 1px 2px rgba(40, 24, 90, 0.12);
   color-scheme: light;
 }
 
 [data-theme="dark"] {
-  --bg-0: #05070d;
-  --bg-1: #020306;
-  --glow-a: rgba(40, 96, 255, 0.2);
-  --glow-b: rgba(120, 150, 210, 0.07);
-  --ribbon-a: rgba(140, 160, 200, 0.07);
-  --ribbon-b: rgba(30, 50, 100, 0.35);
-  --ribbon-c: rgba(60, 120, 255, 0.14);
-  --surface: rgba(14, 19, 32, 0.66);
-  --surface-strong: rgba(18, 24, 40, 0.86);
-  --surface-inset: rgba(6, 9, 18, 0.6);
-  --border: rgba(150, 175, 230, 0.1);
-  --border-strong: rgba(150, 175, 230, 0.18);
-  --edge: rgba(110, 160, 255, 0.22);
-  --highlight: rgba(210, 225, 255, 0.09);
+  --bg-0: #08070d;
+  --bg-1: #040308;
+  --glow-a: rgba(83, 63, 245, 0.24);
+  --glow-b: rgba(237, 116, 206, 0.11);
+  --ribbon-a: rgba(190, 170, 255, 0.06);
+  --ribbon-b: rgba(60, 40, 140, 0.3);
+  --ribbon-c: rgba(237, 116, 206, 0.1);
+  --surface: rgba(22, 19, 34, 0.62);
+  --surface-strong: rgba(28, 24, 42, 0.86);
+  --surface-inset: rgba(10, 8, 18, 0.58);
+  --border: rgba(200, 185, 255, 0.09);
+  --border-strong: rgba(200, 185, 255, 0.17);
+  --edge: rgba(150, 125, 255, 0.24);
+  --highlight: rgba(230, 220, 255, 0.08);
   --shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 18px 44px -18px rgba(0, 0, 0, 0.85);
-  --shadow-lg: 0 40px 100px -30px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(120, 160, 255, 0.06);
-  --text: #f2f5fb;
-  --text-2: #b7c1d4;
-  --text-3: #7c879c;
-  --accent: #4d8dff;
-  --accent-2: #7eacff;
-  --accent-ice: #a9c8ff;
-  --accent-soft: rgba(77, 141, 255, 0.14);
+  --shadow-lg: 0 40px 100px -30px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(150, 125, 255, 0.07);
+  --text: #f4f2fa;
+  --text-2: #bdb8cf;
+  --text-3: #837e96;
+  --accent: #8b7bff;
+  --accent-2: #f08ad8;
+  --accent-ice: #b9adff;
+  --accent-soft: rgba(139, 123, 255, 0.15);
+  --accent-glow: rgba(110, 90, 255, 0.55);
+  --accent-grad: linear-gradient(120deg, #533ff5 0%, #6d4df7 45%, #b45fe0 80%, #ed74ce 100%);
   --on-accent: #ffffff;
-  --silver: #c9d1de;
+  --silver: #cbc6da;
   --up: #2fd08e;
   --up-soft: rgba(47, 208, 142, 0.12);
   --down: #ff5d6c;
   --down-soft: rgba(255, 93, 108, 0.12);
   --warn: #f5b44a;
   --warn-soft: rgba(245, 180, 74, 0.13);
-  --chart-grid: rgba(150, 175, 230, 0.06);
-  --icon-face: linear-gradient(160deg, rgba(70, 90, 140, 0.55), rgba(20, 30, 60, 0.55) 55%, rgba(10, 16, 34, 0.7));
-  --icon-rim: rgba(130, 170, 255, 0.45);
-  --icon-shadow: 0 8px 18px -8px rgba(40, 100, 255, 0.55), 0 0 0 1px rgba(90, 140, 255, 0.12);
+  --chart-grid: rgba(200, 185, 255, 0.06);
+  --icon-face: linear-gradient(160deg, rgba(110, 90, 190, 0.5), rgba(34, 26, 70, 0.55) 55%, rgba(16, 12, 34, 0.7));
+  --icon-rim: rgba(170, 150, 255, 0.45);
+  --icon-shadow: 0 8px 18px -8px rgba(83, 63, 245, 0.6), 0 0 0 1px rgba(150, 125, 255, 0.12);
   color-scheme: dark;
 }
 
@@ -114,6 +119,11 @@
   --color-warn-soft: var(--warn-soft);
   --radius-glass: 1.5rem;
   --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out-3: cubic-bezier(0.215, 0.61, 0.355, 1);
+  --ease-in-out-3: cubic-bezier(0.645, 0.045, 0.355, 1);
+  --dur-fast: 160ms;
+  --dur: 240ms;
+  --dur-slow: 340ms;
 }
 
 html {
@@ -213,7 +223,7 @@ body {
   color: transparent;
 }
 .text-accent-gradient {
-  background: linear-gradient(100deg, var(--accent) 0%, var(--accent-ice) 100%);
+  background: var(--accent-grad);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -222,8 +232,9 @@ body {
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-  border-radius: 0.5rem;
+  box-shadow: 0 0 0 6px var(--accent-soft);
 }
+::selection { background: color-mix(in oklab, var(--accent) 22%, transparent); }
 
 .skeleton {
   background: linear-gradient(90deg, var(--surface-inset) 0%, var(--border-strong) 50%, var(--surface-inset) 100%);
@@ -305,7 +316,91 @@ body {
 }
 [data-theme="dark"] .glass-icon::after { opacity: 0.22; }
 .glass-icon.is-active {
-  background: linear-gradient(160deg, #6aa2ff, #2463f4 60%, #1a4fd0);
+  background: var(--accent-grad);
   border-color: rgba(255, 255, 255, 0.25);
-  box-shadow: 0 8px 18px -6px rgba(29, 92, 245, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  box-shadow: 0 8px 18px -6px var(--accent-glow), inset 0 1px 0 rgba(255, 255, 255, 0.55);
 }
+
+/* ───────── Motion system (2026-10-31) ─────────
+   Short, responsive transitions modelled on the reference recording: content arrives with a soft
+   fade, a few pixels of rise and a brief blur; active pills stretch from the old item to the new one. */
+
+/* Page entrance. The app's template re-mounts on every navigation, so each section arrives the same way. */
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.995); filter: blur(6px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+.page-in { animation: page-in var(--dur-slow) var(--ease-out-3) both; }
+/* Direct children arrive in a short stagger, capped so long pages never feel slow. */
+.stagger > * { animation: page-in var(--dur-slow) var(--ease-out-3) both; }
+.stagger > :nth-child(2) { animation-delay: 40ms; }
+.stagger > :nth-child(3) { animation-delay: 80ms; }
+.stagger > :nth-child(4) { animation-delay: 120ms; }
+.stagger > :nth-child(5) { animation-delay: 150ms; }
+.stagger > :nth-child(n + 6) { animation-delay: 180ms; }
+
+/* Route template wrapper: the page's sections (or the children of a single root grid) arrive in a short stagger. */
+.page-flow > :not(:only-child), .page-flow > :only-child > * { animation: page-in var(--dur-slow) var(--ease-out-3) both; }
+.page-flow > :nth-child(2):not(:only-child), .page-flow > :only-child > :nth-child(2) { animation-delay: 40ms; }
+.page-flow > :nth-child(3):not(:only-child), .page-flow > :only-child > :nth-child(3) { animation-delay: 80ms; }
+.page-flow > :nth-child(4):not(:only-child), .page-flow > :only-child > :nth-child(4) { animation-delay: 120ms; }
+.page-flow > :nth-child(5):not(:only-child), .page-flow > :only-child > :nth-child(5) { animation-delay: 150ms; }
+.page-flow > :nth-child(n + 6):not(:only-child), .page-flow > :only-child > :nth-child(n + 6) { animation-delay: 180ms; }
+
+/* Sliding, stretching selection pill. JS sets the four edges; the leading edge moves first and the
+   trailing edge catches up, so the pill visibly travels between items. */
+.nav-pill {
+  position: absolute;
+  pointer-events: none;
+  top: var(--pill-t, 0); bottom: var(--pill-b, 0); left: var(--pill-l, 0); right: var(--pill-r, 0);
+  transition-property: top, bottom, left, right, opacity;
+  transition-timing-function: var(--ease-in-out-3);
+  transition-duration: var(--pill-dt, 240ms), var(--pill-db, 240ms), var(--pill-dl, 240ms), var(--pill-dr, 240ms), 200ms;
+}
+
+/* Interactive feedback: lift on hover, settle on press. */
+.press {
+  transition: transform var(--dur-fast) var(--ease-out-3), box-shadow var(--dur) var(--ease-out-3), background-color var(--dur) var(--ease-out-3), color var(--dur-fast) linear, border-color var(--dur) linear, filter var(--dur) linear;
+}
+.press:hover:not(:disabled):not([aria-disabled="true"]) { transform: translateY(-1px); }
+.press:active:not(:disabled):not([aria-disabled="true"]) { transform: translateY(0) scale(0.97); transition-duration: 90ms; }
+
+/* Glass cards that respond to the pointer: a faint violet edge light on hover. */
+.glass-hover { transition: box-shadow var(--dur) var(--ease-out-3), border-color var(--dur) linear, transform var(--dur) var(--ease-out-3); }
+.glass-hover:hover { border-color: color-mix(in oklab, var(--accent) 22%, var(--border)); box-shadow: var(--shadow), 0 0 0 1px color-mix(in oklab, var(--accent) 10%, transparent), 0 18px 40px -22px var(--accent-glow); }
+
+/* Brand gradient fill and text. */
+.bg-brand { background: var(--accent-grad); }
+.text-brand {
+  background: var(--accent-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Lines that draw themselves once on arrival (sparklines, equity curves). */
+@keyframes reveal-x { from { clip-path: inset(-20% 100% -20% 0); } to { clip-path: inset(-20% -2% -20% 0); } }
+.reveal-x { animation: reveal-x 700ms var(--ease-out-3) 120ms both; }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+.fade-in { animation: fade-in 500ms var(--ease-out-3) 200ms both; }
+
+/* Overlays: sheets rise, menus scale from their anchor. */
+@keyframes sheet-in { from { opacity: 0; transform: translateY(24px) scale(0.98); } to { opacity: 1; transform: none; } }
+@keyframes pop-in { from { opacity: 0; transform: translateY(-4px) scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes scrim-in { from { opacity: 0; } to { opacity: 1; } }
+.sheet-in { animation: sheet-in 300ms var(--ease-spring) both; }
+.pop-in { animation: pop-in 180ms var(--ease-out-3) both; transform-origin: top right; }
+.scrim-in { animation: scrim-in 200ms linear both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .page-in, .stagger > *, .page-flow > *, .page-flow > * > *, .reveal-x, .fade-in, .sheet-in, .pop-in, .scrim-in { animation: none !important; }
+  .nav-pill { transition-duration: 0ms !important; }
+  .press, .press:hover, .press:active { transform: none !important; }
+}
+
+/* Form fields: a violet ring on focus, a firmer edge on hover. */
+:is(input, select, textarea).inset { transition: border-color var(--dur) linear, box-shadow var(--dur) var(--ease-out-3), background-color var(--dur) linear; }
+:is(input, select, textarea).inset:hover:not(:disabled) { border-color: var(--border-strong); }
+:is(input, select, textarea).inset:focus, :is(input, select, textarea).inset:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); background-color: var(--surface-strong); }
+:is(input, select, textarea):disabled { cursor: not-allowed; opacity: 0.55; }
+input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }

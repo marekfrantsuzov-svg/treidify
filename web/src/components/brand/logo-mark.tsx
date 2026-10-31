@@ -2,7 +2,7 @@ import { useId } from "react";
 import { cn } from "@/lib/cn";
 
 /**
- * The blue "T" mark from the approved dashboard design: a slanted bar over a slanted stem, in a cyan-to-blue
+ * The blue "T" mark from the approved dashboard design: a slanted bar over a slanted stem, in a violet-to-pink
  * gradient. Drawn from the design reference until the final logo file is supplied.
  */
 export function LogoMark({ size = 28, className }: { size?: number; className?: string }) {
@@ -12,12 +12,12 @@ export function LogoMark({ size = 28, className }: { size?: number; className?: 
     <svg width={size} height={size} viewBox="0 0 32 32" className={cn("shrink-0", className)} aria-hidden>
       <defs>
         <linearGradient id={`${id}-a`} x1="2" y1="4" x2="30" y2="12" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#5fd4ff" />
-          <stop offset="1" stopColor="#2563eb" />
+          <stop offset="0" stopColor="#8d7cff" />
+          <stop offset="1" stopColor="#533ff5" />
         </linearGradient>
         <linearGradient id={`${id}-b`} x1="18" y1="10" x2="8" y2="30" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#3b82f6" />
-          <stop offset="1" stopColor="#1d3fd1" />
+          <stop offset="0" stopColor="#7a52f2" />
+          <stop offset="1" stopColor="#c45fd8" />
         </linearGradient>
       </defs>
       <path d="M3.5 5.5h25.5l-3.6 6.2H7.2z" fill={`url(#${id}-a)`} />

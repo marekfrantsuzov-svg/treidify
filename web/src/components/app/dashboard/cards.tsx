@@ -14,6 +14,7 @@ import { Flag, InstrumentIcon } from "@/components/previews/parts";
 import { DemoPhotoArt, type DemoPhoto } from "./demo-photos";
 import { Glass } from "@/components/ui/glass";
 import { Pill, SampleBadge } from "@/components/ui/pill";
+import { SlidingPill } from "@/components/ui/sliding-pill";
 
 export function CardHead({ title, href, children }: { title: string; href?: string; children?: React.ReactNode }) {
   return (
@@ -29,9 +30,10 @@ export function CardHead({ title, href, children }: { title: string; href?: stri
 
 function Tabs({ tabs, value, onChange, label }: { tabs: string[]; value: string; onChange: (t: string) => void; label: string }) {
   return (
-    <div role="tablist" aria-label={label} className="mt-3 flex gap-1 overflow-x-auto [scrollbar-width:none]">
+    <div role="tablist" aria-label={label} className="relative mt-3 flex gap-1 overflow-x-auto [scrollbar-width:none]">
+      <SlidingPill watch={value} className="rounded-full bg-brand shadow-[0_6px_14px_-6px_var(--accent-glow)]" />
       {tabs.map((t) => (
-        <button key={t} role="tab" aria-selected={value === t} onClick={() => onChange(t)} className={cn("shrink-0 rounded-full px-3 py-1 text-xs font-medium text-ink-3 transition-colors hover:text-ink", value === t ? "bg-[var(--text)] text-[var(--bg-0)] hover:text-[var(--bg-0)]" : "inset")}>
+        <button key={t} role="tab" aria-selected={value === t} data-active={value === t} onClick={() => onChange(t)} className={cn("relative z-[1] shrink-0 rounded-full px-3 py-1 text-xs font-medium text-ink-3 transition-[color,transform] duration-200 hover:text-ink active:scale-95", value === t ? "text-white hover:text-white" : "inset")}>
           {t}
         </button>
       ))}
@@ -163,12 +165,12 @@ export function AiAnalysisCard({ aiConnected, recent }: { aiConnected: boolean; 
             onDrop={(e) => { e.preventDefault(); setDrag(false); open(); }}
             className={cn("inset grid place-items-center gap-1.5 rounded-2xl px-4 py-5 text-center transition-colors", drag && "border-accent bg-accent-soft")}
           >
-            <span className="grid h-10 w-10 place-items-center rounded-full bg-[radial-gradient(circle_at_35%_30%,#9cc2ff,#2f6bff_55%,#1b3fc0)] text-[12px] font-bold text-white shadow-[0_6px_16px_-4px_rgba(47,107,255,0.6),inset_0_1px_0_rgba(255,255,255,0.5)]">AI</span>
+            <span className="grid h-10 w-10 place-items-center rounded-full bg-brand text-[12px] font-bold text-white shadow-[0_6px_16px_-4px_var(--accent-glow),inset_0_1px_0_rgba(255,255,255,0.5)]">AI</span>
             <span className="text-[12.5px] leading-snug text-ink-2">Drag &amp; drop a chart screenshot<br />or upload image</span>
             <span className="text-[10.5px] text-ink-3">PNG, JPG up to 10MB</span>
           </button>
-          <button onClick={open} className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(180deg,#16203a,#0b1222)] text-sm font-medium text-white shadow-[0_8px_20px_-8px_rgba(10,20,40,0.6)] dark:bg-[linear-gradient(180deg,#2a63f0,#1a4fd0)]">
-            <span className="grid h-6 w-6 place-items-center rounded-full bg-[radial-gradient(circle_at_35%_30%,#9cc2ff,#2f6bff)] text-[9px] font-bold">AI</span> Analyse with AI <ArrowRight className="h-4 w-4" />
+          <button onClick={open} className="press bg-brand flex h-11 w-full items-center justify-center gap-2 rounded-2xl text-sm font-medium text-white shadow-[0_10px_24px_-10px_var(--accent-glow)] hover:brightness-110 hover:shadow-[0_14px_30px_-10px_var(--accent-glow)]">
+            <span className="grid h-6 w-6 place-items-center rounded-full bg-white/20 text-[9px] font-bold ring-1 ring-white/40">AI</span> Analyse with AI <ArrowRight className="h-4 w-4" />
           </button>
         </div>
         <div className="hidden grid-rows-3 gap-2 sm:grid">

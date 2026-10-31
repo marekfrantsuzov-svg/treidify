@@ -5,6 +5,7 @@ import { healthScore, netProfit, performanceMetrics } from "@/lib/analytics";
 import { sampleTrades } from "@/lib/demo/sample";
 import { fmtMoney, fmtNumber, fmtSignedMoney } from "@/lib/format";
 import { cn } from "@/lib/cn";
+import { SlidingPill } from "@/components/ui/sliding-pill";
 import { EquityChart } from "@/components/charts/equity-chart";
 import { Glass } from "@/components/ui/glass";
 import { SampleBadge } from "@/components/ui/pill";
@@ -57,14 +58,16 @@ export function AccountHealthPreview({ compact = false, className }: { compact?:
           <h3 className="text-[15px] font-semibold tracking-[-0.01em] text-ink">Your Account Health</h3>
           <SampleBadge label="Sample account" />
         </div>
-        <div role="tablist" aria-label="Performance period" className="inset flex rounded-full p-0.5">
+        <div role="tablist" aria-label="Performance period" className="inset relative flex rounded-full p-0.5">
+          <SlidingPill watch={period} className="rounded-full bg-[var(--surface-strong)] shadow-[var(--shadow)]" />
           {PERIODS.map((p) => (
             <button
               key={p.id}
               role="tab"
               aria-selected={period === p.id}
               onClick={() => setPeriod(p.id)}
-              className={cn("rounded-full px-3 py-1 text-xs font-medium text-ink-3 transition-all hover:text-ink", period === p.id && "bg-surface-strong text-ink shadow-sm")}
+              data-active={period === p.id}
+              className={cn("relative z-[1] rounded-full px-3 py-1 text-xs font-medium text-ink-3 transition-colors duration-200 hover:text-ink", period === p.id && "text-accent")}
             >
               {p.id}
             </button>

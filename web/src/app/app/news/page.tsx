@@ -12,8 +12,8 @@ import { requireOnboarded } from "@/server/session";
 export const metadata = { title: "Global News" };
 
 const COVERAGE: { icon: GlassIconName; title: string; note: string; hue: string }[] = [
-  { icon: "dollar", title: "Central bank policy", note: "Decisions, minutes and speakers from the Fed, ECB, BoE, BoJ and others.", hue: "from-[#1d5cf5]/30 via-[#6aa2ff]/15" },
-  { icon: "yield", title: "US Treasury yields", note: "Nominal and real yields, auctions and curve moves.", hue: "from-[#1d5cf5]/25 via-[#9cc0ff]/12" },
+  { icon: "dollar", title: "Central bank policy", note: "Decisions, minutes and speakers from the Fed, ECB, BoE, BoJ and others.", hue: "from-[#533ff5]/28 via-[#ed74ce]/14" },
+  { icon: "yield", title: "US Treasury yields", note: "Nominal and real yields, auctions and curve moves.", hue: "from-[#533ff5]/22 via-[#b9adff]/12" },
   { icon: "markets", title: "Inflation", note: "CPI, PCE and producer prices against forecast and previous.", hue: "from-[#b7791f]/30 via-[#f5b44a]/12" },
   { icon: "community", title: "Employment", note: "Payrolls, unemployment and claims.", hue: "from-[#12a36d]/25 via-[#5fe0a6]/12" },
   { icon: "macro", title: "Global conflicts", note: "Military escalation and de-escalation that drive safe-haven flows.", hue: "from-[#e0394a]/25 via-[#ff8a5b]/12" },

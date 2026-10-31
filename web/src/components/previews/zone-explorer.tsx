@@ -7,6 +7,7 @@ import { explainZone, zoneLabel, type PriceZone } from "@/lib/analytics";
 import { MTF, digitsFor, sampleAnalysis, type SampleSymbol, type SampleTf } from "@/lib/demo/markets";
 import { fmtNumber, fmtPct } from "@/lib/format";
 import { cn } from "@/lib/cn";
+import { SlidingPill } from "@/components/ui/sliding-pill";
 import { CandleChart } from "@/components/charts/candle-chart";
 import { Glass } from "@/components/ui/glass";
 import { Pill, SampleBadge } from "@/components/ui/pill";
@@ -51,9 +52,10 @@ export function InstrumentCard({ symbol, defaultTf = "4H", height = 300, explora
               <InstrumentIcon symbol={symbol} className="h-7 w-7 text-[10px]" />
               <h3 className="text-[16px] font-semibold text-ink">{symbol}</h3>
             </div>
-            <div role="tablist" aria-label="Timeframe" className="inset flex shrink-0 rounded-full p-0.5">
+            <div role="tablist" aria-label="Timeframe" className="inset relative flex shrink-0 rounded-full p-0.5">
+              <SlidingPill watch={tf} className="bg-brand rounded-full shadow-[0_4px_12px_-4px_var(--accent-glow)]" />
               {tfs.map((t) => (
-                <button key={t} role="tab" aria-selected={tf === t} onClick={() => { setTf(t); setZone(null); }} className={cn("rounded-full px-2 py-0.5 text-[11px] font-medium text-ink-3 hover:text-ink @[420px]:px-2.5 @[420px]:py-1", tf === t && "bg-accent text-white shadow-[0_4px_10px_-4px_var(--accent)] hover:text-white")}>
+                <button key={t} role="tab" aria-selected={tf === t} data-active={tf === t} onClick={() => { setTf(t); setZone(null); }} className={cn("relative z-[1] rounded-full px-2 py-0.5 text-[11px] font-medium text-ink-3 transition-[color,transform] duration-200 hover:text-ink active:scale-90 @[420px]:px-2.5 @[420px]:py-1", tf === t && "text-white hover:text-white")}>
                   {t}
                 </button>
               ))}
@@ -82,11 +84,12 @@ export function InstrumentCard({ symbol, defaultTf = "4H", height = 300, explora
             </div>
           </div>
         </div>
-        <div className="flex flex-col items-end gap-2">
+        <div className="flex max-w-full flex-col items-end gap-2">
           <SampleBadge />
-          <div role="tablist" aria-label="Timeframe" className="inset flex rounded-full p-0.5">
+          <div role="tablist" aria-label="Timeframe" className="inset relative flex max-w-full overflow-x-auto rounded-full p-0.5 [scrollbar-width:none]">
+            <SlidingPill watch={tf} className="bg-brand rounded-full shadow-[0_4px_12px_-4px_var(--accent-glow)]" />
             {tfs.map((t) => (
-              <button key={t} role="tab" aria-selected={tf === t} onClick={() => { setTf(t); setZone(null); }} className={cn("rounded-full px-2.5 py-1 text-xs font-medium text-ink-3 hover:text-ink", tf === t && "bg-accent text-white hover:text-white")}>
+              <button key={t} role="tab" aria-selected={tf === t} data-active={tf === t} onClick={() => { setTf(t); setZone(null); }} className={cn("relative z-[1] rounded-full px-2.5 py-1 text-xs font-medium text-ink-3 transition-[color,transform] duration-200 hover:text-ink active:scale-90", tf === t && "text-white hover:text-white")}>
                 {t}
               </button>
             ))}

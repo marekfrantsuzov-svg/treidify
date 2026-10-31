@@ -10,6 +10,7 @@ import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/cn";
 import { PERIOD_IDS, PERIOD_NAMES, readPeriod } from "@/lib/period-param";
 import { GlassIcon, Glyph } from "@/components/icons/glass-icon";
+import { SlidingPill } from "@/components/ui/sliding-pill";
 import { Wordmark } from "@/components/ui/wordmark";
 import { appNav, isActive, mobileTabs, primaryNav, toolNav, type NavItem } from "./nav";
 
@@ -23,7 +24,7 @@ export function Avatar({ user, size = 36 }: { user: Pick<ShellUser, "name" | "av
     // eslint-disable-next-line @next/next/no-img-element -- data URL produced by our own re-encoder
     <img src={user.avatar} alt="" width={size} height={size} className="shrink-0 rounded-full object-cover ring-2 ring-[var(--surface-strong)]" style={{ width: size, height: size }} />
   ) : (
-    <span className="grid shrink-0 place-items-center rounded-full bg-[linear-gradient(135deg,#6aa2ff,#1d5cf5)] text-[13px] font-semibold text-white ring-2 ring-[var(--surface-strong)]" style={{ width: size, height: size }} aria-hidden>{initials}</span>
+    <span className="grid shrink-0 place-items-center rounded-full bg-brand text-[13px] font-semibold text-white ring-2 ring-[var(--surface-strong)]" style={{ width: size, height: size }} aria-hidden>{initials}</span>
   );
 }
 
@@ -74,15 +75,15 @@ function DateSelector() {
   const label = current.id === "CUSTOM" && current.custom ? `${current.custom.from.slice(5)} to ${current.custom.to.slice(5)}` : PERIOD_NAMES[current.id];
   return (
     <div ref={ref} className="relative">
-      <button onClick={() => setOpen(!open)} aria-haspopup="listbox" aria-expanded={open} className="glass flex h-11 items-center gap-2.5 rounded-full pl-4 pr-3.5 text-sm font-medium text-ink">
+      <button onClick={() => setOpen(!open)} aria-haspopup="listbox" aria-expanded={open} className="glass press flex h-11 items-center gap-2.5 rounded-full pl-4 pr-3.5 text-sm font-medium text-ink hover:border-[var(--border-strong)]">
         <CalendarDays className="h-[18px] w-[18px] text-ink-2" />
         <span className="whitespace-nowrap">{label}</span>
-        <ChevronDown className="h-4 w-4 text-ink-3" />
+        <ChevronDown className={cn("h-4 w-4 text-ink-3 transition-transform duration-200", open && "rotate-180")} />
       </button>
       {open && (
-        <div role="listbox" aria-label="Period" className="glass glass-strong absolute right-0 top-13 z-50 w-64 max-lg:left-0 max-lg:right-auto rounded-2xl p-1.5 shadow-[var(--shadow-lg)]">
+        <div role="listbox" aria-label="Period" className="glass glass-strong pop-in absolute right-0 top-13 z-50 w-64 max-lg:left-0 max-lg:right-auto rounded-2xl p-1.5 shadow-[var(--shadow-lg)]">
           {PERIOD_IDS.filter((id) => id !== "CUSTOM").map((id) => (
-            <button key={id} role="option" aria-selected={current.id === id} onClick={() => go(`period=${id}`)} className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm text-ink-2 hover:bg-accent-soft hover:text-ink">
+            <button key={id} role="option" aria-selected={current.id === id} onClick={() => go(`period=${id}`)} className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm text-ink-2 transition-colors duration-150 hover:bg-accent-soft hover:text-ink aria-selected:font-medium aria-selected:text-ink">
               {PERIOD_NAMES[id]}{current.id === id && <Check className="h-4 w-4 text-accent" />}
             </button>
           ))}
@@ -92,7 +93,7 @@ function DateSelector() {
               <input type="date" aria-label="From" value={from} max={today} onChange={(e) => setFrom(e.target.value)} className="inset rounded-xl px-2 py-1.5 text-xs text-ink outline-none" />
               <input type="date" aria-label="To" value={to} max={today} onChange={(e) => setTo(e.target.value)} className="inset rounded-xl px-2 py-1.5 text-xs text-ink outline-none" />
             </div>
-            <button onClick={() => go(`period=CUSTOM&from=${from}&to=${to}`)} className="mt-2 w-full rounded-full bg-accent py-1.5 text-sm font-medium text-white">Apply range</button>
+            <button onClick={() => go(`period=CUSTOM&from=${from}&to=${to}`)} className="press bg-brand mt-2 w-full rounded-full py-1.5 text-sm font-medium text-white shadow-[0_8px_18px_-8px_var(--accent-glow)] hover:brightness-110">Apply range</button>
           </div>
         </div>
       )}
@@ -124,8 +125,8 @@ function SearchPalette({ open, onClose }: { open: boolean; onClose: () => void }
   if (!open) return null;
   const go = (href: string) => { onClose(); router.push(href); };
   return (
-    <div className="fixed inset-0 z-[60] grid items-start justify-items-center bg-black/25 px-4 pt-[12vh] backdrop-blur-sm" onMouseDown={onClose}>
-      <div role="dialog" aria-label="Search" className="glass glass-strong w-full max-w-xl overflow-hidden rounded-3xl shadow-[var(--shadow-lg)]" onMouseDown={(e) => e.stopPropagation()}>
+    <div className="scrim-in fixed inset-0 z-[60] grid items-start justify-items-center bg-[rgba(20,12,40,0.28)] px-4 pt-[12vh] backdrop-blur-sm" onMouseDown={onClose}>
+      <div role="dialog" aria-label="Search" className="glass glass-strong sheet-in w-full max-w-xl overflow-hidden rounded-3xl shadow-[var(--shadow-lg)]" onMouseDown={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-3 border-b border-line px-4">
           <Glyph name="search" size={20} />
           <input
@@ -147,7 +148,7 @@ function SearchPalette({ open, onClose }: { open: boolean; onClose: () => void }
         <ul className="max-h-[50vh] overflow-y-auto p-2">
           {results.map((r, idx) => (
             <li key={r.href + r.label}>
-              <button onMouseEnter={() => setI(idx)} onClick={() => go(r.href)} className={cn("flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm text-ink", idx === i && "bg-accent-soft")}>
+              <button onMouseEnter={() => setI(idx)} onClick={() => go(r.href)} className={cn("flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm text-ink transition-colors duration-150", idx === i && "bg-accent-soft text-accent")}>
                 {r.label}<span className="text-xs text-ink-3">{r.hint}</span>
               </button>
             </li>
@@ -175,14 +176,14 @@ function UserMenu({ user, plan }: { user: ShellUser; plan: ShellPlan }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const ref = useDismiss<HTMLDivElement>(open, () => setOpen(false));
-  const item = "flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-ink-2 hover:bg-accent-soft hover:text-ink";
+  const item = "flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-ink-2 transition-colors duration-150 hover:bg-accent-soft hover:text-ink";
   return (
     <div ref={ref} className="relative">
-      <button onClick={() => setOpen(!open)} aria-haspopup="menu" aria-expanded={open} aria-label="Account menu" className="rounded-full shadow-[var(--shadow)]">
+      <button onClick={() => setOpen(!open)} aria-haspopup="menu" aria-expanded={open} aria-label="Account menu" className="press rounded-full shadow-[var(--shadow)] hover:shadow-[0_0_0_3px_var(--accent-soft),var(--shadow)]">
         <Avatar user={user} size={44} />
       </button>
       {open && (
-        <div role="menu" className="glass glass-strong absolute right-0 top-14 z-50 w-64 rounded-2xl p-2 shadow-[var(--shadow-lg)]">
+        <div role="menu" className="glass glass-strong pop-in absolute right-0 top-14 z-50 w-64 rounded-2xl p-2 shadow-[var(--shadow-lg)]">
           <div className="px-3 py-2">
             <div className="truncate text-sm font-semibold text-ink">{user.name}</div>
             <div className="truncate text-xs text-ink-3">{user.username ? `@${user.username}` : user.email}</div>
@@ -204,13 +205,13 @@ function UserMenu({ user, plan }: { user: ShellUser; plan: ShellPlan }) {
 function MoreSheet({ open, onClose, path }: { open: boolean; onClose: () => void; path: string }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm lg:hidden" onClick={onClose}>
-      <div role="dialog" aria-label="More" className="glass glass-strong safe-bottom absolute inset-x-3 bottom-3 rounded-[28px] p-4 shadow-[var(--shadow-lg)]" onClick={(e) => e.stopPropagation()}>
+    <div className="scrim-in fixed inset-0 z-50 bg-[rgba(20,12,40,0.3)] backdrop-blur-sm lg:hidden" onClick={onClose}>
+      <div role="dialog" aria-label="More" className="glass glass-strong sheet-in safe-bottom absolute inset-x-3 bottom-3 rounded-[28px] p-4 shadow-[var(--shadow-lg)]" onClick={(e) => e.stopPropagation()}>
         <div className="mb-3 flex items-center justify-between px-1"><span className="text-sm font-semibold text-ink">All sections</span><button onClick={onClose} aria-label="Close" className="grid h-8 w-8 place-items-center rounded-full text-ink-3"><X className="h-4 w-4" /></button></div>
         <div className="mb-4 flex items-center gap-2 px-1"><DateSelector /><ThemeSwitch /></div>
         <div className="grid grid-cols-4 gap-y-4">
           {appNav.map((n) => (
-            <Link key={n.href} href={n.href} onClick={onClose} className="grid justify-items-center gap-1.5 text-center text-[11px] font-medium text-ink-2">
+            <Link key={n.href} href={n.href} onClick={onClose} className="press grid justify-items-center gap-1.5 text-center text-[11px] font-medium text-ink-2">
               <GlassIcon name={n.icon} size={48} active={isActive(path, n.href)} />{n.short}
             </Link>
           ))}
@@ -240,13 +241,14 @@ export function AppShell({ user, plan, account, timezone, greeting, unread, chil
       <aside className="fixed inset-y-3 left-3 z-40 hidden w-[228px] flex-col lg:flex" aria-label="Main">
         <div className="glass flex h-full flex-col rounded-[28px] px-3 pb-3 pt-5">
           <div className="px-3 pb-6"><Wordmark href="/app" className="text-[23px]" /></div>
-          <nav className="grid gap-1 overflow-y-auto [scrollbar-width:none]">
+          <nav className="relative grid gap-1 overflow-y-auto [scrollbar-width:none]">
+            <SlidingPill watch={path} className="rounded-2xl bg-[var(--surface-strong)] shadow-[var(--shadow),0_0_0_1px_color-mix(in_oklab,var(--accent)_12%,transparent)]" />
             {primaryNav.map((n) => <SideLink key={n.href} item={n} path={path} />)}
             <div className="mx-3 my-2 h-px bg-[var(--border)]" />
             {toolNav.map((n) => <SideLink key={n.href} item={n} path={path} />)}
           </nav>
           <div className="mt-auto grid gap-2 pt-3">
-            <Link href="/app/accounts" className="glass glass-strong flex items-center gap-3 rounded-2xl px-3.5 py-3">
+            <Link href="/app/accounts" className="glass glass-strong glass-hover press flex items-center gap-3 rounded-2xl px-3.5 py-3">
               <span className={cn("h-3 w-3 shrink-0 rounded-full", account?.status === "connected" ? "bg-up shadow-[0_0_10px_var(--up)]" : account?.sample ? "bg-warn shadow-[0_0_10px_var(--warn)]" : "bg-[var(--border-strong)]")} />
               <span className="min-w-0">
                 <span className="block truncate text-[13px] font-semibold text-ink">{account ? (account.sample ? "Sample account" : account.status === "connected" ? "Connected" : "Connecting") : "Not connected"}</span>
@@ -265,14 +267,14 @@ export function AppShell({ user, plan, account, timezone, greeting, unread, chil
             <p className="truncate text-[15px] text-ink-3">{line}</p>
           </div>
           <div className="ml-auto flex items-center gap-2.5">
-            <button onClick={() => setSearch(true)} className="glass hidden h-11 w-[min(400px,30vw)] items-center gap-2.5 rounded-full px-4 text-sm text-ink-3 xl:flex">
+            <button onClick={() => setSearch(true)} className="glass press hidden h-11 w-[min(400px,30vw)] items-center gap-2.5 rounded-full px-4 text-sm text-ink-3 hover:border-[var(--border-strong)] hover:text-ink-2 xl:flex">
               <Search className="h-[18px] w-[18px] text-ink-2" />
               <span className="flex-1 truncate text-left">Search markets, news, or ask AI…</span>
               <kbd className="inset rounded-md px-1.5 py-0.5 text-[11px] font-medium text-ink-3">⌘K</kbd>
             </button>
-            <button onClick={() => setSearch(true)} aria-label="Search" className="glass grid h-11 w-11 place-items-center rounded-full xl:hidden max-lg:hidden"><Search className="h-[18px] w-[18px] text-ink-2" /></button>
+            <button onClick={() => setSearch(true)} aria-label="Search" className="glass press grid h-11 w-11 place-items-center rounded-full xl:hidden max-lg:hidden"><Search className="h-[18px] w-[18px] text-ink-2" /></button>
             <div className="hidden lg:block"><DateSelector /></div>
-            <Link href="/app/notifications" aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"} className="relative grid h-11 w-11 place-items-center rounded-full lg:glass">
+            <Link href="/app/notifications" aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"} className="press relative grid h-11 w-11 place-items-center rounded-full hover:text-accent lg:glass">
               <Bell className="h-5 w-5 text-ink-2" />
               {unread > 0 && <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-down ring-2 ring-[var(--surface-strong)]" />}
             </Link>
@@ -285,17 +287,18 @@ export function AppShell({ user, plan, account, timezone, greeting, unread, chil
       <main id="main" className="mx-auto w-full max-w-[1400px] px-3 pb-36 pt-4 sm:px-5 lg:pb-12">{children}</main>
 
       <nav aria-label="Main" className="safe-bottom fixed inset-x-3 bottom-3 z-40 lg:hidden">
-        <div className="glass glass-strong mx-auto grid max-w-md grid-cols-5 rounded-[28px] p-1.5 shadow-[var(--shadow-lg)]">
+        <div className="glass glass-strong relative mx-auto grid max-w-md grid-cols-5 rounded-[28px] p-1.5 shadow-[var(--shadow-lg)]">
+          <SlidingPill watch={`${path}${more}`} className="rounded-[22px] bg-accent-soft shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--accent)_14%,transparent)]" />
           {mobileTabs.map((href) => {
             const n = appNav.find((x) => x.href === href)!;
             const active = isActive(path, href);
             return (
-              <Link key={href} href={href} aria-current={active ? "page" : undefined} className={cn("flex flex-col items-center gap-1 rounded-[22px] py-2 text-[10.5px] font-medium text-ink-3", active && "text-accent")}>
+              <Link key={href} href={href} data-active={active && !more} aria-current={active ? "page" : undefined} className={cn("relative z-[1] flex flex-col items-center gap-1 rounded-[22px] py-2 text-[10.5px] font-medium text-ink-3 transition-[color,transform] duration-200 active:scale-95", active && "text-accent")}>
                 <n.line className="h-[22px] w-[22px]" strokeWidth={active ? 2.2 : 1.8} />{n.short}
               </Link>
             );
           })}
-          <button onClick={() => setMore(true)} aria-label="More sections" className={cn("flex flex-col items-center gap-1 rounded-[22px] py-2 text-[10.5px] font-medium text-ink-3", moreActive && "text-accent")}>
+          <button onClick={() => setMore(true)} data-active={moreActive || more} aria-label="More sections" className={cn("relative z-[1] flex flex-col items-center gap-1 rounded-[22px] py-2 text-[10.5px] font-medium text-ink-3 transition-[color,transform] duration-200 active:scale-95", (moreActive || more) && "text-accent")}>
             <LayoutGrid className="h-[22px] w-[22px]" strokeWidth={moreActive ? 2.2 : 1.8} />More
           </button>
         </div>
@@ -307,13 +310,13 @@ export function AppShell({ user, plan, account, timezone, greeting, unread, chil
   );
 }
 
-/** Sidebar entry as in the approved design: a line icon, and a blue glass disc with a white glyph when active. */
+/** Sidebar entry: a line icon, and a violet glass disc with a white glyph when active. The shared pill travels behind it. */
 function SideLink({ item, path }: { item: NavItem; path: string }) {
   const active = isActive(path, item.href);
   const Icon = item.line;
   return (
-    <Link href={item.href} aria-current={active ? "page" : undefined} className={cn("flex items-center gap-3 rounded-2xl px-2 py-1.5 text-[15px] text-ink-2 transition-colors hover:bg-[var(--surface-inset)] hover:text-ink", active && "bg-[var(--surface-strong)] font-semibold text-ink shadow-[var(--shadow)]")}>
-      <span className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-full", active && "bg-[radial-gradient(circle_at_35%_25%,#9cc7ff,#2f6df6_55%,#1d4fd8)] text-white shadow-[0_6px_14px_-6px_#2563eb,inset_0_1px_0_rgba(255,255,255,0.6)]")}>
+    <Link href={item.href} data-active={active} aria-current={active ? "page" : undefined} className={cn("group relative z-[1] flex items-center gap-3 rounded-2xl px-2 py-1.5 text-[15px] text-ink-2 transition-colors duration-200 hover:text-ink", !active && "hover:bg-[var(--surface-inset)]", active && "font-semibold text-ink")}>
+      <span className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-full transition-[background,box-shadow,transform,color] duration-300 ease-[var(--ease-spring)] group-active:scale-90", active ? "bg-brand text-white shadow-[0_6px_16px_-6px_var(--accent-glow),inset_0_1px_0_rgba(255,255,255,0.5)]" : "group-hover:text-accent")}>
         <Icon className="h-[19px] w-[19px]" strokeWidth={active ? 2.1 : 1.7} />
       </span>
       {item.label}

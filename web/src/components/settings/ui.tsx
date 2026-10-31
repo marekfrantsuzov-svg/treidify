@@ -27,9 +27,10 @@ export function Toggle({ checked, onChange, label, note, disabled }: { checked: 
         aria-label={label}
         disabled={disabled}
         onClick={() => onChange(!checked)}
-        className={cn("relative mt-0.5 h-7 w-12 shrink-0 rounded-full border border-[var(--border-strong)] bg-inset transition-colors", checked && "border-accent bg-accent")}
+        className={cn("group relative mt-0.5 h-7 w-12 shrink-0 rounded-full border border-[var(--border-strong)] bg-inset transition-[background,border-color,box-shadow] duration-300 ease-[var(--ease-out-3)] hover:border-[color-mix(in_oklab,var(--accent)_35%,var(--border-strong))] disabled:cursor-not-allowed", checked && "bg-brand border-transparent shadow-[0_4px_14px_-4px_var(--accent-glow)]")}
       >
-        <span className={cn("absolute left-0.5 top-0.5 h-[22px] w-[22px] rounded-full bg-white shadow transition-transform duration-200 ease-[var(--ease-spring)]", checked && "translate-x-5")} />
+        {/* The knob stretches while pressed and springs across, like the reference toggles. */}
+        <span className={cn("absolute left-0.5 top-0.5 h-[22px] w-[22px] rounded-full bg-white shadow-[0_2px_6px_rgba(20,10,50,0.25)] transition-[transform,width] duration-300 ease-[var(--ease-spring)] group-active:w-[27px]", checked && "translate-x-5 group-active:translate-x-[15px]")} />
       </button>
     </label>
   );

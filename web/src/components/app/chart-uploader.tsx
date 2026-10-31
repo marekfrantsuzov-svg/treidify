@@ -43,7 +43,7 @@ export function ChartUploader() {
       <button
         disabled={!file || pending}
         onClick={() => start(async () => { const fd = new FormData(); fd.set("chart", file!); setResult(await analyseChart(fd)); })}
-        className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(180deg,#16203a,#0b1222)] text-[15px] font-medium text-white disabled:opacity-50 dark:bg-[linear-gradient(180deg,#2a63f0,#1a4fd0)]"
+        className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl press bg-brand text-[15px] font-medium text-white shadow-[0_10px_24px_-10px_var(--accent-glow)] hover:brightness-110 disabled:opacity-50 disabled:shadow-none"
       >
         {pending ? <Spinner /> : <GlassIcon name="ai" size={26} active />} Analyse with AI <ArrowRight className="h-4 w-4" />
       </button>

@@ -5,6 +5,7 @@ import { bySession, netProfit, sessionAt, sessionName } from "@/lib/analytics";
 import { sampleTrades } from "@/lib/demo/sample";
 import { fmtSignedMoney } from "@/lib/format";
 import { cn } from "@/lib/cn";
+import { SlidingPill } from "@/components/ui/sliding-pill";
 import { Glass } from "@/components/ui/glass";
 import { Pill, SampleBadge } from "@/components/ui/pill";
 
@@ -23,9 +24,10 @@ export function JournalPreview({ className, rows = 7 }: { className?: string; ro
           <h3 className="text-[15px] font-semibold text-ink">Trading journal</h3>
           <SampleBadge label="Sample account" />
         </div>
-        <div className="inset flex rounded-full p-0.5" role="tablist" aria-label="Instrument filter">
+        <div className="inset relative flex rounded-full p-0.5" role="tablist" aria-label="Instrument filter">
+          <SlidingPill watch={f} className="rounded-full bg-[var(--surface-strong)] shadow-[var(--shadow),0_0_0_1px_color-mix(in_oklab,var(--accent)_14%,transparent)]" />
           {filters.map((x) => (
-            <button key={x} role="tab" aria-selected={f === x} onClick={() => setF(x)} className={cn("rounded-full px-2.5 py-1 text-xs font-medium text-ink-3 hover:text-ink", f === x && "bg-surface-strong text-ink shadow-sm")}>{x}</button>
+            <button key={x} role="tab" aria-selected={f === x} data-active={f === x} onClick={() => setF(x)} className={cn("relative z-[1] rounded-full px-2.5 py-1 text-xs font-medium text-ink-3 transition-colors duration-200 hover:text-ink", f === x && "text-accent")}>{x}</button>
           ))}
         </div>
       </div>

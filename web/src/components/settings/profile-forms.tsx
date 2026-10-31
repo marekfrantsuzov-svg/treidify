@@ -7,6 +7,7 @@ import { Alert, Field, Spinner, UsernameInput, inputClass } from "@/components/a
 import { Avatar } from "@/components/app/app-shell";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
+import { SlidingPill } from "@/components/ui/sliding-pill";
 import { Section, Toggle } from "./ui";
 
 function useAction() {
@@ -99,9 +100,10 @@ export function PrivacyForm({ initial }: { initial: PrivacyInput }) {
       </div>
       <div className={cn("mt-4 grid gap-1.5", !v.showOpenPositions && "opacity-50")}>
         <span className="text-sm font-medium text-ink">Open-position delay</span>
-        <div role="radiogroup" aria-label="Open-position delay" className="inset flex flex-wrap rounded-full p-1">
+        <div role="radiogroup" aria-label="Open-position delay" className="inset relative flex flex-wrap rounded-full p-1">
+          <SlidingPill watch={v.positionDelayMinutes} className="rounded-full bg-[var(--surface-strong)] shadow-[var(--shadow),0_0_0_1px_color-mix(in_oklab,var(--accent)_14%,transparent)]" />
           {DELAYS.map((d) => (
-            <button key={d.v} type="button" role="radio" aria-checked={v.positionDelayMinutes === d.v} disabled={!v.showOpenPositions} onClick={() => setV({ ...v, positionDelayMinutes: d.v })} className={cn("flex-1 rounded-full px-3 py-1.5 text-sm text-ink-2", v.positionDelayMinutes === d.v && "bg-surface-strong font-medium text-ink shadow-sm")}>
+            <button key={d.v} type="button" role="radio" aria-checked={v.positionDelayMinutes === d.v} disabled={!v.showOpenPositions} data-active={v.positionDelayMinutes === d.v} onClick={() => setV({ ...v, positionDelayMinutes: d.v })} className={cn("relative z-[1] flex-1 rounded-full px-3 py-1.5 text-sm text-ink-2 transition-[color,transform] duration-200 enabled:hover:text-ink enabled:active:scale-[0.97] disabled:cursor-not-allowed", v.positionDelayMinutes === d.v && "font-medium text-accent")}>
               {d.label}
             </button>
           ))}

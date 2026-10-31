@@ -5,12 +5,12 @@ type Variant = "primary" | "secondary" | "ghost";
 type Size = "sm" | "md" | "lg";
 
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-full font-medium tracking-[-0.01em] transition-[transform,background,box-shadow,color] duration-200 ease-[var(--ease-spring)] active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50 select-none";
+  "press inline-flex items-center justify-center gap-2 rounded-full font-medium tracking-[-0.01em] disabled:pointer-events-none disabled:opacity-45 disabled:shadow-none aria-disabled:pointer-events-none aria-disabled:opacity-45 select-none";
 const variants: Record<Variant, string> = {
   primary:
-    "text-white bg-[linear-gradient(180deg,var(--accent-2),var(--accent))] shadow-[0_1px_0_rgba(255,255,255,0.25)_inset,0_8px_24px_-8px_var(--accent)] hover:shadow-[0_1px_0_rgba(255,255,255,0.3)_inset,0_12px_32px_-8px_var(--accent)] hover:brightness-110",
-  secondary: "glass text-ink hover:bg-surface-strong",
-  ghost: "text-ink-2 hover:text-ink hover:bg-accent-soft",
+    "bg-brand text-white shadow-[0_1px_0_rgba(255,255,255,0.28)_inset,0_10px_26px_-10px_var(--accent-glow)] hover:brightness-[1.08] hover:shadow-[0_1px_0_rgba(255,255,255,0.32)_inset,0_16px_34px_-10px_var(--accent-glow)] active:brightness-95",
+  secondary: "glass text-ink hover:bg-surface-strong hover:border-[color-mix(in_oklab,var(--accent)_24%,var(--border))] hover:shadow-[var(--shadow),0_10px_26px_-16px_var(--accent-glow)]",
+  ghost: "text-ink-2 hover:text-accent hover:bg-accent-soft active:bg-[color-mix(in_oklab,var(--accent)_16%,transparent)]",
 };
 const sizes: Record<Size, string> = {
   sm: "h-9 px-4 text-sm",

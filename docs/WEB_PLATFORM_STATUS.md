@@ -23,6 +23,16 @@ Updated 2026-10-25, after the "Public website + private trading platform" update
 
 Totals: 45 unit tests and 6 Playwright runs (3 journeys, each on desktop and mobile), all passing. The production build is clean.
 
+## Visual system (2026-10-31 redesign)
+
+Colours come from Marek's reference: Marshmallow White `#F0F0F0`, Galactic Violet `#533FF5` and Bubblegum Pink `#ED74CE`. The violet and pink were sampled from the swatches, because the printed hex labels on them were wrong. All tokens are in `web/src/app/globals.css`, and green and red stay reserved for profit, loss, bullish and bearish. The motion is modelled on the reference recording:
+- `page-flow` and `page-in` templates fade and stagger each section in over about 340 ms.
+- `SlidingPill` (`web/src/components/ui/sliding-pill.tsx`) stretches the active pill from the old item to the new one, used in the sidebar, the mobile tab bar, settings categories, tabs and segmented controls.
+- Buttons use `press` for lift and press feedback.
+- Headline figures count up on arrival, and sparklines draw in.
+
+Every animation is switched off under reduced motion.
+
 ## Labelled as sample data (never shown as live)
 
 - **Homepage widgets:** marked "Demo". The economic calendar widget says it is "Example schedule, not this week's events".
