@@ -5,6 +5,7 @@ name: Test builds
 on:
   push:
     branches: [main]
+    paths: ["ios/**", ".github/workflows/test-builds.yml"]
   workflow_dispatch:
 jobs:
   mac-dmg:

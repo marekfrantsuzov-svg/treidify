@@ -1,0 +1,182 @@
+"use client";
+
+import { AnimatePresence, motion } from "motion/react";
+import { CheckCircle2, CircleSlash, Compass, History, Info, Landmark, Magnet, Ruler, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import { explainZone, zoneLabel, type PriceZone } from "@/lib/analytics";
+import { MTF, digitsFor, sampleAnalysis, type SampleSymbol, type SampleTf } from "@/lib/demo/markets";
+import { fmtNumber, fmtPct } from "@/lib/format";
+import { cn } from "@/lib/cn";
+import { SlidingPill } from "@/components/ui/sliding-pill";
+import { CandleChart } from "@/components/charts/candle-chart";
+import { Glass } from "@/components/ui/glass";
+import { Pill, SampleBadge } from "@/components/ui/pill";
+import { BiasChip, InstrumentIcon } from "./parts";
+
+const TFS: SampleTf[] = ["4H", "1H", "15M"];
+const names: Record<SampleSymbol, string> = { XAUUSD: "Gold", DXY: "US Dollar Index", XAGUSD: "Silver" };
+
+export function InstrumentCard({ symbol, defaultTf = "4H", height = 300, explorable = true, showMtf = true, compact = false, tfs = TFS, className }: {
+  symbol: SampleSymbol; defaultTf?: SampleTf; height?: number; explorable?: boolean; showMtf?: boolean; compact?: boolean; tfs?: SampleTf[]; className?: string;
+}) {
+  const [tf, setTf] = useState<SampleTf>(defaultTf);
+  const [zone, setZone] = useState<PriceZone | null>(null);
+  const a = useMemo(() => sampleAnalysis(symbol, tf), [symbol, tf]);
+  const mtf = useMemo(() => MTF.map(({ tf: t, role }) => ({ tf: t, role, bias: sampleAnalysis(symbol, t).bias.bias })), [symbol]);
+  const d = digitsFor(symbol);
+  const explanation = useMemo(
+    () => zone && explainZone(zone, a.candles, { symbol, timeframe: tf, digits: d, atr: a.levels.atr, bias: a.bias, others: a.levels.zones }),
+    [zone, a, symbol, tf, d],
+  );
+  const up = a.change >= 0;
+  // Compact cards show the nearest support fully below price and the nearest resistance fully above it.
+  // Prefer zones at least one ATR away so the two bands and their labels never collide.
+  const gap = compact ? (a.levels.atr ?? 0) : 0;
+  const pick = (kind: PriceZone["kind"], ok: (z: PriceZone, g: number) => boolean, order: (x: PriceZone, y: PriceZone) => number) => {
+    const all = a.levels.zones.filter((z) => z.kind === kind).sort(order);
+    return all.find((z) => ok(z, gap)) ?? all.find((z) => ok(z, 0));
+  };
+  const buy = compact ? pick("support", (z, g) => z.upper < a.last - g, (x, y) => y.upper - x.upper) : a.levels.zones.filter((z) => z.kind === "support").sort((x, y) => y.upper - x.upper)[0];
+  const sell = compact ? pick("resistance", (z, g) => z.lower > a.last + g, (x, y) => x.lower - y.lower) : a.levels.zones.filter((z) => z.kind === "resistance").sort((x, y) => x.lower - y.lower)[0];
+  // Compact cards show only the nearest buy and sell areas plus the nearest liquidity pool, so labels stay legible.
+  const liq = a.levels.zones.filter((z) => z.kind.endsWith("Liquidity")).sort((x, y) => Math.abs((x.lower + x.upper) / 2 - a.last) - Math.abs((y.lower + y.upper) / 2 - a.last))[0];
+  const zones = compact ? [buy, sell].filter((z): z is PriceZone => !!z) : a.levels.zones;
+  void liq;
+
+  return (
+    <Glass className={cn("relative overflow-hidden p-4 sm:p-5", className)}>
+      {compact ? (
+        <div className="@container">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2">
+              <InstrumentIcon symbol={symbol} className="h-7 w-7 text-[10px]" />
+              <h3 className="text-[16px] font-semibold text-ink">{symbol}</h3>
+            </div>
+            <div role="tablist" aria-label="Timeframe" className="inset relative flex shrink-0 rounded-full p-0.5">
+              <SlidingPill watch={tf} className="bg-brand rounded-full shadow-[0_4px_12px_-4px_var(--accent-glow)]" />
+              {tfs.map((t) => (
+                <button key={t} role="tab" aria-selected={tf === t} data-active={tf === t} onClick={() => { setTf(t); setZone(null); }} className={cn("relative z-[1] rounded-full px-2 py-0.5 text-[11px] font-medium text-ink-3 transition-[color,transform] duration-200 hover:text-ink active:scale-90 @[420px]:px-2.5 @[420px]:py-1", tf === t && "text-white hover:text-white")}>
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="relative mt-1.5">
+            <SampleBadge label="Sample" className="absolute right-0 top-1" />
+            <div className="num text-[28px] font-semibold leading-tight tracking-[-0.025em] text-ink">{fmtNumber(a.last, d)}</div>
+            <div className={cn("num text-[14px] font-medium", up ? "text-up" : "text-down")}>{up ? "+" : "−"}{fmtNumber(Math.abs(a.change), d)} ({fmtPct(a.changePct, 2, true)})</div>
+          </div>
+        </div>
+      ) : (
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <InstrumentIcon symbol={symbol} className="h-9 w-9 text-xs" />
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-[15px] font-semibold text-ink">{symbol}</h3>
+              <span className="text-xs text-ink-3">{names[symbol]}</span>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="num text-2xl font-semibold tracking-[-0.02em] text-ink">{fmtNumber(a.last, d)}</span>
+              <span className={cn("num text-sm font-medium", up ? "text-up" : "text-down")}>
+                {up ? "+" : "−"}{fmtNumber(Math.abs(a.change), d)} ({fmtPct(a.changePct, 2, true)})
+              </span>
+            </div>
+          </div>
+        </div>
+        <div className="flex max-w-full flex-col items-end gap-2">
+          <SampleBadge />
+          <div role="tablist" aria-label="Timeframe" className="inset relative flex max-w-full overflow-x-auto rounded-full p-0.5 [scrollbar-width:none]">
+            <SlidingPill watch={tf} className="bg-brand rounded-full shadow-[0_4px_12px_-4px_var(--accent-glow)]" />
+            {tfs.map((t) => (
+              <button key={t} role="tab" aria-selected={tf === t} data-active={tf === t} onClick={() => { setTf(t); setZone(null); }} className={cn("relative z-[1] rounded-full px-2.5 py-1 text-xs font-medium text-ink-3 transition-[color,transform] duration-200 hover:text-ink active:scale-90", tf === t && "text-white hover:text-white")}>
+                {t}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+      )}
+
+      <div className={cn("mt-3 flex flex-wrap items-center gap-2 text-xs", compact && "hidden")}>
+        <Pill tone={a.bias.bias === "bullish" ? "up" : a.bias.bias === "bearish" ? "down" : "neutral"}>{tf} bias: {a.bias.bias === "insufficientData" ? "insufficient data" : a.bias.bias}</Pill>
+        {buy && <Pill tone="up">Next buy area {fmtNumber(buy.lower, d)}–{fmtNumber(buy.upper, d)}</Pill>}
+        {sell && <Pill tone="down">Next sell area {fmtNumber(sell.lower, d)}–{fmtNumber(sell.upper, d)}</Pill>}
+      </div>
+
+      <div className="mt-3">
+        <CandleChart
+          candles={a.candles}
+          zones={zones}
+          height={height}
+          digits={d}
+          label={`${symbol} ${tf} sample chart`}
+          onZoneSelect={explorable ? setZone : undefined}
+          selectedZoneId={zone?.id}
+          timeLabel={(t) => new Date(t * 1000).toLocaleDateString("en-GB", compact ? { day: "numeric" } : { day: "numeric", month: "short" })}
+          look={compact ? "design" : "default"}
+          tagTone={up ? "up" : "down"}
+        />
+      </div>
+      {explorable && !compact && <p className="mt-1 flex items-center gap-1.5 text-xs text-ink-3"><Info className="h-3.5 w-3.5" /> Tap a zone to see why it matters, what confirms it and what invalidates it.</p>}
+
+      {showMtf && (
+        <div className="mt-4 grid grid-cols-5 gap-1.5">
+          {mtf.map((m) => (
+            <BiasChip key={m.tf} tf={m.tf} bias={m.bias} role={m.role} />
+          ))}
+        </div>
+      )}
+
+      <AnimatePresence>
+        {explanation && zone && (
+          <motion.div
+            key={zone.id}
+            initial={{ opacity: 0, y: 16, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 12, scale: 0.98 }}
+            transition={{ type: "spring", stiffness: 300, damping: 28 }}
+            className="glass glass-strong absolute inset-x-3 bottom-3 top-16 z-10 overflow-y-auto rounded-3xl p-5 shadow-[var(--shadow-lg)] sm:inset-x-auto sm:right-3 sm:w-[400px]"
+            role="dialog"
+            aria-label={explanation.title}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <Pill tone={explanation.favours === "buyers" ? "up" : explanation.favours === "sellers" ? "down" : "accent"}>
+                  {zoneLabel[zone.kind]} · {zone.touches} touches
+                </Pill>
+                <h4 className="mt-2 text-base font-semibold leading-snug text-ink">{explanation.title}</h4>
+              </div>
+              <button onClick={() => setZone(null)} aria-label="Close" className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-inset text-ink-2 hover:text-ink">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <dl className="mt-4 grid gap-3.5 text-[13px] leading-relaxed">
+              {[
+                [Compass, "Why it matters", explanation.why],
+                [Ruler, "How it was identified", explanation.method],
+                [History, "What happened previously", explanation.history],
+                [CheckCircle2, "Confirmation to wait for", explanation.confirmation],
+                [CircleSlash, "What invalidates it", explanation.invalidation],
+                [Magnet, "Nearby liquidity", explanation.liquidity],
+                [Landmark, "Macro factors", explanation.macro],
+              ].map(([Icon, k, v]) => {
+                const I = Icon as typeof Compass;
+                return (
+                  <div key={k as string} className="flex gap-3">
+                    <I className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+                    <div>
+                      <dt className="font-semibold text-ink">{k as string}</dt>
+                      <dd className="text-ink-2">{v as string}</dd>
+                    </div>
+                  </div>
+                );
+              })}
+            </dl>
+            <p className="mt-4 border-t border-line pt-3 text-xs text-ink-3">Favours: {explanation.favours}. {explanation.disclaimer}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </Glass>
+  );
+}
