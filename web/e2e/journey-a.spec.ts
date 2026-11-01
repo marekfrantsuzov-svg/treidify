@@ -60,7 +60,7 @@ test("sign up, verify, onboard, dashboard, profile, two-step sign-in", async ({ 
   await expect(page.getByText(/Market data is not connected\. Everything below runs the real engine on sample bars/)).toBeVisible();
 
   // Every section in the navigation opens a real page.
-  for (const [path, heading] of [["/app/intelligence", "Market Intelligence"], ["/app/macro", "Macro Desk"], ["/app/markets", "Charts"], ["/app/news", "News & Calendar"], ["/app/ai-analysis", "AI Chart Analysis"], ["/app/journal", "Trading Journal"], ["/app/performance", "Performance"], ["/app/coach", "AI Coach"], ["/app/community", "Community"], ["/app/accounts", "Account connections"], ["/app/settings/accounts", "Account connections"]] as const) {
+  for (const [path, heading] of [["/app/intelligence", "Market Intelligence"], ["/app/macro", "Macro Desk"], ["/app/markets", "Markets"], ["/app/news", "News & Calendar"], ["/app/ai-analysis", "AI Chart Analysis"], ["/app/journal", "Trading Journal"], ["/app/performance", "Performance"], ["/app/coach", "AI Coach"], ["/app/community", "Community"], ["/app/accounts", "Account connections"], ["/app/settings/accounts", "Account connections"]] as const) {
     await page.goto(path);
     await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
   }

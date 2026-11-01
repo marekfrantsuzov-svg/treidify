@@ -35,3 +35,14 @@ export function PageHeader({ title, subtitle, children }: { title: string; subti
     </div>
   );
 }
+
+/** Slim, non-blocking prompt shown above a fully laid-out page whose figures read zero until MetaTrader is connected. */
+export function ConnectStrip({ text = "Not connected. Figures read zero until MT5 syncs." }: { text?: string }) {
+  return (
+    <Glass className="mb-4 flex items-center gap-3 rounded-[20px] py-2.5 pl-3.5 pr-2">
+      <span className="h-2 w-2 shrink-0 rounded-full bg-ink-3" aria-hidden />
+      <p className="min-w-0 flex-1 text-[12.5px] leading-snug text-ink-2">{text}</p>
+      <Link href="/app/accounts" className="press bg-brand inline-flex h-8 shrink-0 items-center gap-1 rounded-full px-3 text-[12.5px] font-semibold text-white shadow-[0_8px_18px_-8px_var(--accent-glow)]">Connect MT5<ArrowRight className="h-3.5 w-3.5" /></Link>
+    </Glass>
+  );
+}

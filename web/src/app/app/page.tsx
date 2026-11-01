@@ -1,4 +1,5 @@
 import { HealthRow } from "@/components/app/dashboard/health-row";
+import { QuickTools } from "@/components/app/dashboard/quick-tools";
 import { PositionsCard, RecentTradesCard } from "@/components/app/dashboard/cards";
 import { MarketIntel } from "@/components/intel/market-intel";
 import { NewsPanel } from "@/components/intel/news-list";
@@ -6,9 +7,6 @@ import { marketIntelligence } from "@/server/market/intelligence";
 import { economicCalendar, latestHeadlines, upcomingEvents } from "@/server/news/service";
 import { AccountPicker } from "@/components/app/account-picker";
 import { Alert } from "@/components/auth/auth-ui";
-import { GlassIcon } from "@/components/icons/glass-icon";
-import { Glass } from "@/components/ui/glass";
-import { ButtonLink } from "@/components/ui/button";
 import { TRIAL_HOURS } from "@/config/plans";
 import { readPeriod } from "@/lib/period-param";
 import { accountOverview, listAccounts } from "@/server/account-data";
@@ -34,7 +32,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   ]);
 
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
       <h1 className="sr-only">Dashboard</h1>
       {sp.welcome && (
         <div className="rise">
@@ -47,41 +45,26 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       )}
       {accounts.length > 1 && overview && <div className="flex justify-end"><AccountPicker accounts={accounts.map((a) => ({ id: a.id, label: a.label }))} selected={overview.account.id} /></div>}
 
+      <QuickTools />
+
       <MarketIntel initial={intel} />
 
-      {overview ? (
-        <HealthRow
-          label={`${overview.account.label}${overview.account.broker ? ` · ${overview.account.broker}` : ""}`}
-          currency={overview.account.currency}
-          sample={sample}
-          balance={overview.balance}
-          equity={overview.equity}
-          floating={overview.floating}
-          snapshotAt={overview.snapshotAt}
-          startingEquity={overview.startingEquity}
-          trades={overview.trades}
-          timezone={tz}
-          period={period.id}
-          custom={period.custom}
-          nowIso={nowIso}
-        />
-      ) : (
-        <section aria-labelledby="health-title" className="grid gap-3">
-          <h2 id="health-title" className="px-1 text-xs font-semibold uppercase tracking-[0.16em] text-ink-2">Your Account Health</h2>
-          <Glass className="relative overflow-hidden p-5 sm:p-7">
-            <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-[radial-gradient(circle,var(--accent-soft),transparent_70%)]" />
-            <div className="flex flex-col items-start gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:gap-5">
-              <GlassIcon name="link" size={64} />
-              <div className="min-w-0 flex-1">
-                <p className="text-xl font-semibold tracking-[-0.02em] text-ink sm:text-2xl">Connect MetaTrader to see your real Account Health.</p>
-                <p className="mt-1 max-w-2xl text-sm text-ink-2">Health score, balance, net P&amp;L and win rate are calculated from your own synced deals with a read-only investor password. Nothing here is estimated.</p>
-              </div>
-              <ButtonLink href="/app/accounts" size="lg">Connect account</ButtonLink>
-            </div>
-          </Glass>
-        </section>
-      )}
-
+      <HealthRow
+        state={!overview ? "none" : sample ? "sample" : overview.account.status === "connected" ? "connected" : "pending"}
+        label={overview ? `${overview.account.label}${overview.account.broker ? ` · ${overview.account.broker}` : ""}` : "Not connected"}
+        currency={overview?.account.currency ?? "USD"}
+        sample={sample}
+        balance={overview?.balance ?? null}
+        equity={overview?.equity ?? null}
+        floating={overview?.floating ?? null}
+        snapshotAt={overview?.snapshotAt ?? null}
+        startingEquity={overview?.startingEquity ?? 0}
+        trades={overview?.trades ?? []}
+        timezone={tz}
+        period={period.id}
+        custom={period.custom}
+        nowIso={nowIso}
+      />
 
       <NewsPanel news={news} events={events} tz={tz} nowMs={now.getTime()} />
 

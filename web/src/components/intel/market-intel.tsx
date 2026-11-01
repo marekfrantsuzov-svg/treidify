@@ -81,19 +81,19 @@ export function MarketIntel({ initial }: { initial: IntelSnapshot }) {
   return (
     <div className="grid gap-4">
       <section aria-labelledby="mi-title" className="relative">
-        <Glass strong className="relative overflow-hidden p-5 sm:p-7">
+        <Glass strong className="relative overflow-hidden p-4 sm:p-7">
           <div aria-hidden className="pointer-events-none absolute -left-24 -top-32 h-80 w-80 rounded-full bg-[radial-gradient(circle,var(--glow-a),transparent_70%)] blur-2xl" />
           <div aria-hidden className="pointer-events-none absolute -bottom-36 right-0 h-80 w-96 rounded-full bg-[radial-gradient(circle,var(--glow-b),transparent_70%)] blur-2xl" />
           <div className="relative flex flex-wrap items-end justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">Market Intelligence Today</p>
-              <h2 id="mi-title" className="mt-1 text-[26px] font-semibold leading-tight tracking-[-0.03em] text-ink sm:text-[30px]">
+              <h2 id="mi-title" className="mt-1 text-[24px] font-semibold leading-tight tracking-[-0.03em] text-ink sm:text-[30px]">
                 Gold <span className={biasTone[s.gold.bias]}>{biasText[s.gold.bias]}</span><span className="text-ink-3"> · </span>DXY <span className={biasTone[s.dxy.bias]}>{biasText[s.dxy.bias]}</span>
               </h2>
             </div>
             <DataChips s={s} />
           </div>
-          {sample && <p className="relative mt-3 max-w-3xl rounded-2xl bg-warn-soft px-4 py-2.5 text-[13px] text-ink">{s.message}</p>}
+          {sample && <p className="relative mt-3 max-w-3xl rounded-2xl bg-warn-soft px-3.5 py-2 text-[12.5px] leading-snug text-ink-2 sm:px-4 sm:py-2.5 sm:text-[13px]">{s.message}</p>}
           <div className="relative mt-5 grid grid-cols-3 gap-1 sm:gap-2">
             <Gauge title="Gold" subtitle="XAUUSD · multi-timeframe" bias={s.gold.bias} score={s.gold.score} confidence={s.gold.confidence} components={s.gold.components} limitations={s.gold.limitations} invalidation={s.gold.invalidation} asOf={s.asOf} sample={sample} />
             <Gauge title="DXY" subtitle="US Dollar Index" bias={s.dxy.bias} score={s.dxy.score} confidence={s.dxy.confidence} components={s.dxy.components} limitations={s.dxy.limitations} invalidation={s.dxy.invalidation} asOf={s.asOf} sample={sample} />

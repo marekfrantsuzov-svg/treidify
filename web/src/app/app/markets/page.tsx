@@ -4,7 +4,7 @@ import { ChartWorkspace } from "@/components/intel/chart-workspace";
 import { loadIntel } from "@/server/market/load";
 import { requireOnboarded } from "@/server/session";
 
-export const metadata = { title: "Charts" };
+export const metadata = { title: "Markets" };
 
 export default async function Charts({ searchParams }: { searchParams: Promise<{ symbol?: string }> }) {
   await requireOnboarded("/app/markets");
@@ -12,7 +12,7 @@ export default async function Charts({ searchParams }: { searchParams: Promise<{
   const sym = sp.symbol === "DXY" || sp.symbol === "XAGUSD" ? sp.symbol : "XAUUSD";
   return (
     <>
-      <PageHeader title="Charts" subtitle="Zoom, pan and toggle zones, Fibonacci, liquidity and structure. Tap a bubble for the reasoning." />
+      <PageHeader title="Markets" subtitle="Charts for Gold, DXY and Silver. Zoom, pan and toggle zones, Fibonacci, liquidity and structure." />
       {s.message && <div className="mb-4"><Alert tone="warn">{s.message}</Alert></div>}
       <ChartWorkspace snap={s} initial={sym} />
     </>

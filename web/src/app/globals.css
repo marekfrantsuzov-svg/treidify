@@ -404,3 +404,205 @@ body {
 :is(input, select, textarea).inset:focus, :is(input, select, textarea).inset:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); background-color: var(--surface-strong); }
 :is(input, select, textarea):disabled { cursor: not-allowed; opacity: 0.55; }
 input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
+
+/* ───────── Mobile shell (2026-11-01 rebuild) ─────────
+   iPhone-first chrome: a top bar that clears the status bar and Dynamic Island, a compact floating tab
+   bar above the home indicator, and a soft fade so content never collides with either. */
+:root, [data-theme="light"] {
+  --bar-bg: rgba(250, 249, 253, 0.9);
+  --bar-bg-solid: rgba(250, 249, 253, 0.92);
+  --bar-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 18px 40px -18px rgba(60, 40, 140, 0.32), 0 2px 6px -2px rgba(40, 24, 90, 0.08);
+  --tab-pill: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(239, 235, 255, 0.9));
+  --tab-pill-shadow: 0 6px 16px -8px rgba(83, 63, 245, 0.45), inset 0 0 0 1px rgba(83, 63, 245, 0.1), inset 0 1px 0 #fff;
+}
+[data-theme="dark"] {
+  --bar-bg: rgba(18, 15, 30, 0.86);
+  --bar-bg-solid: rgba(18, 15, 30, 0.9);
+  --bar-shadow: 0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 22px 50px -20px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(150, 125, 255, 0.08);
+  --tab-pill: linear-gradient(180deg, rgba(139, 123, 255, 0.24), rgba(139, 123, 255, 0.12));
+  --tab-pill-shadow: 0 8px 20px -10px rgba(110, 90, 255, 0.7), inset 0 0 0 1px rgba(170, 150, 255, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.m-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  padding-top: env(safe-area-inset-top);
+  transition: background-color 240ms var(--ease-out-3), box-shadow 240ms var(--ease-out-3), border-color 240ms linear;
+  border-bottom: 1px solid transparent;
+}
+.m-topbar[data-scrolled="true"] {
+  background: var(--bar-bg);
+  border-bottom-color: var(--border);
+  box-shadow: 0 10px 30px -22px rgba(40, 24, 90, 0.35);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+}
+.m-topbar-title {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  max-width: 46%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  opacity: 0;
+  transform: translate(-50%, calc(-50% + 6px));
+  transition: opacity 220ms var(--ease-out-3), transform 320ms var(--ease-spring);
+  pointer-events: none;
+}
+.m-topbar-title.is-shown { opacity: 1; transform: translate(-50%, -50%); }
+.m-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  color: var(--text-2);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: inset 0 1px 0 var(--highlight), 0 4px 12px -8px rgba(60, 40, 140, 0.35);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.m-main { padding-bottom: calc(112px + env(safe-area-inset-bottom)); }
+@media (min-width: 1024px) { .m-main { padding-bottom: 3rem; } }
+
+.m-bottom-fade {
+  position: fixed;
+  inset: auto 0 0 0;
+  height: calc(96px + env(safe-area-inset-bottom));
+  z-index: 35;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent, color-mix(in oklab, var(--bg-0) 78%, transparent) 70%);
+}
+.m-tabbar {
+  position: fixed;
+  z-index: 40;
+  left: 12px;
+  right: 12px;
+  bottom: max(10px, calc(env(safe-area-inset-bottom) - 12px));
+}
+.m-tabbar-inner {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  max-width: 440px;
+  margin: 0 auto;
+  padding: 5px;
+  border-radius: 28px;
+  background: var(--bar-bg);
+  border: 1px solid var(--border);
+  box-shadow: var(--bar-shadow);
+  backdrop-filter: blur(30px) saturate(190%);
+  -webkit-backdrop-filter: blur(30px) saturate(190%);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .m-tabbar-inner, .m-topbar[data-scrolled="true"] { background: var(--bar-bg-solid); }
+}
+.m-tab-pill { border-radius: 22px; background: var(--tab-pill); box-shadow: var(--tab-pill-shadow); }
+.m-tab {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  height: 54px;
+  border-radius: 22px;
+  color: var(--text-3);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: color 200ms linear;
+}
+.m-tab[data-active="true"] { color: var(--accent); }
+.m-tab-label { font-size: 10.5px; font-weight: 600; letter-spacing: -0.005em; line-height: 1; }
+.m-tab .tab-icon, .m-tab .ai-orb { transition: transform 160ms var(--ease-out-3); }
+.m-tab:active .tab-icon, .m-tab:active .ai-orb { transform: scale(0.84); transition-duration: 90ms; }
+.tab-icon.is-active { animation: tab-pop 460ms var(--ease-spring) both; filter: drop-shadow(0 3px 6px rgba(83, 63, 245, 0.35)); }
+@keyframes tab-pop { 0% { transform: scale(0.72); } 55% { transform: scale(1.12); } 100% { transform: scale(1); } }
+
+/* The AI tab: a small living orb in the brand gradient. */
+.ai-orb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: conic-gradient(from var(--orb-a, 0deg), #533ff5, #8a6dff, #ed74ce, #6d4df7, #533ff5);
+  box-shadow: 0 6px 14px -6px rgba(83, 63, 245, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.6), inset 0 -2px 4px rgba(40, 10, 120, 0.35);
+  animation: orb-spin 9s linear infinite;
+}
+.ai-orb::after {
+  content: "";
+  position: absolute;
+  inset: 1px 3px 50% 3px;
+  border-radius: 999px 999px 40% 40%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0));
+}
+.ai-orb > svg { position: relative; z-index: 1; filter: drop-shadow(0 1px 1px rgba(40, 10, 120, 0.4)); }
+.ai-orb.is-active { box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 18%, transparent), 0 8px 18px -6px rgba(237, 116, 206, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.6); }
+@property --orb-a { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+@keyframes orb-spin { to { --orb-a: 360deg; } }
+
+/* Bottom sheet. */
+.m-sheet {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  max-height: calc(100dvh - env(safe-area-inset-top) - 40px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 10px 18px calc(18px + env(safe-area-inset-bottom));
+  border-radius: 32px;
+  background: var(--bar-bg-solid);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+}
+@keyframes sheet-up { from { transform: translateY(105%); } to { transform: none; } }
+.sheet-up { animation: sheet-up 420ms var(--ease-spring) both; }
+
+/* Quick-access tool tiles. */
+.tool-tile { -webkit-tap-highlight-color: transparent; }
+.tool-tile .glass-icon { transition: transform 180ms var(--ease-out-3), box-shadow 240ms var(--ease-out-3); }
+.tool-tile:active .glass-icon { transform: scale(0.9); transition-duration: 90ms; }
+.tool-rail {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent);
+  mask-image: linear-gradient(90deg, #000 88%, transparent);
+}
+.tool-rail::-webkit-scrollbar { display: none; }
+.tool-rail > * { scroll-snap-align: start; flex: 0 0 auto; width: 74px; }
+
+/* A living background: the atmosphere's glows drift very slowly. Composited (transform only), so scrolling stays smooth. */
+@keyframes aurora { 0% { transform: translate3d(0, 0, 0) rotate(-18deg); } 50% { transform: translate3d(4vmax, -2vmax, 0) rotate(-14deg); } 100% { transform: translate3d(0, 0, 0) rotate(-18deg); } }
+@keyframes aurora-2 { 0% { transform: translate3d(0, 0, 0) rotate(-24deg); } 50% { transform: translate3d(-5vmax, 2vmax, 0) rotate(-28deg); } 100% { transform: translate3d(0, 0, 0) rotate(-24deg); } }
+.atmosphere::before { animation: aurora 26s ease-in-out infinite; will-change: transform; }
+.atmosphere::after { animation: aurora-2 32s ease-in-out infinite; will-change: transform; }
+
+/* Cards respond to touch with a gentle settle. */
+@media (hover: none) {
+  .glass-hover:active { transform: scale(0.985); transition-duration: 120ms; }
+}
+
+/* Account metric with no data yet: quiet, never alarming. */
+.metric-empty { color: var(--text-3); }
+
+@media (prefers-reduced-motion: reduce) {
+  .atmosphere::before, .atmosphere::after, .ai-orb, .tab-icon.is-active, .sheet-up { animation: none !important; }
+  .m-topbar-title { transition: none; }
+}

@@ -268,7 +268,22 @@ export function PositionsCard({ rows, currency, sample, connected }: { rows: Pos
       {rows.length === 0 ? (
         <p className="mt-6 pb-4 text-center text-sm text-ink-3">{connected ? "No open positions right now." : "Open positions appear here once your MetaTrader account is connected."}</p>
       ) : (
-        <div className="mt-3 overflow-x-auto">
+        <>
+        <ul className="num mt-2 sm:hidden">
+          {rows.map((r) => (
+            <li key={r.id}>
+              <Link href={`/app/journal?symbol=${encodeURIComponent(r.symbol)}`} className="flex items-center gap-3 border-t border-line py-3 first:border-t-0" aria-label={`View ${r.symbol} history`}>
+                <InstrumentIcon symbol={r.symbol} className="h-8 w-8 text-[10px]" />
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-2 text-[14px] font-semibold text-ink">{r.symbol}<span className={cn("rounded-full px-1.5 py-0.5 text-[10.5px] font-semibold", r.side === "buy" ? "bg-up-soft text-up" : "bg-down-soft text-down")}>{r.side === "buy" ? "Buy" : "Sell"} {fmtNumber(r.volume, 2)}</span></span>
+                  <span className="block truncate text-[11.5px] text-ink-3">{fmtNumber(r.openPrice, dp(r.symbol))} → {r.currentPrice === null ? "—" : fmtNumber(r.currentPrice, dp(r.symbol))}{r.stopLoss !== null ? ` · SL ${fmtNumber(r.stopLoss, dp(r.symbol))}` : ""}</span>
+                </span>
+                <span className={cn("text-[14px] font-semibold", (r.floatingPnl ?? 0) >= 0 ? "text-up" : "text-down")}>{r.floatingPnl === null ? "—" : fmtSignedMoney(r.floatingPnl, currency)}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-3 hidden overflow-x-auto sm:block">
           <table className="w-full min-w-[680px] text-left text-sm">
             <thead><tr className="text-[11px] text-ink-3">{["Symbol", "Side", "Size", "Entry", "Current", "P&L", "SL", "TP", "Actions"].map((h) => <th key={h} className={cn("pb-2 font-medium", h === "Actions" && "text-center")}>{h}</th>)}</tr></thead>
             <tbody className="num">
@@ -288,6 +303,7 @@ export function PositionsCard({ rows, currency, sample, connected }: { rows: Pos
             </tbody>
           </table>
         </div>
+        </>
       )}
     </Glass>
   );

@@ -12,6 +12,9 @@ export const metadata: Metadata = {
   openGraph: { type: "website", siteName: site.name, title: `${site.name}: ${site.tagline}`, description: site.description, url: site.url },
   twitter: { card: "summary_large_image", title: `${site.name}: ${site.tagline}`, description: site.description },
   robots: { index: true, follow: true },
+  // Added to an iPhone home screen, Treidify opens full screen; the app chrome pads for the status bar and Dynamic Island.
+  appleWebApp: { capable: true, title: site.name, statusBarStyle: "black-translucent" },
+  formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = {
@@ -19,8 +22,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#05070d" },
-    { media: "(prefers-color-scheme: light)", color: "#eef1f6" },
+    { media: "(prefers-color-scheme: dark)", color: "#08070d" },
+    { media: "(prefers-color-scheme: light)", color: "#f0f0f0" },
   ],
 };
 

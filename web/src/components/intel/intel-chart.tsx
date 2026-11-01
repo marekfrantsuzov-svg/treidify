@@ -36,6 +36,16 @@ export function IntelChart({ symbol, intel, initial, initialTf = "1H", sample, h
   const [layers, setLayers] = useState<Record<Layer, boolean>>({ zones: true, fib: true, liquidity: true, structure: true, volume: false });
   const [bands, setBands] = useState<Band[]>([]);
   const { resolvedTheme } = useTheme();
+  // Phone widths: axis labels only (no stacked titles), Fibonacci off by default, a legend under the chart instead.
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    const on = () => setNarrow(mq.matches);
+    on();
+    if (mq.matches) setLayers((x) => ({ ...x, fib: false }));
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
 
   // Create the chart once.
   useEffect(() => {
@@ -95,14 +105,14 @@ export function IntelChart({ symbol, intel, initial, initialTf = "1H", sample, h
     const s = series.current; if (!s) return;
     for (const l of lines.current) s.removePriceLine(l);
     lines.current = [];
-    const add = (price: number, color: string, title: string, style = LineStyle.Dashed) => lines.current.push(s.createPriceLine({ price, color, lineWidth: 1, lineStyle: style, axisLabelVisible: true, title }));
+    const add = (price: number, color: string, title: string, style = LineStyle.Dashed) => lines.current.push(s.createPriceLine({ price, color, lineWidth: 1, lineStyle: style, axisLabelVisible: true, title: narrow ? "" : title }));
     if (layers.fib && intel.fib) for (const l of intel.fib.levels) add(l.price, css("--accent-ice"), `Fib ${(l.ratio * 100).toFixed(1)}%`, LineStyle.Dotted);
     if (layers.liquidity) for (const p of intel.liquidity) add(p.price, css("--brand-pink") || "#ed74ce", p.side === "buy" ? "Equal highs" : "Equal lows", LineStyle.SparseDotted);
     vol.current?.applyOptions({ visible: layers.volume });
     const evs = layers.structure ? intel.structure.find((x) => x.tf === tf)?.events ?? [] : [];
-    const m: SeriesMarker<Time>[] = evs.filter((e) => candles.some((c) => c.t === e.t)).map((e) => ({ time: e.t as UTCTimestamp, position: e.direction === "bullish" ? "belowBar" : "aboveBar", shape: e.direction === "bullish" ? "arrowUp" : "arrowDown", color: e.direction === "bullish" ? css("--up") : css("--down"), text: e.kind }));
+    const m: SeriesMarker<Time>[] = evs.filter((e) => candles.some((c) => c.t === e.t)).map((e) => ({ time: e.t as UTCTimestamp, position: e.direction === "bullish" ? "belowBar" : "aboveBar", shape: e.direction === "bullish" ? "arrowUp" : "arrowDown", color: e.direction === "bullish" ? css("--up") : css("--down"), text: narrow ? undefined : e.kind }));
     markers.current?.setMarkers(m);
-  }, [intel, layers, tf, candles, resolvedTheme]);
+  }, [intel, layers, tf, candles, resolvedTheme, narrow]);
 
   // Zone bands follow the price scale.
   const measure = useCallback(() => {
@@ -110,10 +120,10 @@ export function IntelChart({ symbol, intel, initial, initialTf = "1H", sample, h
     const next = intel.zones.flatMap((z) => {
       const a = s.priceToCoordinate(z.upper), b = s.priceToCoordinate(z.lower);
       if (a === null || b === null) return [];
-      return [{ id: z.id, top: Math.min(a, b), height: Math.max(3, Math.abs(b - a)), side: z.side, label: `${z.side === "buy" ? "Potential BUY" : "Potential SELL"} · 1H · ${z.lower.toFixed(intel.digits)}–${z.upper.toFixed(intel.digits)}` }];
+      return [{ id: z.id, top: Math.min(a, b), height: Math.max(3, Math.abs(b - a)), side: z.side, label: narrow ? `${z.side === "buy" ? "BUY" : "SELL"} zone · 1H` : `${z.side === "buy" ? "Potential BUY" : "Potential SELL"} · 1H · ${z.lower.toFixed(intel.digits)}–${z.upper.toFixed(intel.digits)}` }];
     });
     setBands((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
-  }, [intel, layers.zones]);
+  }, [intel, layers.zones, narrow]);
   useEffect(() => {
     const c = chart.current; if (!c) return;
     let raf = 0;
@@ -154,6 +164,13 @@ export function IntelChart({ symbol, intel, initial, initialTf = "1H", sample, h
         {state === "loading" && <div className="absolute inset-0 grid place-items-center"><div className="skeleton h-full w-full rounded-3xl" /></div>}
         {state === "error" && <div className="absolute inset-0 grid place-items-center p-6 text-center text-sm text-ink-2">{err} Nothing is drawn rather than a guess.</div>}
       </div>
+      {narrow && (layers.fib || layers.liquidity || layers.zones) && (
+        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 px-1 text-[11px] text-ink-3" aria-label="Chart legend">
+          {layers.zones && <span className="inline-flex items-center gap-1.5"><span className="h-2 w-3 rounded-sm border border-[color-mix(in_oklab,var(--up)_45%,transparent)] bg-up-soft" />Zones</span>}
+          {layers.fib && intel.fib && <span className="inline-flex items-center gap-1.5"><span className="h-0 w-3 border-t-2 border-dotted border-[var(--accent-ice)]" />Fibonacci {intel.fib.levels.map((l) => `${(l.ratio * 100).toFixed(1)}`).join(" · ")}%</span>}
+          {layers.liquidity && intel.liquidity.length > 0 && <span className="inline-flex items-center gap-1.5"><span className="h-0 w-3 border-t-2 border-dotted border-[var(--brand-pink)]" />Equal highs / lows</span>}
+        </div>
+      )}
     </div>
   );
 }

@@ -14,7 +14,8 @@ import { GlassIcon, Glyph } from "@/components/icons/glass-icon";
 import { SlidingPill } from "@/components/ui/sliding-pill";
 import { Wordmark } from "@/components/ui/wordmark";
 import { LogoMark } from "@/components/brand/logo-mark";
-import { appNav, isActive, mobileTabs, primaryNav, toolNav, type NavItem } from "./nav";
+import { appNav, isActive, mobileTabBar, mobileTabs, primaryNav, toolNav, type NavItem } from "./nav";
+import { TabIcon, TabIconDefs } from "./tab-icons";
 
 export interface ShellUser { name: string; username: string | null; email: string; avatar: string | null; isAdmin: boolean }
 export interface ShellPlan { plan: "free" | "premium"; source: string; trialEndsAt: string | null }
@@ -191,7 +192,7 @@ function SearchPalette({ open, onClose }: { open: boolean; onClose: () => void }
   );
 }
 
-function UserMenu({ user, plan }: { user: ShellUser; plan: ShellPlan }) {
+function UserMenu({ user, plan, size = 44 }: { user: ShellUser; plan: ShellPlan; size?: number }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const ref = useDismiss<HTMLDivElement>(open, () => setOpen(false));
@@ -199,10 +200,10 @@ function UserMenu({ user, plan }: { user: ShellUser; plan: ShellPlan }) {
   return (
     <div ref={ref} className="relative">
       <button onClick={() => setOpen(!open)} aria-haspopup="menu" aria-expanded={open} aria-label="Account menu" className="press rounded-full shadow-[var(--shadow)] hover:shadow-[0_0_0_3px_var(--accent-soft),var(--shadow)]">
-        <Avatar user={user} size={44} />
+        <Avatar user={user} size={size} />
       </button>
       {open && (
-        <div role="menu" className="glass glass-strong pop-in absolute right-0 top-14 z-50 w-64 rounded-2xl p-2 shadow-[var(--shadow-lg)]">
+        <div role="menu" className="glass glass-strong pop-in absolute right-0 z-50 w-64 rounded-2xl p-2 shadow-[var(--shadow-lg)]" style={{ top: size + 10 }}>
           <div className="px-3 py-2">
             <div className="truncate text-sm font-semibold text-ink">{user.name}</div>
             <div className="truncate text-xs text-ink-3">{user.username ? `@${user.username}` : user.email}</div>
@@ -220,22 +221,119 @@ function UserMenu({ user, plan }: { user: ShellUser; plan: ShellPlan }) {
   );
 }
 
+const MORE_GROUPS: { title: string; hrefs: string[] }[] = [
+  { title: "Markets and intelligence", hrefs: ["/app/intelligence", "/app/macro", "/app/markets", "/app/news"] },
+  { title: "Your trading", hrefs: ["/app/performance", "/app/journal", "/app/coach", "/app/accounts"] },
+  { title: "Tools", hrefs: ["/app/ai-analysis", "/app/community", "/app/settings"] },
+];
+
 function MoreSheet({ open, onClose, path }: { open: boolean; onClose: () => void; path: string }) {
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.documentElement.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => { document.documentElement.style.overflow = prev; window.removeEventListener("keydown", onKey); };
+  }, [open, onClose]);
   if (!open) return null;
   return (
-    <div className="scrim-in fixed inset-0 z-50 bg-[rgba(20,12,40,0.3)] backdrop-blur-sm lg:hidden" onClick={onClose}>
-      <div role="dialog" aria-label="More" className="glass glass-strong sheet-in safe-bottom absolute inset-x-3 bottom-3 rounded-[28px] p-4 shadow-[var(--shadow-lg)]" onClick={(e) => e.stopPropagation()}>
-        <div className="mb-3 flex items-center justify-between px-1"><span className="text-sm font-semibold text-ink">All sections</span><button onClick={onClose} aria-label="Close" className="grid h-8 w-8 place-items-center rounded-full text-ink-3"><X className="h-4 w-4" /></button></div>
-        <div className="mb-4 flex flex-wrap items-center gap-2 px-1"><DateSelector /><ThemeSwitch compact /></div>
-        <div className="grid grid-cols-4 gap-y-4">
-          {appNav.map((n) => (
-            <Link key={n.href} href={n.href} onClick={onClose} className="press grid justify-items-center gap-1.5 text-center text-[11px] font-medium text-ink-2">
-              <GlassIcon name={n.icon} size={48} active={isActive(path, n.href)} />{n.short}
-            </Link>
+    <div className="scrim-in fixed inset-0 z-50 bg-[rgba(20,12,40,0.32)] backdrop-blur-[6px] lg:hidden" onClick={onClose}>
+      <div role="dialog" aria-modal="true" aria-label="More" className="m-sheet sheet-up" onClick={(e) => e.stopPropagation()}>
+        <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-[var(--border-strong)]" aria-hidden />
+        <div className="mb-4 flex items-center justify-between px-1">
+          <span className="text-[17px] font-semibold tracking-[-0.02em] text-ink">All sections</span>
+          <button onClick={onClose} aria-label="Close" className="press glass grid h-9 w-9 place-items-center rounded-full text-ink-2"><X className="h-4 w-4" /></button>
+        </div>
+        <div className="grid gap-5">
+          {MORE_GROUPS.map((g) => (
+            <section key={g.title}>
+              <p className="mb-2.5 px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-3">{g.title}</p>
+              <div className="grid grid-cols-4 gap-y-3">
+                {g.hrefs.map((href) => {
+                  const n = appNav.find((x) => x.href === href)!;
+                  const active = isActive(path, n.href);
+                  return (
+                    <Link key={n.href} href={n.href} onClick={onClose} aria-current={active ? "page" : undefined} className="tool-tile grid justify-items-center gap-1.5 text-center text-[11.5px] font-medium text-ink-2">
+                      <GlassIcon name={n.icon} size={54} active={active} />
+                      <span className={cn("max-w-full truncate px-0.5", active && "font-semibold text-accent")}>{n.short === "Health" ? "Health" : n.short}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </section>
           ))}
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-4">
+            <DateSelector />
+            <ThemeSwitch compact />
+          </div>
         </div>
       </div>
     </div>
+  );
+}
+
+/** iPhone top bar: clears the status bar and Dynamic Island, turns to frosted glass once content scrolls under it. */
+function MobileTopBar({ user, plan, unread, onSearch, title }: { user: ShellUser; plan: ShellPlan; unread: number; onSearch: () => void; title: string | null }) {
+  const [scroll, setScroll] = useState(0);
+  useEffect(() => {
+    let raf = 0;
+    const on = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => setScroll(window.scrollY > 64 ? 2 : window.scrollY > 4 ? 1 : 0)); };
+    on();
+    window.addEventListener("scroll", on, { passive: true });
+    return () => { cancelAnimationFrame(raf); window.removeEventListener("scroll", on); };
+  }, []);
+  return (
+    <header className="m-topbar lg:hidden" data-scrolled={scroll > 0}>
+      <div className="relative flex h-[54px] items-center gap-2 px-4">
+        <Link href="/app" aria-label="Treidify home" className="press flex items-center gap-2 text-[18px] font-bold tracking-[-0.035em] text-ink">
+          <LogoMark size={30} priority />
+          <span className={cn("transition-opacity duration-200", title && scroll === 2 && "opacity-0")}>Treidify</span>
+        </Link>
+        {title && <span aria-hidden className={cn("m-topbar-title", scroll === 2 && "is-shown")}>{title}</span>}
+        <div className="ml-auto flex items-center gap-1.5">
+          <button onClick={onSearch} aria-label="Search" className="m-icon-btn press"><Search className="h-[18px] w-[18px]" /></button>
+          <Link href="/app/notifications" aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"} className="m-icon-btn press relative">
+            <Bell className="h-[18px] w-[18px]" />
+            {unread > 0 && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-down ring-2 ring-[var(--surface-strong)]" />}
+          </Link>
+          <UserMenu user={user} plan={plan} size={36} />
+        </div>
+      </div>
+    </header>
+  );
+}
+
+/** Floating tab bar: Home, Markets, AI (centre), Community, More. One travelling glass pill marks the active tab. */
+function TabBar({ path, more, onMore }: { path: string; more: boolean; onMore: () => void }) {
+  const moreActive = more || !mobileTabs.some((h) => isActive(path, h));
+  return (
+    <>
+      <div aria-hidden className="m-bottom-fade lg:hidden" />
+      <nav aria-label="Main" className="m-tabbar lg:hidden">
+        <TabIconDefs />
+        <div className="m-tabbar-inner">
+          <SlidingPill watch={`${path}${more}`} className="m-tab-pill" />
+          {mobileTabBar.map((t) => {
+            const active = isActive(path, t.href) && !more;
+            return (
+              <Link key={t.href} href={t.href} data-active={active} aria-current={active ? "page" : undefined} className="m-tab">
+                {t.icon === "ai" ? (
+                  <span className={cn("ai-orb", active && "is-active")}><TabIcon name="ai" active={false} size={20} className="text-white" /></span>
+                ) : (
+                  <TabIcon key={String(active)} name={t.icon} active={active} />
+                )}
+                <span className="m-tab-label">{t.label}</span>
+              </Link>
+            );
+          })}
+          <button type="button" onClick={onMore} data-active={moreActive} aria-label="More sections" aria-expanded={more} className="m-tab">
+            <TabIcon key={String(moreActive)} name="more" active={moreActive} />
+            <span className="m-tab-label">More</span>
+          </button>
+        </div>
+      </nav>
+    </>
   );
 }
 
@@ -249,7 +347,7 @@ export function AppShell({ user, plan, account, timezone, greeting, unread, chil
   }, []);
   useEffect(() => setMore(false), [path]);
   const first = user.name.split(" ")[0];
-  const moreActive = !mobileTabs.some((h) => isActive(path, h));
+  const pageTitle = path === "/app" ? null : appNav.find((n) => isActive(path, n.href))?.label ?? (path.startsWith("/app/notifications") ? "Notifications" : null);
   // Collapsible sidebar, remembered on this device.
   const [collapsed, setCollapsed] = useState(false);
   useEffect(() => { setCollapsed(localStorage.getItem("treidify.sidebar") === "collapsed"); }, []);
@@ -285,10 +383,11 @@ export function AppShell({ user, plan, account, timezone, greeting, unread, chil
         </div>
       </aside>
 
-      <header className="sticky top-0 z-30 px-3 pt-3 sm:px-5 lg:pt-4">
-        <div className="flex items-center gap-3 rounded-full py-1 max-lg:glass max-lg:h-14 max-lg:pl-4 max-lg:pr-1.5">
-          <div className="lg:hidden"><Wordmark href="/app" /></div>
-          <div className="hidden min-w-0 flex-1 lg:block">
+      <MobileTopBar user={user} plan={plan} unread={unread} onSearch={() => setSearch(true)} title={pageTitle} />
+
+      <header className="relative z-30 hidden px-5 pt-4 lg:block">
+        <div className="flex items-center gap-3 rounded-full py-1">
+          <div className="min-w-0 flex-1">
             <p className="truncate text-[27px] font-bold leading-tight tracking-[-0.03em] text-ink">{greeting}, {first} <span aria-hidden>👋</span></p>
             <div className="mt-1"><MarketStatusChips /></div>
           </div>
@@ -298,38 +397,30 @@ export function AppShell({ user, plan, account, timezone, greeting, unread, chil
               <span className="flex-1 truncate text-left">Search markets, news, or ask AI…</span>
               <kbd className="inset rounded-md px-1.5 py-0.5 text-[11px] font-medium text-ink-3">⌘K</kbd>
             </button>
-            <button onClick={() => setSearch(true)} aria-label="Search" className="glass press grid h-11 w-11 place-items-center rounded-full 2xl:hidden max-lg:hidden"><Search className="h-[18px] w-[18px] text-ink-2" /></button>
-            <div className="hidden lg:block"><DateSelector /></div>
-            <Link href="/app/notifications" aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"} className="press relative grid h-11 w-11 place-items-center rounded-full hover:text-accent lg:glass">
+            <button onClick={() => setSearch(true)} aria-label="Search" className="glass press grid h-11 w-11 place-items-center rounded-full 2xl:hidden"><Search className="h-[18px] w-[18px] text-ink-2" /></button>
+            <DateSelector />
+            <Link href="/app/notifications" aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"} className="glass press relative grid h-11 w-11 place-items-center rounded-full hover:text-accent">
               <Bell className="h-5 w-5 text-ink-2" />
               {unread > 0 && <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-down ring-2 ring-[var(--surface-strong)]" />}
             </Link>
-            <div className="hidden md:block"><ThemeSwitch /></div>
+            <ThemeSwitch />
             <UserMenu user={user} plan={plan} />
           </div>
         </div>
-        <div className="mt-4 px-1 lg:hidden"><p className="text-[22px] font-bold tracking-[-0.03em] text-ink">{greeting}, {first} <span aria-hidden>👋</span></p><div className="mt-1.5"><MarketStatusChips /></div></div>
       </header>
 
-      <main id="main" className="mx-auto w-full max-w-[1400px] px-3 pb-36 pt-4 sm:px-5 lg:pb-12">{children}</main>
+      <main id="main" className="m-main mx-auto w-full max-w-[1400px] px-4 pt-2 sm:px-5 lg:pb-12 lg:pt-4">
+        {path === "/app" && (
+          <div className="mb-4 px-0.5 lg:hidden">
+            <p className="text-[13px] font-medium text-ink-3" suppressHydrationWarning>{new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: timezone }).format(new Date())}</p>
+            <p className="mt-0.5 text-[28px] font-bold leading-[1.1] tracking-[-0.035em] text-ink">{greeting}, <span className="text-brand">{first}</span></p>
+            <div className="mt-2.5"><MarketStatusChips /></div>
+          </div>
+        )}
+        {children}
+      </main>
 
-      <nav aria-label="Main" className="safe-bottom fixed inset-x-3 bottom-3 z-40 lg:hidden">
-        <div className="glass glass-strong relative mx-auto grid max-w-md grid-cols-5 rounded-[28px] p-1.5 shadow-[var(--shadow-lg)]">
-          <SlidingPill watch={`${path}${more}`} className="rounded-[22px] bg-accent-soft shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--accent)_14%,transparent)]" />
-          {mobileTabs.map((href) => {
-            const n = appNav.find((x) => x.href === href)!;
-            const active = isActive(path, href);
-            return (
-              <Link key={href} href={href} data-active={active && !more} aria-current={active ? "page" : undefined} className={cn("relative z-[1] flex flex-col items-center gap-1 rounded-[22px] py-2 text-[10.5px] font-medium text-ink-3 transition-[color,transform] duration-200 active:scale-95", active && "text-accent")}>
-                <n.line className="h-[22px] w-[22px]" strokeWidth={active ? 2.2 : 1.8} />{n.short}
-              </Link>
-            );
-          })}
-          <button onClick={() => setMore(true)} data-active={moreActive || more} aria-label="More sections" className={cn("relative z-[1] flex flex-col items-center gap-1 rounded-[22px] py-2 text-[10.5px] font-medium text-ink-3 transition-[color,transform] duration-200 active:scale-95", (moreActive || more) && "text-accent")}>
-            <LayoutGrid className="h-[22px] w-[22px]" strokeWidth={moreActive ? 2.2 : 1.8} />More
-          </button>
-        </div>
-      </nav>
+      <TabBar path={path} more={more} onMore={() => setMore(true)} />
 
       <MoreSheet open={more} onClose={() => setMore(false)} path={path} />
       <SearchPalette open={search} onClose={() => setSearch(false)} />
