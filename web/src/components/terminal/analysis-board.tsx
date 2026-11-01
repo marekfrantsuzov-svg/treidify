@@ -231,17 +231,17 @@ function LiquidityLadder({ o, m15, g }: { o: TfOverlays | null; m15: TfOverlays 
   const at = rows.findIndex((r) => r.price < last);
   const above = at < 0 ? rows : rows.slice(0, at), below = at < 0 ? [] : rows.slice(at);
   const Row = (b: (typeof rows)[number]) => (
-    <li key={`${b.tf}-${b.id}`} className={cn("ladder-row", b.side === "buy" ? "is-bsl" : "is-ssl", b.state !== "unswept" && "is-swept")}>
-      <span className={cn("ladder-heat", `is-${b.estimate.toLowerCase()}`)} aria-hidden />
+    <li key={`${b.tf}-${b.id}`} className={cn("liqlad-row", b.side === "buy" ? "is-bsl" : "is-ssl", b.state !== "unswept" && "is-swept")}>
+      <span className={cn("liqlad-heat", `is-${b.estimate.toLowerCase()}`)} aria-hidden />
       <span className="min-w-0 truncate">{b.side === "buy" ? "BSL" : "SSL"} · {b.kind === "equal-highs" ? "Equal highs" : b.kind === "equal-lows" ? "Equal lows" : b.kind === "swing-high" ? "Swing high" : "Swing low"} · {b.tf}</span>
       <span className="ml-auto shrink-0 font-semibold">{b.state === "unswept" ? `${b.estimate} est.` : b.state === "swept" ? "Swept" : "Taken"}</span>
       <span className="num w-[72px] shrink-0 text-right text-ink">{fmtPrice(b.price, g.digits)}</span>
     </li>
   );
   return (
-    <ul className="ladder">
+    <ul className="liqlad">
       {above.map(Row)}
-      <li className="ladder-price"><span className="num">Price {fmtPrice(last, g.digits)}</span></li>
+      <li className="liqlad-price"><span className="num">Price {fmtPrice(last, g.digits)}</span></li>
       {below.map(Row)}
     </ul>
   );
