@@ -17,7 +17,8 @@ test("sign up, verify, onboard, dashboard, profile, two-step sign-in", async ({ 
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("checkbox").check();
   await page.getByRole("button", { name: "Create free account" }).click();
-  await expect(page.getByRole("heading", { name: "Check your inbox" })).toBeVisible();
+  // The first request to each route compiles it on the CI dev server, which can take well over 5 s.
+  await expect(page.getByRole("heading", { name: "Check your inbox" })).toBeVisible({ timeout: 30_000 });
 
   await page.goto(await linkFromOutbox(page, email, "/api/auth/verify-email"));
   await expect(page).toHaveURL(/\/onboarding/);
@@ -51,7 +52,7 @@ test("sign up, verify, onboard, dashboard, profile, two-step sign-in", async ({ 
   await expect(page.getByRole("checkbox", { name: /Premium trial/ })).toHaveAttribute("aria-checked", "true");
   await enter.click();
 
-  await expect(page).toHaveURL(/\/app\?welcome=trial/);
+  await expect(page).toHaveURL(/\/app\?welcome=trial/, { timeout: 30_000 });
   await expect(page.getByText(/72-hour Premium trial is active/)).toBeVisible();
   // Market Intelligence leads the dashboard; Account Health follows it.
   await expect(page.getByText("Market Intelligence Today")).toBeVisible();
