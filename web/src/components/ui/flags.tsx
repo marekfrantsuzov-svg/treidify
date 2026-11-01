@@ -64,7 +64,22 @@ export function AssetMark({ symbol, size = 24, className }: { symbol: string; si
   if (symbol === "BTCUSD") {
     return <svg viewBox="0 0 32 32" width={size} height={size} aria-hidden className={cn("shrink-0", className)}><circle cx="16" cy="16" r="16" fill="#f7931a" /><path d="M12.5 9v14M15 8v2M15 22v2M12.5 10h5.2a3 3 0 010 6H12.5m0 0h6a3.2 3.2 0 010 6.4h-6" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>;
   }
-  const base = symbol === "DXY" ? "US" : symbol.slice(0, 3);
+  const CRYPTO: Record<string, [string, string]> = { ETHUSD: ["#627eea", "Ξ"], SOLUSD: ["#14b8a6", "S"], XRPUSD: ["#23292f", "X"], BNBUSD: ["#f0b90b", "B"], ADAUSD: ["#0033ad", "A"], LTCUSD: ["#345d9d", "Ł"], DOGEUSD: ["#c2a633", "Ð"] };
+  if (CRYPTO[symbol]) {
+    const [bg, ch] = CRYPTO[symbol]!;
+    return <svg viewBox="0 0 32 32" width={size} height={size} aria-hidden className={cn("shrink-0", className)}><circle cx="16" cy="16" r="16" fill={bg} /><text x="16" y="21.5" textAnchor="middle" fontSize="15" fontWeight="700" fill="#fff" fontFamily="system-ui, sans-serif">{ch}</text></svg>;
+  }
+  if (symbol === "XPTUSD" || symbol === "XPDUSD" || symbol === "COPPER") {
+    const [a, b] = symbol === "COPPER" ? ["#f3b48b", "#b8622f"] : symbol === "XPTUSD" ? ["#eef1f6", "#9aa3b5"] : ["#e9e4ef", "#9a8fae"];
+    return <svg viewBox="0 0 32 32" width={size} height={size} aria-hidden className={cn("shrink-0", className)}><defs><linearGradient id={`m-${symbol}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={a} /><stop offset="1" stopColor={b} /></linearGradient></defs><path d="M5 23l4-10h14l4 10z" fill={`url(#m-${symbol})`} stroke={b} strokeWidth=".8" /></svg>;
+  }
+  if (symbol === "USOIL" || symbol === "UKOIL" || symbol === "NATGAS") {
+    const gas = symbol === "NATGAS";
+    return <svg viewBox="0 0 32 32" width={size} height={size} aria-hidden className={cn("shrink-0", className)}><circle cx="16" cy="16" r="16" fill={gas ? "#1d6fd8" : "#1f1b24"} />{gas ? <path d="M16 7c1 4 6 6 6 11a6 6 0 01-12 0c0-3 2-4 3-6 0 2 1 3 2 3 0-3-1-5 1-8z" fill="#7cc4ff" /> : <path d="M16 7c3 5 7 9 7 13a7 7 0 01-14 0c0-4 4-8 7-13z" fill={symbol === "UKOIL" ? "#e6b422" : "#f2f2f2"} />}</svg>;
+  }
+  // Indices and benchmarks: the country of the exchange.
+  const INDEX: Record<string, string> = { US100: "US", US30: "US", SPX500: "US", VIX: "US", DXY: "US", DAX40: "DE", UK100: "GB", JP225: "JP" };
+  const base = INDEX[symbol] ?? symbol.slice(0, 3);
   const map: Record<string, string> = { EUR: "EU", GBP: "GB", USD: "US", JPY: "JP", CHF: "CH", CAD: "CA", AUD: "AU", NZD: "NZ", CNY: "CN" };
   return <Flag code={map[base] ?? base} size={size} className={className} />;
 }

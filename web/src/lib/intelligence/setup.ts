@@ -1,5 +1,5 @@
 import type { InstrumentIntel, Zone } from "./engine";
-import { MAX_STOP_PIPS, PIP_SIZE, pips, stopCheck } from "@/lib/trading/pips";
+import { MAX_STOP_PIPS, PIP_SIZE, formatPips, pips, stopCheck } from "@/lib/trading/pips";
 
 export { MAX_STOP_PIPS, PIP_SIZE, pips };
 
@@ -64,7 +64,7 @@ export function tradeSetup(i: InstrumentIntel): TradeSetup {
   const entry = { lower: z.lower, upper: z.upper };
   if (!check.eligible && max !== null) {
     return wait(i, [
-      `The ${side} zone ${z.lower.toFixed(i.digits)}–${z.upper.toFixed(i.digits)} is only invalidated at ${stop.toFixed(i.digits)}, a ${stopPips}-pip stop from the zone edge.`,
+      `The ${side} zone ${z.lower.toFixed(i.digits)}–${z.upper.toFixed(i.digits)} is only invalidated at ${stop.toFixed(i.digits)}, a ${formatPips(i.symbol, stopPips)} stop from the zone edge.`,
       `That is above the ${max}-pip maximum ($${check.maxPrice!.toFixed(2)} of price movement), so there is no valid trade. The stop is not tightened to fit.`,
     ], { side, entry, stop, stopPips, zoneId: z.id });
   }
@@ -77,7 +77,7 @@ export function tradeSetup(i: InstrumentIntel): TradeSetup {
   if (z.status !== "confirmed") {
     return wait(i, [
       z.status === "in-zone" ? `Price is inside the ${side} zone ${z.lower.toFixed(i.digits)}–${z.upper.toFixed(i.digits)}, but the 5M ${buy ? "bullish" : "bearish"} confirmation has not printed.` : `Waiting for price to reach the ${side} zone ${z.lower.toFixed(i.digits)}–${z.upper.toFixed(i.digits)} and confirm on 5M.`,
-      `If it confirms, the structural stop at ${stop.toFixed(i.digits)} is ${stopPips} pips, within the ${max ?? "–"}-pip limit.`,
+      `If it confirms, the structural stop at ${stop.toFixed(i.digits)} is ${formatPips(i.symbol, stopPips)}${max !== null ? `, within the ${max}-pip limit` : ""}.`,
     ], { side, entry, stop: Number(stop.toFixed(i.digits)), stopPips, zoneId: z.id, targets: t.slice(0, 2) });
   }
   const quality = i.confidence === "high" ? "high" : i.confidence === "medium" ? "medium" : "low";
@@ -86,7 +86,7 @@ export function tradeSetup(i: InstrumentIntel): TradeSetup {
     reasons: [
       `${z.reasons[0]}${z.reasons.length > 2 ? ", with confluence" : ""}.`,
       "A 5M structure break has printed inside the zone.",
-      `Stop at ${stop.toFixed(i.digits)} is where the zone is invalidated (${stopPips} pips${max !== null ? `, within the ${max}-pip limit` : ""}).`,
+      `Stop at ${stop.toFixed(i.digits)} is where the zone is invalidated (${formatPips(i.symbol, stopPips)}${max !== null ? `, within the ${max}-pip limit` : ""}).`,
     ],
   };
 }

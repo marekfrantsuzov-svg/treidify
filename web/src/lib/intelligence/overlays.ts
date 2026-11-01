@@ -2,6 +2,7 @@ import { atr as atrSeries } from "@/lib/analytics/indicators";
 import { cluster } from "@/lib/analytics/levels";
 import type { Candle, SwingPoint } from "@/lib/analytics/types";
 import { stopCheck, type StopCheck } from "@/lib/trading/pips";
+import { INSTRUMENTS } from "@/lib/markets/registry";
 import { FIB_LEVELS } from "./fibonacci";
 import { analyzeStructure, type StructureEvent, type Trend } from "./structure";
 
@@ -126,8 +127,8 @@ export interface TfOverlays {
   limitations: string[];
 }
 
-/** Instruments whose vendor volume is tick volume (OTC spot metals and FX, and the computed dollar index). */
-const TICK_VOLUME = new Set(["XAUUSD", "XAGUSD", "DXY", "EURUSD"]);
+/** Whether the provider's volume is tick volume (OTC spot metals, FX, energy CFDs) or traded volume (crypto). */
+const volumeKind = (symbol: string) => INSTRUMENTS[symbol]?.volume ?? "tick";
 
 const body = (c: Candle) => Math.abs(c.c - c.o);
 const fmt = (v: number, d: number) => v.toFixed(d);
@@ -170,7 +171,7 @@ function labelSwings(swings: readonly SwingPoint[]): SwingLabel[] {
 
 export function volumeInfo(symbol: string, candles: readonly Candle[], sample = false): VolumeInfo {
   const has = candles.some((c) => (c.v ?? 0) > 0);
-  if (!has) return { kind: "none", label: "Volume unavailable", note: `The data source does not report volume for ${symbol}. Spot gold and FX trade over the counter, so there is no single exchange volume.`, rel: candles.map(() => null), highIndices: [] };
+  if (!has) return { kind: "none", label: "Volume unavailable", note: volumeKind(symbol) === "none" && INSTRUMENTS[symbol]?.category === "indices" ? `The data source does not report volume for the ${symbol} cash index. Index level is calculated from its members, so the index itself has no traded volume.` : `The data source does not report volume for ${symbol}. ${INSTRUMENTS[symbol]?.category === "crypto" ? "" : "OTC markets such as spot metals and FX have no single exchange volume."}`.trim(), rel: candles.map(() => null), highIndices: [] };
   const n = OVERLAY_RULES.relVolPeriod;
   const rel = candles.map((c, i) => {
     if (i < n || !c.v) return null;
@@ -178,11 +179,11 @@ export function volumeInfo(symbol: string, candles: readonly Candle[], sample = 
     return avg > 0 ? c.v / avg : null;
   });
   const highIndices = rel.flatMap((r, i) => (r !== null && r >= OVERLAY_RULES.relVolHigh ? [i] : []));
-  const tick = TICK_VOLUME.has(symbol);
+  const tick = volumeKind(symbol) !== "exchange";
   return {
     kind: tick ? "tick" : "exchange",
     label: sample ? "Sample volume" : tick ? "Tick volume" : "Volume",
-    note: sample ? "Sample bars: volume is illustrative." : tick ? "Tick volume counts price updates from the data provider. It is a proxy for activity, not traded contracts, and it cannot show who bought or sold." : "Traded volume reported by the data provider.",
+    note: sample ? "Sample bars: volume is illustrative." : tick ? "Tick volume counts price updates from the data provider. It is a proxy for activity, not traded contracts, and it cannot show who bought or sold." : "Traded volume aggregated by the data provider. Crypto volume is spread over many exchanges, so it is a partial view.",
     rel, highIndices,
   };
 }
@@ -375,7 +376,7 @@ export function zoneReadiness(o: TfOverlays, z: SDZone, htfTrend: Trend | null):
     { id: "trend", label: "Higher-timeframe trend agrees", done: aligned, detail: htfTrend === null ? "4H structure is unavailable." : htfTrend === "none" ? "4H has no confirmed structure break yet." : aligned ? `4H structure is ${htfTrend}.` : `4H structure is ${htfTrend}, against this ${z.kind} zone.` },
     { id: "reach", label: "Price has reached the zone", done: reached, detail: reached ? (inZone ? "Price is inside the zone now." : `Price tested it ${z.tests} time${z.tests === 1 ? "" : "s"}.`) : `Price is ${last !== null && o.atr ? (Math.abs(last - z.proximal) / o.atr).toFixed(1) : "?"} × ATR away.` },
     { id: "confirm", label: `${dir === "bullish" ? "Bullish" : "Bearish"} structure break after the touch`, done: !!confirm, detail: confirm ? `${o.tf} ${confirm.kind} through ${fmt(confirm.level, o.digits)}.` : `Still missing: a ${o.tf === "5M" || o.tf === "1M" ? o.tf : "lower-timeframe (5M)"} ${dir} CHOCH from inside the zone.` },
-    { id: "stop", label: z.stop.max !== null ? `Structural stop within ${z.stop.max} pips` : "Structural stop defined", done: z.stop.eligible, detail: `${z.stop.pips} pips from ${fmt(z.proximal, o.digits)} to ${fmt(z.invalidation, o.digits)}${z.stop.max !== null ? ` (max ${z.stop.max} pips = $${z.stop.maxPrice!.toFixed(2)})` : ""}.` },
+    { id: "stop", label: z.stop.max !== null ? `Structural stop within ${z.stop.max} pips` : "Structural stop defined", done: z.stop.eligible, detail: `${z.stop.pips} ${z.stop.unit}s from ${fmt(z.proximal, o.digits)} to ${fmt(z.invalidation, o.digits)}${z.stop.max !== null ? ` (max ${z.stop.max} pips = $${z.stop.maxPrice!.toFixed(2)})` : ""}.` },
   ];
   const valid = checks.every((c) => c.done);
   const missing = checks.filter((c) => !c.done && c.id !== "live" && c.id !== "stop").map((c) => c.label.toLowerCase());

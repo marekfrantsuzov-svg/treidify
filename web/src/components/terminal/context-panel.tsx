@@ -21,7 +21,7 @@ export function ZoneList({ o, selected, onSelect, max = 6 }: { o: TfOverlays; se
                 <span className="block text-[11px] font-bold uppercase tracking-[0.08em]">{buy ? "Buy zone" : "Sell zone"} <span className="font-semibold normal-case tracking-normal text-ink-3">· {z.tf} · {statusText[z.status]}</span></span>
                 <span className="num block text-[14px] font-semibold text-ink">{fmtPrice(z.lower, o.digits)} – {fmtPrice(z.upper, o.digits)}</span>
               </span>
-              <span className={cn("num shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold", z.stop.eligible ? "bg-up-soft text-up" : "bg-warn-soft text-warn")} title="Structural stop distance">{z.stop.pips} p</span>
+              <span className={cn("num shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold", z.stop.eligible ? "bg-up-soft text-up" : "bg-warn-soft text-warn")} title="Structural stop distance">{z.stop.pips} {z.stop.unit === "pip" ? "p" : "pt"}</span>
               <ChevronRight className="h-4 w-4 shrink-0 text-ink-3" />
             </button>
           </li>

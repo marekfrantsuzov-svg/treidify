@@ -4,10 +4,14 @@ import {
   type GoldImpact, type InstrumentIntel, type Relation, type Scenario, type SentEvent, type SentHeadline, type ZoneBrief,
 } from "@/lib/intelligence";
 import { AssetMark } from "@/components/ui/flags";
+import { SlotTrigger } from "@/components/markets/instrument-picker";
+import { INSTRUMENTS } from "@/lib/markets/registry";
+import { formatPips } from "@/lib/trading/pips";
 import { cn } from "@/lib/cn";
 import { BiasBadge, More, PriceLadder, SourceChip, StopMeter, TfRow, fmtP } from "./parts";
 
 const NAME: Record<string, { name: string; sub: string }> = { XAUUSD: { name: "Gold", sub: "XAUUSD" }, DXY: { name: "US Dollar Index", sub: "DXY" }, XAGUSD: { name: "Silver", sub: "XAGUSD" } };
+const nameFor = (symbol: string) => NAME[symbol] ?? { name: INSTRUMENTS[symbol]?.name ?? symbol, sub: symbol };
 
 function Stat({ icon, label, children, tone }: { icon: React.ReactNode; label: string; children: React.ReactNode; tone?: "up" | "down" | "flat" }) {
   return (
@@ -18,12 +22,17 @@ function Stat({ icon, label, children, tone }: { icon: React.ReactNode; label: s
   );
 }
 
-/** Gold, DXY or Silver at a glance: bias, timeframe pills, structure, momentum, liquidity, zones and the relationship. */
-export function MarketCard({ i, quote, sample, relation, note }: {
+/** Any instrument at a glance: bias, timeframe pills, structure, momentum, liquidity, zones, relationship and news. */
+export function MarketCard({ i, quote, sample, relation, note, news, unavailable, now }: {
   i: InstrumentIntel; quote: { last: number | null; changePct: number | null }; sample: boolean;
   relation?: Relation & { title: string }; note?: string | null;
+  /** Headlines tagged for this instrument (null: news feed not connected). */
+  news?: SentHeadline[] | null;
+  /** Why there is no data for this instrument (not on the plan, or the request failed). */
+  unavailable?: string | null;
+  now?: number;
 }) {
-  const d = i.digits, n = NAME[i.symbol] ?? { name: i.symbol, sub: "" };
+  const d = i.digits, n = nameFor(i.symbol);
   const ev = latestStructure(i);
   const rsi = rsiOf(i), mom = momentumLabel(rsi);
   const liq = liquidityView(i);
@@ -34,12 +43,10 @@ export function MarketCard({ i, quote, sample, relation, note }: {
     <article className={cn("dcard dcard-pad lift flex h-full flex-col", `glow-${i.bias}`)} aria-labelledby={`mc-${i.symbol}`}>
       <header className="flex items-start gap-3">
         <span className="asset-orb"><AssetMark symbol={i.symbol} size={30} /></span>
-        <div className="min-w-0 flex-1">
-          <h3 id={`mc-${i.symbol}`} className="truncate text-[16.5px] font-semibold tracking-[-0.015em] text-ink">{n.name}</h3>
-          <p className="text-[12px] text-ink-3">{n.sub}</p>
-        </div>
+        <SlotTrigger id={`mc-${i.symbol}`} name={n.name} sub={n.sub} />
         <BiasBadge bias={i.bias} />
       </header>
+      {unavailable && <p className="mt-3 rounded-xl border border-dashed border-line px-3 py-2 text-[12.5px] leading-snug text-ink-2">{unavailable}</p>}
       <div className="mt-3 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
         <span className="num text-[26px] font-semibold tracking-[-0.025em] text-ink">{quote.last !== null ? fmtP(quote.last, d) : "—"}</span>
         {quote.changePct !== null && <span className={cn("num text-[13px] font-semibold", quote.changePct >= 0 ? "text-up-ink" : "text-down-ink")}>{quote.changePct >= 0 ? "+" : "−"}{Math.abs(quote.changePct).toFixed(2)}%</span>}
@@ -75,6 +82,12 @@ export function MarketCard({ i, quote, sample, relation, note }: {
           <p className="mt-1 text-[12.5px] leading-snug text-ink-2">{relation.text}</p>
         </div>
       )}
+      {news !== undefined && (
+        <div className="mt-3">
+          <p className="mb-1.5 flex items-center gap-1.5 text-[11.5px] font-medium text-ink-3"><Newspaper className="h-3.5 w-3.5" aria-hidden />Relevant news</p>
+          {news === null ? <p className="text-[12px] text-ink-3">News feed not connected.</p> : news.length ? <HeadlineMini h={news.slice(0, 2)} now={now ?? Date.now()} /> : <p className="text-[12px] text-ink-3">No {n.sub} headlines in the current feed.</p>}
+        </div>
+      )}
       <div className="mt-auto pt-3">
         <More summary={<span className="text-[13px] font-semibold text-ink">Why {i.bias === "insufficient" ? "no reading" : i.bias}, and what changes it</span>}>
           <ul className="grid gap-1.5 text-[12.5px] leading-snug text-ink-2">{biasReasons(i).map((r) => <li key={r} className="flex gap-2"><span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-[var(--text-3)]" />{r}</li>)}</ul>
@@ -90,7 +103,7 @@ export function MarketCard({ i, quote, sample, relation, note }: {
 const STATUS_TEXT = { watching: "Watching", "in-zone": "Price in zone", confirmed: "5M confirmed" } as const;
 
 /** A key buy or sell zone: range, readiness against the 50-pip rule, and the reasoning in short labelled rows. */
-export function ZoneCard({ b, digits, side }: { b: ZoneBrief | null; digits: number; side: "buy" | "sell" }) {
+export function ZoneCard({ b, digits, side, symbol }: { b: ZoneBrief | null; digits: number; side: "buy" | "sell"; symbol?: string }) {
   const buy = side === "buy";
   if (!b) {
     return (
@@ -103,7 +116,7 @@ export function ZoneCard({ b, digits, side }: { b: ZoneBrief | null; digits: num
   }
   const z = b.zone;
   const rows: { icon: React.ReactNode; k: string; v: string }[] = [
-    { icon: <Target />, k: "Why it matters", v: b.why.join(". ") + "." },
+    { icon: <Target />, k: "Why it matters", v: b.why.map((w) => w.replace(/\.$/, "")).join(". ") + "." },
     { icon: <Percent />, k: "Fibonacci", v: b.fib ?? "No Fibonacci level inside this zone." },
     { icon: <Droplets />, k: "Liquidity", v: b.liquidity },
     { icon: <GitBranch />, k: "Structure", v: b.structure },
@@ -126,7 +139,8 @@ export function ZoneCard({ b, digits, side }: { b: ZoneBrief | null; digits: num
         <PriceLadder lo={b.diagram.lo} hi={b.diagram.hi} digits={digits} price={b.diagram.price} stop={b.diagram.stop} bands={[{ side, lower: z.lower, upper: z.upper }]} label={`Zone ${b.range}, stop ${fmtP(b.diagram.stop, digits)}${b.diagram.price !== null ? `, price ${fmtP(b.diagram.price, digits)}` : ""}`} />
         <div className="mt-1.5 flex items-center gap-3 text-[11px] text-ink-3"><span className="inline-flex items-center gap-1"><span className={cn("h-2 w-3 rounded-sm", buy ? "bg-up/40" : "bg-down/40")} />Zone</span><span className="inline-flex items-center gap-1"><span className="h-2.5 w-0 border-l-2 border-dashed border-[var(--down)]" />Stop</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[var(--text)]" />Price</span></div>
       </div>
-      {b.maxStopPips !== null && <div className="mt-4"><StopMeter pips={b.stopPips} max={b.maxStopPips} /></div>}
+      {b.maxStopPips !== null ? <div className="mt-4"><StopMeter pips={b.stopPips} max={b.maxStopPips} /></div>
+        : symbol && <p className="mt-4 flex items-baseline justify-between gap-2 text-[12.5px]"><span className="text-ink-2">Structural stop</span><span className="num font-semibold text-ink">{formatPips(symbol, b.stopPips)}</span></p>}
       <p className={cn("mt-3 rounded-xl px-3 py-2 text-[12.5px] leading-snug", b.readiness === "ready" ? "bg-up-soft text-ink" : "bg-warn-soft text-ink")}>{b.readinessText}</p>
       <dl className="zone-rows mt-3">
         {rows.map((r) => <div key={r.k}><dt><span aria-hidden>{r.icon}</span>{r.k}</dt><dd>{r.v}</dd></div>)}
@@ -231,7 +245,7 @@ export interface SentimentInput {
   newsOk: boolean; newsNeeds?: string[]; calOk: boolean; calNeeds?: string[];
   risk: SentHeadline[]; geo: SentHeadline[]; cb: SentHeadline[]; yld: SentHeadline[]; relevant: SentHeadline[];
   rates: { last: SentEvent | null; next: SentEvent | null }; inflation: { last: SentEvent | null; next: SentEvent | null };
-  dxy: InstrumentIntel; sample: boolean; impact: GoldImpact; tz: string; now: number;
+  dxy: InstrumentIntel; sample: boolean; impact: GoldImpact; tz: string; now: number; relevantTitle?: string;
 }
 
 export function SentimentGrid(p: SentimentInput) {
@@ -280,8 +294,8 @@ export function SentimentGrid(p: SentimentInput) {
           {p.newsOk && p.yld.length > 0 && <HeadlineMini h={p.yld.slice(0, 2)} now={p.now} />}
         </div>
       </SentCard>
-      <SentCard icon={<Newspaper />} title="Relevant news for Gold and USD" kind={p.newsOk ? "fact" : "na"} className="md:col-span-2 xl:col-span-2">
-        {!p.newsOk ? newsMissing : p.relevant.length ? <div className="grid gap-x-6 sm:grid-cols-2"><HeadlineMini h={p.relevant.slice(0, 2)} now={p.now} /><HeadlineMini h={p.relevant.slice(2, 4)} now={p.now} /></div> : <Unavailable>No Gold or USD headlines in the current feed.</Unavailable>}
+      <SentCard icon={<Newspaper />} title={p.relevantTitle ?? "Relevant news for Gold and USD"} kind={p.newsOk ? "fact" : "na"} className="md:col-span-2 xl:col-span-2">
+        {!p.newsOk ? newsMissing : p.relevant.length ? <div className="grid gap-x-6 sm:grid-cols-2"><HeadlineMini h={p.relevant.slice(0, 2)} now={p.now} /><HeadlineMini h={p.relevant.slice(2, 4)} now={p.now} /></div> : <Unavailable>No headlines for these markets in the current feed.</Unavailable>}
       </SentCard>
     </div>
   );

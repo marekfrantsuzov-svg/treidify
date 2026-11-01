@@ -569,3 +569,29 @@ export const auditLog = pgTable("audit_log", {
   ip: text("ip"),
   createdAt: created(),
 }, (t) => [index("audit_created_idx").on(t.createdAt), index("audit_actor_idx").on(t.actorId)]);
+
+/* ───────────────────────── Multi-asset: user market preferences and provider coverage ───────────────────────── */
+
+/**
+ * The user's three Macro Desk instruments (slot order) and their favourite instruments. Symbols are canonical registry
+ * symbols (src/lib/markets/registry.ts); the server repairs unknown ones on read, so a removed instrument never breaks a page.
+ */
+export const userMarketPrefs = pgTable("user_market_prefs", {
+  userId: text("user_id").primaryKey().references(() => user.id, { onDelete: "cascade" }),
+  desk: text("desk").array().notNull().default(sql`'{XAUUSD,DXY,XAGUSD}'::text[]`),
+  favorites: text("favorites").array().notNull().default(sql`'{}'::text[]`),
+  updatedAt: updated(),
+});
+
+/**
+ * Which instruments the configured market-data plan actually serves. Written by the coverage probe and by every bar
+ * request; never assumed. state: verified (bars returned), unavailable (provider refused or has no such symbol).
+ */
+export const instrumentCoverage = pgTable("instrument_coverage", {
+  symbol: text("symbol").notNull(),
+  provider: text("provider").notNull(),
+  vendorSymbol: text("vendor_symbol"),
+  state: text("state").$type<"verified" | "unavailable">().notNull(),
+  reason: text("reason"),
+  checkedAt: ts("checked_at").notNull().defaultNow(),
+}, (t) => [primaryKey({ columns: [t.symbol, t.provider] })]);

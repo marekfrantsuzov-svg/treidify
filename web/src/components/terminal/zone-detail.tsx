@@ -53,16 +53,17 @@ export function ZoneDetail({ zone: z, overlays: o, htfTrend, sample }: { zone: S
 
       <div className="rounded-2xl bg-[var(--surface-inset)] p-3.5">
         <div className="flex items-center justify-between gap-2 text-[12.5px]">
-          <span className="font-semibold text-ink">50-pip stop rule</span>
-          <span className={cn("ready-pill", z.stop.eligible ? "is-ready" : "is-wait")}>{z.stop.eligible ? <CircleCheck /> : <ShieldAlert />}{z.stop.eligible ? "Respects the rule" : "Breaks the rule"}</span>
+          <span className="font-semibold text-ink">{z.stop.max !== null ? `${z.stop.max}-pip stop rule` : "Structural stop"}</span>
+          {z.stop.max !== null && <span className={cn("ready-pill", z.stop.eligible ? "is-ready" : "is-wait")}>{z.stop.eligible ? <CircleCheck /> : <ShieldAlert />}{z.stop.eligible ? "Respects the rule" : "Breaks the rule"}</span>}
         </div>
-        <div className="mt-2.5 meter" aria-hidden><span className={cn("meter-fill", !z.stop.eligible && "is-over")} style={{ width: `${Math.min(100, (z.stop.pips / (z.stop.max ?? Math.max(z.stop.pips, 1))) * 100)}%` }} /></div>
+        {z.stop.max !== null && <div className="mt-2.5 meter" aria-hidden><span className={cn("meter-fill", !z.stop.eligible && "is-over")} style={{ width: `${Math.min(100, (z.stop.pips / z.stop.max) * 100)}%` }} /></div>}
         <p className="num mt-2 text-[12.5px] leading-snug text-ink-2">
           Entry edge {fmtPrice(z.proximal, d)} → structural stop {fmtPrice(z.invalidation, d)} = <b className="text-ink">{formatPips(o.symbol, z.stop.pips)}</b>
           {z.stop.max !== null && <> of a {formatPips(o.symbol, z.stop.max)} maximum.</>}
           {!z.stop.eligible && " The stop is never tightened to fit, so this is WAIT / NO VALID SETUP."}
         </p>
-        {o.symbol === "XAUUSD" && <p className="mt-1 text-[11px] text-ink-3">Pips measure gold price movement (1 pip = $0.10). Money at risk depends on your lot size.</p>}
+        {o.symbol === "XAUUSD" ? <p className="mt-1 text-[11px] text-ink-3">Pips measure gold price movement (1 pip = $0.10). Money at risk depends on your lot size.</p>
+          : <p className="mt-1 text-[11px] text-ink-3">{z.stop.unit === "pip" ? "Pips" : "Points"} measure price movement in {o.symbol}&apos;s own convention. No maximum-stop rule applies here; Gold&apos;s 50-pip limit is Gold only. Money at risk depends on your lot size.</p>}
       </div>
 
       <ul className="grid gap-1.5" aria-label="Entry checklist">
