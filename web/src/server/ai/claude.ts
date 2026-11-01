@@ -2,6 +2,7 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { ChartReadingSchema, type ChartReading } from "./schema";
+import { GOLD_PIP_RULE } from "@/lib/trading/pips";
 
 /**
  * Claude for explanations and chart reading only. It never decides a bias or invents a level: chart reading is
@@ -15,6 +16,7 @@ const client = () => new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY!.trim
 const CHART_SYSTEM = `You read trading chart screenshots for Treidify. Describe only what is visible.
 Rules: never state a price unless it is legible on the axis, a label or the price tag; otherwise set price to null and describe the level relative to visible structure ("the last swing low", "the range top").
 Never claim a setup is confirmed unless the confirmation is visible. Never predict with certainty or give financial advice. If the image is not a chart, set legible to false.
+Pip convention you must use whenever you mention pips: ${GOLD_PIP_RULE} Never express pips as dollars of profit or loss: money depends on position size.
 Use plain English a newer trader understands. Keep each string short.`;
 
 export async function readChart(image: { base64: string; mime: "image/png" | "image/jpeg" | "image/webp" }, question?: string): Promise<{ ok: true; reading: ChartReading } | { ok: false; error: string }> {

@@ -49,20 +49,27 @@ export function sampleMtf(symbol: SampleSymbol): Record<"5M" | "15M" | "1H" | "4
   const hit = mtfCache.get(symbol); if (hit) return hit;
   const p = profile[symbol];
   const rnd = mulberry32(p.seed * 7919);
+  // A second stream adds occasional impulse legs (displacement) and sample tick volume without changing the base walk.
+  const imp = mulberry32(p.seed * 104_729);
   const N = 48 * 150, step = 300, end = 1_793_000_000 - (1_793_000_000 % 14_400);
   const vol = p.vol * 0.16;
   const m5: Candle[] = [];
-  let price = p.start, slow = 0, mid = 0;
+  let price = p.start, slow = 0, mid = 0, burst = 0, dir = 1;
   for (let i = 0; i < N; i++) {
     if (i % 420 === 0) slow = (rnd() - 0.5) * 0.5 + p.drift * 2;
     if (i % 36 === 0) mid = (rnd() - 0.5) * 0.9;
-    const o = price, c = Math.max(o + (rnd() - 0.5 + slow * 0.22 + mid * 0.16) * vol * price, 0.01);
-    const w = vol * price * 0.55;
-    const h = Math.max(o, c) + rnd() * w, l = Math.min(o, c) - rnd() * w;
-    m5.push({ t: end - (N - i) * step, o, h, l, c });
+    const r1 = rnd(), r2 = rnd(), r3 = rnd();
+    if (burst === 0 && imp() < 0.014) { burst = 2 + Math.floor(imp() * 3); dir = imp() < 0.5 + slow * 0.6 ? 1 : -1; }
+    const o = price;
+    let c: number, w = vol * price * 0.55;
+    if (burst > 0) { c = Math.max(o + dir * (0.9 + imp() * 0.9) * vol * price, 0.01); w *= 0.25; burst--; }
+    else c = Math.max(o + (r1 - 0.5 + slow * 0.22 + mid * 0.16) * vol * price, 0.01);
+    const h = Math.max(o, c) + r2 * w, l = Math.min(o, c) - r3 * w;
+    const v = Math.round((600 + imp() * 700) * (Math.abs(c - o) > vol * price * 0.8 ? 2.4 : 1));
+    m5.push({ t: end - (N - i) * step, o, h, l, c, v });
     price = c;
   }
-  const agg = (k: number) => { const out: Candle[] = []; for (let i = 0; i + k <= m5.length; i += k) { const s = m5.slice(i, i + k); out.push({ t: s[0]!.t, o: s[0]!.o, h: Math.max(...s.map((x) => x.h)), l: Math.min(...s.map((x) => x.l)), c: s.at(-1)!.c }); } return out; };
+  const agg = (k: number) => { const out: Candle[] = []; for (let i = 0; i + k <= m5.length; i += k) { const s = m5.slice(i, i + k); out.push({ t: s[0]!.t, o: s[0]!.o, h: Math.max(...s.map((x) => x.h)), l: Math.min(...s.map((x) => x.l)), c: s.at(-1)!.c, v: s.reduce((a, x) => a + (x.v ?? 0), 0) }); } return out; };
   const r = { "5M": m5.slice(-400), "15M": agg(3).slice(-400), "1H": agg(12).slice(-400), "4H": agg(48) };
   mtfCache.set(symbol, r);
   return r;

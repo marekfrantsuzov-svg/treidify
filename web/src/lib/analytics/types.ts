@@ -28,6 +28,9 @@ export interface ClosedTrade {
   commission: number;
   swap: number;
   fees: number;
+  /** Entry and exit prices when the source provides them. */
+  openPrice?: number;
+  closePrice?: number;
 }
 
 export function isValidCandle(c: Candle): boolean {

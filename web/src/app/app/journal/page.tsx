@@ -3,6 +3,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { AccountPicker } from "@/components/app/account-picker";
 import { JournalFilters } from "@/components/app/journal/journal-filters";
 import { JournalTable, type JournalRow } from "@/components/app/journal/journal-table";
+import { PnlCalendar, type CalNote } from "@/components/app/journal/pnl-calendar";
 import { Tile } from "@/components/app/performance/parts";
 import { PageHeader, StatusCard } from "@/components/app/status";
 import { GlassIcon } from "@/components/icons/glass-icon";
@@ -34,9 +35,12 @@ export default async function Journal({ searchParams }: { searchParams: Promise<
     return (
       <>
         <PageHeader title="Trading Journal" subtitle="Every closed trade, recorded automatically from your account." />
-        <StatusCard title="Your journal" icon={<GlassIcon name="journal" size={32} />} status="Needs account" action={{ href: "/app/accounts", label: "Connect an account or load the demo" }}>
-          Once your MetaTrader account is connected, each closed trade appears here with its session, holding time, costs and result. You add notes, setup and mistake tags and lessons; the coach reads them alongside the numbers.
-        </StatusCard>
+        <div className="grid gap-4">
+          <PnlCalendar trades={[]} tz={tz} connected={false} nowIso={new Date().toISOString()} />
+          <StatusCard title="Your journal" icon={<GlassIcon name="journal" size={32} />} status="Needs account" action={{ href: "/app/accounts", label: "Connect an account or load the demo" }}>
+            Once your MetaTrader account is connected, each closed trade appears here with its session, holding time, costs and result. You add notes, setup and mistake tags and lessons; the coach reads them alongside the numbers.
+          </StatusCard>
+        </div>
       </>
     );
   }
@@ -80,6 +84,10 @@ export default async function Journal({ searchParams }: { searchParams: Promise<
     };
   });
   const symbols = [...new Set(o.trades.map((t) => t.symbol))].sort();
+  // Notes for the calendar's day view: every closed trade of this account, owner-scoped.
+  const allIds = o.trades.map((t) => t.id);
+  const allEntries = allIds.length ? await db.select().from(schema.journalEntry).where(and(eq(schema.journalEntry.userId, s.user.id), inArray(schema.journalEntry.closedTradeId, allIds))) : [];
+  const calNotes: Record<string, CalNote> = Object.fromEntries(allEntries.map((e) => [e.closedTradeId!, { notes: e.notes ?? "", lessons: e.lessons ?? "", setupTags: e.setupTags, mistakeTags: e.mistakeTags }]));
   const reviewedCount = filtered.filter((t) => reviewed(t.id)).length;
   const href = (p: number) => { const q = new URLSearchParams(Object.entries(sp).filter(([, v]) => typeof v === "string") as [string, string][]); q.set("page", String(p)); return `?${q}`; };
 
@@ -89,6 +97,7 @@ export default async function Journal({ searchParams }: { searchParams: Promise<
         <AccountPicker accounts={accounts.map((a) => ({ id: a.id, label: a.label }))} selected={o.account.id} />
       </PageHeader>
       <div className="grid gap-4">
+        <PnlCalendar trades={o.trades} notes={calNotes} currency={c} tz={tz} connected sampleAccount={o.account.source === "sample"} nowIso={new Date().toISOString()} />
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
           <Tile label="Trades" value={String(m.tradeCount)} sub={`${m.wins}W · ${m.losses}L`} />
           <Tile label="Win rate" value={m.winRate === null ? "—" : `${(m.winRate * 100).toFixed(1)}%`} />

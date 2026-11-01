@@ -1,15 +1,16 @@
 import type { InstrumentIntel, Zone } from "./engine";
+import { MAX_STOP_PIPS, PIP_SIZE, pips, stopCheck } from "@/lib/trading/pips";
+
+export { MAX_STOP_PIPS, PIP_SIZE, pips };
 
 /**
  * Turns the engine's zones into one actionable setup, or WAIT.
  *
- * Gold pip convention (house rule): $1.00 of XAUUSD price movement = 100 pips, so 1 pip = $0.01.
- * Hard rule: a Gold setup whose stop loss needs more than 50 pips ($0.50) is not a valid trade. The stop is never
+ * Gold pip convention (house rule, see lib/trading/pips.ts): 1 pip = $0.10 of XAUUSD price movement, 10 pips = $1.00.
+ * Hard rule: a Gold setup whose stop loss needs more than 50 pips ($5.00) is not a valid trade. The stop is never
  * tightened to fit the rule: it is placed where the zone is structurally invalidated, and if that is too far the
  * answer is WAIT.
  */
-export const PIP_SIZE: Record<string, number> = { XAUUSD: 0.01, XAGUSD: 0.001, DXY: 0.01 };
-export const MAX_STOP_PIPS: Record<string, number> = { XAUUSD: 50 };
 
 export interface TradeSetup {
   symbol: string;
@@ -30,7 +31,6 @@ export interface TradeSetup {
   asOf: string;
 }
 
-export const pips = (symbol: string, priceDistance: number) => Math.round(Math.abs(priceDistance) / (PIP_SIZE[symbol] ?? 0.0001) * 10) / 10;
 
 function wait(i: InstrumentIntel, reasons: string[], extra: Partial<TradeSetup> = {}): TradeSetup {
   return { symbol: i.symbol, status: "wait", side: null, entry: null, stop: null, targets: [], stopPips: null, maxStopPips: MAX_STOP_PIPS[i.symbol] ?? null, quality: null, timeframe: "1H", zoneId: null, reasons, asOf: i.asOf, ...extra };
@@ -58,13 +58,14 @@ export function tradeSetup(i: InstrumentIntel): TradeSetup {
   const buy = side === "buy";
   const worstEntry = buy ? z.upper : z.lower;
   const stop = z.invalidation.level;
-  const stopPips = pips(i.symbol, worstEntry - stop);
-  const max = MAX_STOP_PIPS[i.symbol] ?? null;
+  const check = stopCheck(i.symbol, worstEntry, stop);
+  const stopPips = check.pips;
+  const max = check.max;
   const entry = { lower: z.lower, upper: z.upper };
-  if (max !== null && stopPips > max) {
+  if (!check.eligible && max !== null) {
     return wait(i, [
       `The ${side} zone ${z.lower.toFixed(i.digits)}–${z.upper.toFixed(i.digits)} is only invalidated at ${stop.toFixed(i.digits)}, a ${stopPips}-pip stop from the zone edge.`,
-      `That is above the ${max}-pip maximum ($${(max * (PIP_SIZE[i.symbol] ?? 0)).toFixed(2)}), so there is no valid trade. The stop is not tightened to fit.`,
+      `That is above the ${max}-pip maximum ($${check.maxPrice!.toFixed(2)} of price movement), so there is no valid trade. The stop is not tightened to fit.`,
     ], { side, entry, stop, stopPips, zoneId: z.id });
   }
 
@@ -72,12 +73,19 @@ export function tradeSetup(i: InstrumentIntel): TradeSetup {
   const t = targetsFor(i, z).filter((p) => Math.abs(p - worstEntry) >= risk);
   if (t.length === 0) return wait(i, [`No structural target at least 1R beyond the ${side} zone, so the trade is not worth its risk.`], { side, entry, stop, stopPips, zoneId: z.id });
 
-  const quality = z.status === "confirmed" && i.confidence === "high" ? "high" : z.status === "confirmed" || i.confidence === "high" ? "medium" : "low";
+  // Touching (or being near) a zone is never a setup on its own: the 5M structure break inside the zone must print.
+  if (z.status !== "confirmed") {
+    return wait(i, [
+      z.status === "in-zone" ? `Price is inside the ${side} zone ${z.lower.toFixed(i.digits)}–${z.upper.toFixed(i.digits)}, but the 5M ${buy ? "bullish" : "bearish"} confirmation has not printed.` : `Waiting for price to reach the ${side} zone ${z.lower.toFixed(i.digits)}–${z.upper.toFixed(i.digits)} and confirm on 5M.`,
+      `If it confirms, the structural stop at ${stop.toFixed(i.digits)} is ${stopPips} pips, within the ${max ?? "–"}-pip limit.`,
+    ], { side, entry, stop: Number(stop.toFixed(i.digits)), stopPips, zoneId: z.id, targets: t.slice(0, 2) });
+  }
+  const quality = i.confidence === "high" ? "high" : i.confidence === "medium" ? "medium" : "low";
   return {
     symbol: i.symbol, status: "valid", side, entry, stop: Number(stop.toFixed(i.digits)), targets: t.slice(0, 2), stopPips, maxStopPips: max, quality, timeframe: "1H", zoneId: z.id, asOf: i.asOf,
     reasons: [
       `${z.reasons[0]}${z.reasons.length > 2 ? ", with confluence" : ""}.`,
-      z.status === "confirmed" ? "A 5M structure break has printed inside the zone." : z.confirmation,
+      "A 5M structure break has printed inside the zone.",
       `Stop at ${stop.toFixed(i.digits)} is where the zone is invalidated (${stopPips} pips${max !== null ? `, within the ${max}-pip limit` : ""}).`,
     ],
   };

@@ -37,3 +37,27 @@ Missing components are dropped and the remaining weights are re-normalised; if s
 Dashboard gauges and bubbles, Market Intelligence, Charts overlays, Macro Desk and the virtual analysts. Tap any gauge to see each component, its contribution and the invalidation level. Tests: `web/src/lib/intelligence/intelligence.test.ts`.
 
 This is analysis of market structure, not financial advice or a signal service.
+
+## XAUUSD pip convention and the 50-pip rule
+
+One conversion point, `web/src/lib/trading/pips.ts`, is used everywhere (engine, panels, AI prompts):
+
+- 1 pip = $0.10 of gold price movement; 10 pips = $1.00; 50 pips = $5.00; 100 pips = $10.00.
+- The maximum structural stop is 50 pips ($5.00). The stop sits at structural invalidation (the zone's far edge ± 0.1 ATR). If that is 51 pips or more, the result is **WAIT / NO VALID SETUP**. The stop is never tightened to make a trade fit.
+- Pips are price movement, not money. Money at risk depends on lot size: $5.00 of movement is $50 on 0.10 lot and $500 on 1 lot (100 oz contract).
+
+## Setup confirmation
+
+A zone touch is never a setup. `tradeSetup` returns BUY or SELL only when the zone's status is `confirmed` (a 5M change of character from inside the zone), the 4H trend agrees, there is room to at least 1R and the structural stop is within 50 pips. Anything else is WAIT, with the missing conditions listed.
+
+## Timeframe overlays (`tf-overlays-v1`)
+
+`web/src/lib/intelligence/overlays.ts` runs on the candles of the timeframe on screen (5M, 15M, 1H, 4H), so every overlay is recomputed when the timeframe changes. It is deterministic: the same bars always give the same output. Thresholds live in `OVERLAY_RULES`.
+
+| Overlay | Method |
+|---|---|
+| Supply and demand zones | The base candle before a displacement (one candle with body ≥ 1.2 ATR and ≥ 60% of its range, or a 2–3 candle leg moving ≥ 1.8 ATR). Demand spans base low to body top; supply spans body bottom to high. Status walks forward bar by bar: active (untouched), tested (revisited and held, max 3), invalidated (a close through the far edge), historical (older or replaced). |
+| Fibonacci | Bullish and bearish scenarios, each anchored on a confirmed swing and the extreme since it; 23.6, 38.2, 50, 61.8, 78.6, 88.6 % with exact prices. A close beyond the anchor voids the leg. |
+| Liquidity | Equal highs and lows (within 0.15 ATR) and previous swing highs and lows. Unswept, swept (wick through, close back inside) or taken (close through). Labelled High, Medium or Low **estimated** liquidity. It is never presented as order-book data: spot gold has no central order book. |
+| Structure | Confirmed swings (HH, HL, LH, LL), BOS and CHOCH on closes only, and outlined displacement candles. |
+| Volume | Gold, silver and DXY feeds carry tick volume (update count), labelled as such with relative volume against a 20-bar average. It cannot show who bought or sold. Sample mode is labelled "Sample volume"; no volume shows "Volume unavailable". |

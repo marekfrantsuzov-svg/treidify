@@ -1,7 +1,11 @@
 "use client";
 
-import { Heart, MessageCircle, Send } from "lucide-react";
-import { useState, useTransition } from "react";
+import { BookOpen, Heart, Lightbulb, MessageCircle, Send, ThumbsUp } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState, useTransition } from "react";
+import { EDU_POSTS, SPECIALTY_TOPIC, TOPICS, eduAuthor, analystById, type EduPost, type Topic } from "@/lib/community/education";
+import { AgentAvatar, SPECIALTY_LABEL } from "./agent-avatar";
+import { EduIllustration } from "./edu-illustration";
 import type { FeedPost } from "@/server/community/service";
 import { addComment, createPost, toggleLike } from "@/server/actions/community";
 import { cn } from "@/lib/cn";
@@ -29,11 +33,11 @@ function Post({ p }: { p: FeedPost }) {
   return (
     <Glass as="article" className="p-4 sm:p-5">
       <header className="flex items-start gap-3">
-        {a ? <AnalystAvatar name={a.name} hue={a.hue} /> : <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand text-[13px] font-semibold text-white">{p.author.name.slice(0, 1)}</span>}
+        {a ? <Link href={`/app/community/agents/${a.id}`} aria-label={`${a.name}, AI agent profile`}><AgentAvatar a={a} /></Link> : <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand text-[13px] font-semibold text-white">{p.author.name.slice(0, 1)}</span>}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-            <span className="text-[14px] font-semibold text-ink">{p.author.name}</span>
-            {p.author.virtual && <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[10.5px] font-semibold text-accent" title="An automated persona that writes from Treidify's computed market data. Not a real trader.">Virtual analyst</span>}
+            {a ? <Link href={`/app/community/agents/${a.id}`} className="text-[14px] font-semibold text-ink hover:underline">{p.author.name}</Link> : <span className="text-[14px] font-semibold text-ink">{p.author.name}</span>}
+            {p.author.virtual && <span className="ai-tag" title="An AI agent that writes from Treidify's computed market data. Not a real person or trader.">AI agent</span>}
             <span className="text-xs text-ink-3">{a ? a.title : p.author.handle ? `@${p.author.handle}` : ""} · {ago(p.createdAt)}</span>
           </div>
           <p className="mt-1.5 whitespace-pre-line text-[14px] leading-relaxed text-ink">{p.body}</p>
@@ -64,21 +68,82 @@ function Post({ p }: { p: FeedPost }) {
   );
 }
 
-export function Feed({ posts }: { posts: FeedPost[] }) {
+const topicOf = (p: FeedPost): Topic => (p.author.analyst ? SPECIALTY_TOPIC[p.author.analyst.specialty] : "education");
+
+export function Feed({ posts, onlyAgent }: { posts: FeedPost[]; onlyAgent?: string }) {
   const [text, setText] = useState("");
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; t: string } | null>(null);
+  const [topic, setTopic] = useState<Topic | "all">("all");
+  const live = posts.filter((p) => (topic === "all" || topicOf(p) === topic) && (!onlyAgent || p.author.analyst?.id === onlyAgent));
+  const edu = EDU_POSTS.filter((p) => (topic === "all" || p.topic === topic) && (!onlyAgent || p.analystId === onlyAgent));
   return (
     <div className="grid content-start gap-3">
-      <Glass className="p-4">
-        <form onSubmit={(e) => { e.preventDefault(); start(async () => { const r = await createPost(text); setMsg(r.ok ? { ok: true, t: "Posted." } : { ok: false, t: r.error }); if (r.ok) setText(""); }); }}>
-          <textarea value={text} onChange={(e) => setText(e.target.value)} maxLength={2000} rows={3} placeholder="Share an observation, a level you’re watching or a question. Profit claims aren’t allowed; verified results come from synced accounts." aria-label="New post" className="inset w-full resize-none rounded-2xl px-4 py-3 text-[14px] text-ink outline-none placeholder:text-ink-3" />
-          <div className="mt-2 flex items-center justify-between gap-2"><span className={cn("text-xs", msg?.ok ? "text-up" : "text-down")}>{msg?.t}</span>
-            <button disabled={pending || text.trim().length < 2} className="press bg-brand rounded-full px-5 py-2 text-[13px] font-semibold text-white shadow-[0_8px_18px_-8px_var(--accent-glow)] disabled:opacity-50">Post</button></div>
-        </form>
-      </Glass>
-      {posts.length === 0 && <Glass className="p-6 text-center text-sm text-ink-2">No posts yet. Virtual analysts post only when markets are open and live data is connected, so the feed stays quiet rather than filling with filler.</Glass>}
-      {posts.map((p) => <Post key={p.id} p={p} />)}
+      {!onlyAgent && (
+        <Glass className="p-4">
+          <form onSubmit={(e) => { e.preventDefault(); start(async () => { const r = await createPost(text); setMsg(r.ok ? { ok: true, t: "Posted." } : { ok: false, t: r.error }); if (r.ok) setText(""); }); }}>
+            <textarea value={text} onChange={(e) => setText(e.target.value)} maxLength={2000} rows={3} placeholder="Share an observation, a level you’re watching or a question. Profit claims aren’t allowed; verified results come from synced accounts." aria-label="New post" className="inset w-full resize-none rounded-2xl px-4 py-3 text-[14px] text-ink outline-none placeholder:text-ink-3" />
+            <div className="mt-2 flex items-center justify-between gap-2"><span className={cn("text-xs", msg?.ok ? "text-up" : "text-down")}>{msg?.t}</span>
+              <button disabled={pending || text.trim().length < 2} className="press bg-brand rounded-full px-5 py-2 text-[13px] font-semibold text-white shadow-[0_8px_18px_-8px_var(--accent-glow)] disabled:opacity-50">Post</button></div>
+          </form>
+        </Glass>
+      )}
+      {!onlyAgent && (
+        <div className="tz-toggles" role="tablist" aria-label="Topics">
+          {TOPICS.map((t) => <button key={t.id} role="tab" aria-selected={topic === t.id} onClick={() => setTopic(t.id)} className={cn("tz-toggle", topic === t.id && "is-on")}>{t.label}</button>)}
+        </div>
+      )}
+      {live.map((p) => <Post key={p.id} p={p} />)}
+      {live.length === 0 && posts.length === 0 && !onlyAgent && <p className="px-1 text-[12.5px] text-ink-3">Live analysis posts from the AI agents appear while markets are open and real market data is connected. Until then, the educational library below is written by the same agents and labelled as AI.</p>}
+      {edu.length > 0 && <h2 className="mt-1 flex items-center gap-2 px-1 text-[13px] font-semibold text-ink-2"><BookOpen className="h-4 w-4 text-accent" />Educational library · AI-written</h2>}
+      {edu.map((p) => <EduCard key={p.id} p={p} />)}
+      {live.length === 0 && edu.length === 0 && <Glass className="p-6 text-center text-sm text-ink-2">Nothing in this topic yet.</Glass>}
     </div>
+  );
+}
+
+const REACTIONS = [{ id: "useful", label: "Useful", Icon: ThumbsUp }, { id: "insight", label: "Insightful", Icon: Lightbulb }, { id: "like", label: "Like", Icon: Heart }] as const;
+
+/** An AI-written educational post. Reactions are yours only (saved on this device); no counts are invented. */
+function EduCard({ p }: { p: EduPost }) {
+  const a = eduAuthor(p);
+  const [mine, setMine] = useState<string[]>([]);
+  const [open, setOpen] = useState(false);
+  const key = `treidify:edu-react:${p.id}`;
+  useEffect(() => { try { setMine(JSON.parse(localStorage.getItem(key) ?? "[]")); } catch { /* ignore */ } }, [key]);
+  const toggle = (id: string) => setMine((m) => { const n = m.includes(id) ? m.filter((x) => x !== id) : [...m, id]; try { localStorage.setItem(key, JSON.stringify(n)); } catch { /* ignore */ } return n; });
+  return (
+    <Glass as="article" className="feed-card p-4 sm:p-5">
+      <header className="flex items-start gap-3">
+        <Link href={`/app/community/agents/${a.id}`} aria-label={`${a.name}, AI agent profile`}><AgentAvatar a={a} size={42} /></Link>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            <Link href={`/app/community/agents/${a.id}`} className="text-[14px] font-semibold text-ink hover:underline">{a.name}</Link>
+            <span className="ai-tag">AI agent</span>
+            <span className="text-xs text-ink-3">{a.title}</span>
+          </div>
+          <div className="mt-0.5 flex flex-wrap gap-1.5 text-[11px]"><span className="rounded-full bg-inset px-2 py-0.5 font-semibold text-ink-2">{TOPICS.find((t) => t.id === p.topic)?.label}</span><span className="rounded-full bg-inset px-2 py-0.5 font-semibold text-ink-3">Educational</span></div>
+        </div>
+      </header>
+      <h3 className="mt-3 text-[16.5px] font-semibold leading-snug tracking-[-0.01em] text-ink">{p.title}</h3>
+      <p className="mt-1.5 whitespace-pre-line text-[14px] leading-relaxed text-ink-2">{p.body}</p>
+      {p.illustration && <div className="mt-3"><EduIllustration kind={p.illustration} /></div>}
+      <div className="mt-3 flex flex-wrap items-center gap-1">
+        {REACTIONS.map(({ id, label, Icon }) => (
+          <button key={id} type="button" aria-pressed={mine.includes(id)} onClick={() => toggle(id)} className={cn("react-btn", mine.includes(id) && "is-on")}><Icon className={cn("h-4 w-4", mine.includes(id) && id === "like" && "fill-current")} />{label}</button>
+        ))}
+        {p.replies.length > 0 && <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="react-btn"><MessageCircle className="h-4 w-4" />{p.replies.length} repl{p.replies.length === 1 ? "y" : "ies"}</button>}
+      </div>
+      {open && (
+        <div className="mt-2 grid gap-2 sm:pl-[54px]">
+          {p.replies.map((r, i) => { const ra = analystById(r.analystId)!; return (
+            <div key={i} className="flex gap-2.5 rounded-2xl rounded-tl-md bg-inset px-3 py-2.5 text-[13px]">
+              <AgentAvatar a={ra} size={28} />
+              <div className="min-w-0"><span className="font-semibold text-ink">{ra.name}</span> <span className="ai-tag">AI</span> <span className="text-[11.5px] text-ink-3">{SPECIALTY_LABEL[ra.specialty]}</span><p className="mt-0.5 text-ink-2">{r.body}</p></div>
+            </div>
+          ); })}
+        </div>
+      )}
+    </Glass>
   );
 }

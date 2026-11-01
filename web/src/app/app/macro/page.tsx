@@ -1,7 +1,8 @@
-import { CalendarClock, Crosshair, Map as MapIcon, Radar, Waves } from "lucide-react";
+import { Activity, CalendarClock, Crosshair, Map as MapIcon, Radar, Waves } from "lucide-react";
 import { PageHeader } from "@/components/app/status";
 import { MarketCard, ScenarioCard, SentimentGrid, ZoneCard } from "@/components/macro/desk";
 import { SectionHead, SourceChip } from "@/components/macro/parts";
+import { MacroPulse } from "@/components/terminal/macro-pulse";
 import { Reveal, RevealItem } from "@/components/motion/reveal";
 import { Flag } from "@/components/ui/flags";
 import { dxyRelation, goldImpact, headlinesAbout, releases, scenarios, silverRelation, tradeSetup, zoneBrief, type SentHeadline } from "@/lib/intelligence";
@@ -46,6 +47,9 @@ export default async function Macro() {
       </PageHeader>
       {snap.message && <p className="mb-4 rounded-2xl bg-warn-soft px-4 py-2.5 text-[13px] leading-snug text-ink">{snap.message}</p>}
 
+      <SectionHead id="pulse" icon={<Activity />} title="At a glance" sub="1H charts with their nearest buy and sell zones, timeframe direction, momentum and the dollar link. Tap a market to open its chart." />
+      <MacroPulse snap={snap} />
+
       <SectionHead id="markets" icon={<Radar />} title="Market intelligence" sub="Structure on 4H, 1H, 15M and 5M. Dots: green bullish, red bearish, grey no confirmed structure." />
       <Reveal className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
         <RevealItem><MarketCard i={g} quote={snap.quotes.XAUUSD} sample={sample} note={gNote} /></RevealItem>
@@ -53,7 +57,7 @@ export default async function Macro() {
         <RevealItem className="md:col-span-2 xl:col-span-1"><MarketCard i={snap.silver} quote={snap.quotes.XAGUSD} sample={sample} note={sNote} relation={{ title: "Versus Gold", ...silverRelation(g, snap.silver) }} /></RevealItem>
       </Reveal>
 
-      <SectionHead id="zones" icon={<Crosshair />} title="Key zones · XAUUSD" sub="1H zones with their stop measured at structural invalidation. $1.00 = 100 pips; a stop over 50 pips means WAIT, and it is never tightened." />
+      <SectionHead id="zones" icon={<Crosshair />} title="Key zones · XAUUSD" sub="1H zones with their stop measured at structural invalidation. 1 pip = $0.10 (10 pips = $1.00); a stop over 50 pips ($5.00) means WAIT, and it is never tightened." />
       <Reveal className="grid gap-3 sm:gap-4 lg:grid-cols-2">
         <RevealItem><ZoneCard side="buy" digits={g.digits} b={buyZ ? zoneBrief(g, buyZ, setup) : null} /></RevealItem>
         <RevealItem><ZoneCard side="sell" digits={g.digits} b={sellZ ? zoneBrief(g, sellZ, setup) : null} /></RevealItem>
