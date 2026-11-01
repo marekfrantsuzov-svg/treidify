@@ -1,6 +1,8 @@
 "use client";
 
+import { motion, useReducedMotion } from "motion/react";
 import { useMemo, useState } from "react";
+import { smoothPath } from "./smooth";
 import { fmtMoney, fmtSignedMoney } from "@/lib/format";
 import { useWidth } from "./use-width";
 
@@ -12,11 +14,12 @@ export interface EquityPoint {
 }
 
 /** Equity curve with hover/touch tooltip and a shaded drawdown-from-peak band. */
-export function EquityChart({ points, height = 220, currency = "USD", showDrawdown = true, animate = false, label = "Equity curve" }: {
+export function EquityChart({ points, height = 220, currency = "USD", showDrawdown = true, animate = true, label = "Equity curve" }: {
   points: EquityPoint[]; height?: number; currency?: string; showDrawdown?: boolean; animate?: boolean; label?: string;
 }) {
   const [ref, width] = useWidth<HTMLDivElement>();
   const [hover, setHover] = useState<number | null>(null);
+  const reduce = useReducedMotion();
   const padT = 10, padB = 8;
   const { path, area, dd, xs, ys } = useMemo(() => {
     const vals = points.map((p) => p.equity);
@@ -24,7 +27,7 @@ export function EquityChart({ points, height = 220, currency = "USD", showDrawdo
     const span = max - min || 1;
     const xs = points.map((_, i) => (i / Math.max(1, points.length - 1)) * width);
     const ys = vals.map((v) => padT + (1 - (v - min) / span) * (height - padT - padB));
-    const path = xs.map((x, i) => `${i ? "L" : "M"}${x.toFixed(1)} ${ys[i]!.toFixed(1)}`).join("");
+    const path = smoothPath(xs, ys);
     const area = `${path}L${width} ${height}L0 ${height}Z`;
     let peak = -Infinity;
     const peakYs = vals.map((v) => { peak = Math.max(peak, v); return padT + (1 - (peak - min) / span) * (height - padT - padB); });
@@ -56,16 +59,16 @@ export function EquityChart({ points, height = 220, currency = "USD", showDrawdo
       >
         <defs>
           <linearGradient id="eq-fill" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0" stopColor="var(--accent)" stopOpacity="0.32" />
+            <stop offset="0" stopColor="var(--accent)" stopOpacity="0.26" />
             <stop offset="1" stopColor="var(--accent)" stopOpacity="0" />
           </linearGradient>
         </defs>
         {[0.25, 0.5, 0.75].map((f) => (
           <line key={f} x1={0} x2={width} y1={height * f} y2={height * f} stroke="var(--chart-grid)" />
         ))}
-        <path d={area} fill="url(#eq-fill)" />
-        {showDrawdown && <path d={dd} fill="var(--down)" opacity="0.14" />}
-        <path d={path} fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinejoin="round" className={animate ? "draw-line" : undefined} style={animate ? ({ "--len": width * 3 } as React.CSSProperties) : undefined} />
+        <motion.path d={area} fill="url(#eq-fill)" initial={reduce ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8, delay: 0.35 }} />
+        {showDrawdown && <path d={dd} fill="var(--down)" opacity="0.1" />}
+        <motion.path key={width} d={path} fill="none" stroke="var(--accent)" strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" initial={reduce || !animate ? false : { pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }} style={{ filter: "drop-shadow(0 6px 10px color-mix(in oklab, var(--accent) 35%, transparent))" }} />
         {hover !== null && (
           <g>
             <line x1={xs[hover]} x2={xs[hover]} y1={0} y2={height} stroke="var(--border-strong)" />

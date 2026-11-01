@@ -1,11 +1,12 @@
 import { cn } from "@/lib/cn";
+import { smoothPath } from "./smooth";
 
 export function Sparkline({ values, up, className, width = 120, height = 40 }: { values: number[]; up: boolean; className?: string; width?: number; height?: number }) {
   if (values.length < 2) return null;
   const min = Math.min(...values), max = Math.max(...values);
   const span = max - min || 1;
   const pts = values.map((v, i) => [(i / (values.length - 1)) * width, height - 3 - ((v - min) / span) * (height - 6)] as const);
-  const d = pts.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`).join("");
+  const d = smoothPath(pts.map((p) => p[0]), pts.map((p) => p[1]));
   const color = up ? "var(--up)" : "var(--down)";
   const id = `spark-${up ? "u" : "d"}-${values.length}-${Math.round(values[0]! * 100)}`;
   return (

@@ -1,0 +1,24 @@
+name: Web scheduled jobs
+
+# Calls the app's protected cron endpoints. Works on any Vercel plan (Hobby only allows daily Vercel Crons).
+# Needs repository secret CRON_SECRET (same value as the Vercel env var) and repository variable APP_URL
+# (for example https://app.treidify.com). Without them the job skips.
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # account sync
+    - cron: "7 * * * *"      # virtual analysts, hourly
+  workflow_dispatch:
+
+jobs:
+  call:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Call endpoint
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_URL: ${{ vars.APP_URL }}
+          WHICH: ${{ github.event.schedule == '7 * * * *' && 'community' || 'sync' }}
+        run: |
+          if [ -z "$CRON_SECRET" ] || [ -z "$APP_URL" ]; then echo "CRON_SECRET or APP_URL not set; skipping."; exit 0; fi
+          curl -fsS -m 90 -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/$WHICH"

@@ -137,13 +137,13 @@ export default function Home() {
           </Reveal>
           <ol className="mt-12 grid gap-4 md:grid-cols-3">
             {steps.map((s, i) => (
-              <Reveal key={s.n} delay={i * 0.06}>
-                <li className="glass relative h-full overflow-hidden rounded-[26px] p-6">
+              <li key={s.n} className="h-full"><Reveal delay={i * 0.06} className="h-full">
+                <div className="glass relative h-full overflow-hidden rounded-[26px] p-6">
                   <span className="num text-accent-gradient text-5xl font-semibold tracking-[-0.04em]">{s.n}</span>
                   <h3 className="mt-4 text-lg font-semibold tracking-[-0.02em] text-ink">{s.title}</h3>
                   <p className="mt-2 text-[15px] leading-relaxed text-ink-2">{s.body}</p>
-                </li>
-              </Reveal>
+                </div>
+              </Reveal></li>
             ))}
           </ol>
         </Container>

@@ -1,132 +1,141 @@
-import Link from "next/link";
-import { HealthRow } from "@/components/app/dashboard/health-row";
-import { OutlookCard } from "@/components/app/dashboard/outlook-card";
-import { AiAnalysisCard, CommunityCard, MacroCard, NewsCard, PositionsCard, RecentTradesCard } from "@/components/app/dashboard/cards";
+import { and, count, desc, eq, isNull, ne, or } from "drizzle-orm";
+import { AccountOverview } from "@/components/app/dashboard/account-overview";
+import { HealthStrip } from "@/components/app/dashboard/health-strip";
+import { GoldDesk } from "@/components/app/dashboard/gold-desk";
+import { CalendarCard, CommunityCard, ImpactCard, MacroCard, NewsCard, OverviewCard, type CalItem, type Feed, type MacroTile, type NewsItem } from "@/components/app/dashboard/dash-cards";
+import { MobileGreeting } from "@/components/app/dashboard/hero";
+import { PositionsCard, RecentTradesCard } from "@/components/app/dashboard/cards";
+import { Reveal, RevealItem } from "@/components/motion/reveal";
 import { AccountPicker } from "@/components/app/account-picker";
 import { Alert } from "@/components/auth/auth-ui";
-import { GlassIcon } from "@/components/icons/glass-icon";
-import { InstrumentCard } from "@/components/previews/zone-explorer";
-import { Glass } from "@/components/ui/glass";
-import { ButtonLink } from "@/components/ui/button";
 import { TRIAL_HOURS } from "@/config/plans";
-import { dailyOutlook } from "@/lib/analytics";
-import { sampleAnalysis } from "@/lib/demo/markets";
+import { goldImpact } from "@/lib/intelligence";
+import { ANALYSTS } from "@/lib/community/analysts";
+import { greetingFor } from "@/lib/greeting";
 import { readPeriod } from "@/lib/period-param";
-import { eq } from "drizzle-orm";
-import { db, schema } from "@/server/db";
 import { accountOverview, listAccounts } from "@/server/account-data";
+import { db, schema } from "@/server/db";
 import { getPlanState } from "@/server/entitlements";
-import { providerStatus } from "@/server/providers";
+import { loadIntel } from "@/server/market/load";
+import { marketOverview } from "@/server/market/overview";
+import { economicCalendar, latestHeadlines, type EconEvent, type Result } from "@/server/news/service";
 import { requireOnboarded } from "@/server/session";
 
 export const metadata = { title: "Dashboard" };
 
-const TFS = ["1M", "5M", "15M", "1H", "4H", "1D"] as const;
+const DAY = 86_400_000;
 
+/** Latest released US value per macro tile, read from the calendar's past events. */
+function macroTiles(cal: Result<EconEvent[]>, now: number): MacroTile[] {
+  const past = cal.ok ? cal.data.filter((e) => e.country === "US" && e.actual && Date.parse(e.at) <= now).sort((a, b) => Date.parse(b.at) - Date.parse(a.at)) : [];
+  const pick = (kinds: string[]) => past.find((e) => e.kind && kinds.includes(e.kind));
+  const rate = pick(["FOMC", "Rate decision"]), cpi = pick(["CPI"]), gdp = pick(["GDP"]);
+  return [
+    { id: "rates", label: "Rates", value: rate?.actual ?? null, note: rate?.title ?? null },
+    { id: "inflation", label: "Inflation", value: cpi?.actual ?? null, note: cpi?.title ?? null },
+    { id: "gdp", label: "GDP", value: gdp?.actual ?? null, note: gdp?.title ?? null },
+  ];
+}
+
+/** Members and the faces of recent posters (virtual analysts are drawn with their own clearly labelled colours). */
+async function community() {
+  const [[{ n } = { n: 0 }], recent] = await Promise.all([
+    db.select({ n: count() }).from(schema.user).where(and(or(isNull(schema.user.role), ne(schema.user.role, "virtual_analyst")), or(isNull(schema.user.banned), eq(schema.user.banned, false)))),
+    db.select({ id: schema.user.id, name: schema.user.name, image: schema.user.image, role: schema.user.role })
+      .from(schema.post).innerJoin(schema.user, eq(schema.post.authorId, schema.user.id))
+      .where(eq(schema.post.status, "visible"))
+      .orderBy(desc(schema.post.createdAt)).limit(12),
+  ]);
+  const seen = new Set<string>();
+  const faces = recent.filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true))).slice(0, 3).map((r) => {
+    const a = r.role === "virtual_analyst" ? ANALYSTS.find((x) => x.name === r.name) : undefined;
+    return { id: r.id, name: r.name, image: r.image, hue: a?.hue ?? null };
+  });
+  return { members: n, faces };
+}
+
+/**
+ * Dashboard (reference 1, approved): Account Health and four metrics, the XAUUSD chart with AI analysis, news, the
+ * qualitative gold read, Macro Desk, Market Overview, Economic Calendar and Community. Below: equity curve,
+ * statistics, open positions and recent trades.
+ */
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ account?: string; welcome?: string; period?: string; from?: string; to?: string }> }) {
   const s = await requireOnboarded("/app");
   const sp = await searchParams;
   const accounts = await listAccounts(s.user.id);
   const [overview, plan] = await Promise.all([accountOverview(s.user.id, sp.account, accounts), getPlanState(s.user.id)]);
-  const providers = providerStatus();
   const tz = s.profile.timezone;
   const period = readPeriod(sp);
-  const nowIso = new Date().toISOString();
+  const now = new Date();
+  const nowMs = now.getTime();
+  const nowIso = now.toISOString();
   const sample = overview?.account.source === "sample";
-  const tf = s.profile.dashboardPrefs.defaultTimeframe;
-  const [rules] = await db.select({ max: schema.rulebook.maxTradesPerDay }).from(schema.rulebook).where(eq(schema.rulebook.userId, s.user.id));
-  // Structure lines use the zone engine on sample candles until market data is connected, and say so.
-  const outlook = dailyOutlook({
-    now: new Date(), tz, trades: overview?.trades ?? [], currency: overview?.account.currency, maxTradesPerDay: rules?.max ?? undefined,
-    ...(providers.marketData ? {} : { gold: sampleAnalysis("XAUUSD", "4H").bias.bias, dollar: sampleAnalysis("DXY", "4H").bias.bias }),
-  });
-  const today = new Date().toLocaleDateString("en-GB", { timeZone: tz, weekday: "long", day: "numeric", month: "long" });
+  const [intel, news, cal, rows, comm] = await Promise.all([
+    loadIntel(),
+    latestHeadlines(20),
+    economicCalendar(new Date(nowMs - 45 * DAY), new Date(nowMs + 4 * DAY)),
+    marketOverview(),
+    community(),
+  ]);
+
+  const newsFeed: Feed<NewsItem> = news.ok ? { ok: true, vendor: news.vendor, data: news.data } : { ok: false, message: news.message, needs: news.needs };
+  const upcoming = cal.ok ? cal.data.filter((e) => Date.parse(e.at) >= nowMs - 60 * 60_000 && e.importance !== "low").sort((a, b) => Date.parse(a.at) - Date.parse(b.at)) : [];
+  const calFeed: Feed<CalItem> = cal.ok ? { ok: true, vendor: cal.vendor, data: upcoming.slice(0, 6) } : { ok: false, message: cal.message, needs: cal.needs };
+  const impact = goldImpact(intel.gold, intel.dxy, news.ok ? news.data : [], upcoming, now);
+  const state = !overview ? "none" : sample ? "sample" : overview.account.status === "connected" ? "connected" : "pending";
+  const acct = {
+    state, label: overview ? `${overview.account.label}${overview.account.broker ? ` · ${overview.account.broker}` : ""}` : "Not connected",
+    currency: overview?.account.currency ?? "USD", balance: overview?.balance ?? null, equity: overview?.equity ?? null, floating: overview?.floating ?? null,
+    snapshotAt: overview?.snapshotAt ?? null, startingEquity: overview?.startingEquity ?? 0, trades: overview?.trades ?? [], timezone: tz,
+    period: period.id, custom: period.custom, nowIso,
+  } as const;
 
   return (
-    <div className="grid gap-4">
-      <h1 className="sr-only">Dashboard</h1>
-      {sp.welcome && (
-        <div className="rise">
-          <Alert tone="accent">
-            {sp.welcome === "trial" && plan.source === "trial"
-              ? `Welcome to Treidify. Your ${TRIAL_HOURS}-hour Premium trial is active and ends on its own, with nothing to cancel.`
-              : "Welcome to Treidify. Your account is ready."}
-          </Alert>
+    <>
+      <MobileGreeting greeting={greetingFor(tz)} name={s.user.name.split(" ")[0] ?? ""} />
+      {(sp.welcome || intel.message || (accounts.length > 1 && overview)) && (
+        <div className="mb-3 grid gap-2">
+          {sp.welcome && (
+            <Alert tone="accent">
+              {sp.welcome === "trial" && plan.source === "trial"
+                ? `Welcome to Treidify. Your ${TRIAL_HOURS}-hour Premium trial is active and ends on its own, with nothing to cancel.`
+                : "Welcome to Treidify. Your account is ready."}
+            </Alert>
+          )}
+          {intel.message && <p className="rounded-xl bg-warn-soft px-3 py-1.5 text-[11.5px] leading-snug text-ink-2 sm:px-3.5 sm:text-[12px]">{intel.message}</p>}
+          {accounts.length > 1 && overview && <div className="flex justify-end"><AccountPicker accounts={accounts.map((a) => ({ id: a.id, label: a.label }))} selected={overview.account.id} /></div>}
         </div>
       )}
-      {accounts.length > 1 && overview && <div className="flex justify-end"><AccountPicker accounts={accounts.map((a) => ({ id: a.id, label: a.label }))} selected={overview.account.id} /></div>}
 
-      {overview ? (
-        <HealthRow
-          label={`${overview.account.label}${overview.account.broker ? ` · ${overview.account.broker}` : ""}`}
-          currency={overview.account.currency}
-          sample={sample}
-          balance={overview.balance}
-          equity={overview.equity}
-          floating={overview.floating}
-          snapshotAt={overview.snapshotAt}
-          startingEquity={overview.startingEquity}
-          trades={overview.trades}
-          timezone={tz}
-          period={period.id}
-          custom={period.custom}
-          nowIso={nowIso}
-        />
-      ) : (
-        <section aria-labelledby="health-title" className="grid gap-3">
-          <h2 id="health-title" className="px-1 text-xs font-semibold uppercase tracking-[0.16em] text-ink-2">Your Account Health</h2>
-          <Glass className="relative overflow-hidden p-5 sm:p-7">
-            <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-[radial-gradient(circle,var(--accent-soft),transparent_70%)]" />
-            <div className="flex flex-wrap items-center gap-5">
-              <GlassIcon name="link" size={64} />
-              <div className="min-w-0 flex-1">
-                <p className="text-xl font-semibold tracking-[-0.02em] text-ink sm:text-2xl">Connect MetaTrader to see your real Account Health.</p>
-                <p className="mt-1 max-w-2xl text-sm text-ink-2">Health score, balance, net P&amp;L and win rate are calculated from your own synced deals with a read-only investor password. Nothing here is estimated.</p>
-              </div>
-              <ButtonLink href="/app/accounts" size="lg">Connect account</ButtonLink>
-            </div>
-          </Glass>
-        </section>
-      )}
-
-
-      <nav aria-label="Quick links" className="grid grid-cols-4 gap-2 lg:hidden">
-        {([["/app/markets", "markets", "Markets"], ["/app/news", "news", "News"], ["/app/ai-analysis", "ai", "AI"], ["/app/journal", "journal", "Journal"]] as const).map(([href, icon, label]) => (
-          <Link key={href} href={href} className="glass grid justify-items-center gap-1.5 rounded-3xl py-3 text-[11.5px] font-medium text-ink-2">
-            <GlassIcon name={icon} size={44} />{label}
-          </Link>
-        ))}
-      </nav>
-
-      <div className="grid gap-4 xl:grid-cols-[1fr_1fr_0.86fr]">
-        <InstrumentCard symbol="XAUUSD" defaultTf={tf} tfs={[...TFS]} height={230} showMtf={false} compact />
-        <InstrumentCard symbol="DXY" defaultTf={tf} tfs={[...TFS]} height={230} showMtf={false} compact />
-        <NewsCard connected={providers.news} />
-      </div>
-      {!providers.marketData && <p className="-mt-2 px-1 text-xs text-ink-3">Market charts run the real zone engine on sample candles until the market-data provider is connected. Tap any zone for its full explanation.</p>}
-
-      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-        <MacroCard />
-        <AiAnalysisCard aiConnected={providers.ai} recent={[]} />
-        <CommunityCard />
+      <div className="d-grid">
+        <HealthStrip {...acct} />
+        <GoldDesk initial={intel} />
+        <NewsCard feed={newsFeed} nowMs={nowMs} />
+        <ImpactCard impact={impact} nowMs={nowMs} />
+        <MacroCard tiles={macroTiles(cal, nowMs)} />
+        <OverviewCard rows={rows} />
+        <CalendarCard feed={calFeed} tz={tz} nowMs={nowMs} />
+        <CommunityCard members={comm.members} faces={comm.faces} />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1.65fr_1fr]">
-        <PositionsCard
-          rows={(overview?.positions ?? []).map((p) => ({ id: p.id, symbol: p.symbol, side: p.side, volume: p.volume, openPrice: p.openPrice, currentPrice: p.currentPrice, floatingPnl: p.floatingPnl, stopLoss: p.stopLoss, takeProfit: p.takeProfit }))}
-          currency={overview?.account.currency ?? "USD"}
-          sample={sample}
-          connected={!!overview}
-        />
-        <RecentTradesCard
-          rows={(overview?.trades ?? []).slice(-4).reverse().map((t) => ({ id: t.id, symbol: t.symbol, side: t.side, net: t.profit + t.commission + t.swap + t.fees, closeTime: new Date(t.closeTime * 1000).toISOString() }))}
-          currency={overview?.account.currency ?? "USD"}
-          sample={sample}
-          nowIso={nowIso}
-        />
-      </div>
-
-      <OutlookCard lines={outlook} date={today} sample={!providers.marketData && sample ? "Sample candles and account" : !providers.marketData ? "Structure from sample candles" : sample ? "Sample account" : null} />
-    </div>
+      <Reveal className="dash-grid d-lower">
+        <AccountOverview {...acct} aside={
+          <RecentTradesCard
+              rows={(overview?.trades ?? []).slice(-5).reverse().map((t) => ({ id: t.id, symbol: t.symbol, side: t.side, net: t.profit + t.commission + t.swap + t.fees, closeTime: new Date(t.closeTime * 1000).toISOString() }))}
+              currency={overview?.account.currency ?? "USD"}
+              sample={sample}
+              nowIso={nowIso}
+            />
+        } />
+        <RevealItem className="span-12">
+          <PositionsCard
+            rows={(overview?.positions ?? []).map((p) => ({ id: p.id, symbol: p.symbol, side: p.side, volume: p.volume, openPrice: p.openPrice, currentPrice: p.currentPrice, floatingPnl: p.floatingPnl, stopLoss: p.stopLoss, takeProfit: p.takeProfit }))}
+            currency={overview?.account.currency ?? "USD"}
+            sample={sample}
+            connected={!!overview}
+          />
+        </RevealItem>
+      </Reveal>
+    </>
   );
 }

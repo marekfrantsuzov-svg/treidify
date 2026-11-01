@@ -10,7 +10,7 @@ export default async function Security() {
   const [cred] = await db.select({ id: schema.account.id }).from(schema.account).where(and(eq(schema.account.userId, s.user.id), eq(schema.account.providerId, "credential")));
   const hasPassword = Boolean(cred);
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
       <PasswordForm hasPassword={hasPassword} email={s.user.email} />
       <TwoFactorForm enabled={Boolean(s.user.twoFactorEnabled)} hasPassword={hasPassword} />
       <SessionsList currentToken={s.session.token} timezone={s.profile.timezone} />

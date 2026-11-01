@@ -6,7 +6,7 @@
 /** Paths that belong to the app host: the platform, onboarding, admin and the sign-in flow. */
 const APP_PREFIXES = ["/app", "/onboarding", "/admin", "/login", "/signup", "/forgot-password", "/reset-password", "/goodbye"];
 /** Paths every host may serve directly. */
-const SHARED_PREFIXES = ["/api", "/_next", "/dev", "/favicon", "/icon", "/apple-icon", "/opengraph-image", "/twitter-image", "/robots.txt", "/sitemap.xml"];
+const SHARED_PREFIXES = ["/api", "/_next", "/dev", "/favicon", "/icon", "/apple-icon", "/opengraph-image", "/twitter-image", "/robots.txt", "/sitemap.xml", "/manifest.webmanifest"];
 
 const starts = (path: string, prefixes: string[]) => prefixes.some((p) => path === p || path.startsWith(`${p}/`) || (p.includes(".") && path === p));
 

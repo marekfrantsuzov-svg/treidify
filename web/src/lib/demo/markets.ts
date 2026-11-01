@@ -1,5 +1,5 @@
 import { analyzeLevels, evaluateBias, type Candle } from "@/lib/analytics";
-import { sampleCandles } from "./sample";
+import { mulberry32, sampleCandles } from "./sample";
 
 export type SampleSymbol = "XAUUSD" | "DXY" | "XAGUSD";
 export type SampleTf = "1D" | "4H" | "1H" | "15M" | "5M" | "1M";
@@ -39,3 +39,31 @@ export const MTF: { tf: SampleTf; role: string }[] = [
   { tf: "5M", role: "Confirmation" },
   { tf: "1M", role: "Precision" },
 ];
+
+/**
+ * Consistent multi-timeframe SAMPLE bars: one 5-minute random walk aggregated into 15M, 1H and 4H, so every
+ * timeframe describes the same (imaginary) market. Used only while market data is not connected, always labelled.
+ */
+const mtfCache = new Map<SampleSymbol, Record<"5M" | "15M" | "1H" | "4H", Candle[]>>();
+export function sampleMtf(symbol: SampleSymbol): Record<"5M" | "15M" | "1H" | "4H", Candle[]> {
+  const hit = mtfCache.get(symbol); if (hit) return hit;
+  const p = profile[symbol];
+  const rnd = mulberry32(p.seed * 7919);
+  const N = 48 * 150, step = 300, end = 1_793_000_000 - (1_793_000_000 % 14_400);
+  const vol = p.vol * 0.16;
+  const m5: Candle[] = [];
+  let price = p.start, slow = 0, mid = 0;
+  for (let i = 0; i < N; i++) {
+    if (i % 420 === 0) slow = (rnd() - 0.5) * 0.5 + p.drift * 2;
+    if (i % 36 === 0) mid = (rnd() - 0.5) * 0.9;
+    const o = price, c = Math.max(o + (rnd() - 0.5 + slow * 0.22 + mid * 0.16) * vol * price, 0.01);
+    const w = vol * price * 0.55;
+    const h = Math.max(o, c) + rnd() * w, l = Math.min(o, c) - rnd() * w;
+    m5.push({ t: end - (N - i) * step, o, h, l, c });
+    price = c;
+  }
+  const agg = (k: number) => { const out: Candle[] = []; for (let i = 0; i + k <= m5.length; i += k) { const s = m5.slice(i, i + k); out.push({ t: s[0]!.t, o: s[0]!.o, h: Math.max(...s.map((x) => x.h)), l: Math.min(...s.map((x) => x.l)), c: s.at(-1)!.c }); } return out; };
+  const r = { "5M": m5.slice(-400), "15M": agg(3).slice(-400), "1H": agg(12).slice(-400), "4H": agg(48) };
+  mtfCache.set(symbol, r);
+  return r;
+}

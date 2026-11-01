@@ -3,7 +3,10 @@
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { NotConfiguredError, syncProvider } from "../integrations";
+import { after } from "next/server";
+import { rateLimit } from "@/lib/rate-limit";
+import { createConnection, revokeConnection, syncConnection, syncStatus } from "../sync/service";
+import { MetaApiError } from "../sync/metaapi";
 import { audit } from "../audit";
 import { db, schema } from "../db";
 import { deleteSampleAccounts, insertSampleAccount } from "../sample-account";
@@ -40,25 +43,55 @@ const connectSchema = z.object({
 });
 
 /**
- * Connects a MetaTrader account read-only through the sync provider. The investor password goes straight to the
- * provider and is not stored by Treidify. Refuses honestly while the provider is not switched on.
+ * Connects a MetaTrader account read-only through MetaApi. The investor password goes straight to MetaApi over TLS
+ * and is never stored by Treidify. If MetaApi reports the account is not in investor mode, the first sync removes it.
  */
 export async function connectTradingAccount(input: z.input<typeof connectSchema>): Promise<ActionResult> {
   const s = await requireUser();
   const p = connectSchema.safeParse(input);
   if (!p.success) return { ok: false, error: p.error.issues[0]?.message ?? "Please check the form." };
-  const provider = syncProvider();
-  if (!provider.info().configured) return { ok: false, error: "Account sync is not switched on yet, so nothing was sent. Your details were not stored." };
+  if (!rateLimit(`connect:${s.user.id}`, 5, 3600_000).ok) return { ok: false, error: "Too many connection attempts. Try again in an hour." };
+  if (!syncStatus().configured) return { ok: false, error: "Account sync is not switched on yet, so nothing was sent. Your details were not stored." };
   const { platform, server, login, investorPassword } = p.data;
   try {
-    const r = await provider.connect({ platform, server, login, investorPassword });
-    const [acct] = await db.insert(schema.tradingAccount).values({ userId: s.user.id, platform, server, login, source: "provider" }).returning();
-    await db.insert(schema.providerConnection).values({ tradingAccountId: acct!.id, provider: provider.info().vendor ?? "unknown", externalId: r.externalId, status: r.status === "connected" ? "connected" : r.status === "error" ? "error" : "pending" });
-    await audit("account.connect_requested", { actorId: s.user.id, targetType: "trading_account", targetId: acct!.id, meta: { platform, server } });
+    const r = await createConnection(s.user.id, { platform, server, login, investorPassword });
+    if (!r.ok) return { ok: false, error: r.error };
+    await audit("account.connect_requested", { actorId: s.user.id, targetType: "trading_account", targetId: r.accountId, meta: { platform, server } });
+    after(async () => {
+      const [c] = await db.select({ id: schema.providerConnection.id }).from(schema.providerConnection).where(eq(schema.providerConnection.tradingAccountId, r.accountId));
+      if (c) await syncConnection(c.id);
+    });
     revalidatePath("/app", "layout");
-    return { ok: true, message: "Connection requested. The first sync can take a few minutes; its status shows here." };
+    return { ok: true, message: "Connection requested. MetaApi is connecting to your broker; the first sync usually takes one to three minutes." };
   } catch (e) {
-    if (e instanceof NotConfiguredError) return { ok: false, error: e.message };
+    if (e instanceof MetaApiError) return { ok: false, error: e.status === 400 || e.status === 404 ? "The broker server or login was not recognised. Check them and try again." : "MetaApi could not create the connection. Nothing was saved; try again shortly." };
     return { ok: false, error: "The connection could not be made. Check the server name, login and investor password, then try again." };
   }
+}
+
+async function ownConnection(userId: string, accountId: string) {
+  const [row] = await db.select({ id: schema.providerConnection.id }).from(schema.providerConnection)
+    .innerJoin(schema.tradingAccount, eq(schema.tradingAccount.id, schema.providerConnection.tradingAccountId))
+    .where(and(eq(schema.tradingAccount.id, accountId), eq(schema.tradingAccount.userId, userId)));
+  return row ?? null;
+}
+
+export async function syncTradingAccount(accountId: string): Promise<ActionResult> {
+  const s = await requireUser();
+  if (!rateLimit(`sync:${s.user.id}`, 12, 3600_000).ok) return { ok: false, error: "Please wait a little before syncing again." };
+  const c = await ownConnection(s.user.id, accountId);
+  if (!c) return { ok: false, error: "Account not found." };
+  const r = await syncConnection(c.id);
+  revalidatePath("/app", "layout");
+  return r.ok ? { ok: true, message: "Synced with your broker." } : { ok: false, error: r.error ?? "Sync failed." };
+}
+
+/** Disconnect and revoke: removes the account (and its stored investor password) from MetaApi. Synced history stays until the user deletes the account. */
+export async function disconnectTradingAccount(accountId: string): Promise<ActionResult> {
+  const s = await requireUser();
+  const r = await revokeConnection(s.user.id, accountId);
+  if (!r.ok) return { ok: false, error: r.error ?? "Could not disconnect." };
+  await audit("account.disconnected", { actorId: s.user.id, targetType: "trading_account", targetId: accountId });
+  revalidatePath("/app", "layout");
+  return { ok: true, message: "Disconnected. MetaApi no longer holds access to this account." };
 }

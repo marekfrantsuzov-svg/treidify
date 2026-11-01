@@ -5,10 +5,10 @@ import { Glass } from "@/components/ui/glass";
 
 export function Panel({ title, note, children, className }: { title: string; note?: React.ReactNode; children: React.ReactNode; className?: string }) {
   return (
-    <Glass className={cn("@container min-w-0 p-4 sm:p-5", className)}>
+    <Glass className={cn("@container min-w-0 rounded-[24px] p-4 sm:p-5", className)}>
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-[15px] font-semibold text-ink">{title}</h2>
-        {note && <span className="text-xs text-ink-3">{note}</span>}
+        <h2 className="card-title">{title}</h2>
+        {note && <span className="text-[12px] text-ink-3">{note}</span>}
       </div>
       {children}
     </Glass>
@@ -18,8 +18,8 @@ export function Panel({ title, note, children, className }: { title: string; not
 export function Tile({ label, value, tone, sub }: { label: string; value: string; tone?: "up" | "down"; sub?: string }) {
   return (
     <div className="inset min-w-0 rounded-2xl p-3.5">
-      <div className="truncate text-[11px] font-medium uppercase tracking-[0.08em] text-ink-3">{label}</div>
-      <div className={cn("num mt-1 truncate text-lg font-semibold tracking-[-0.02em] text-ink", tone === "up" && "text-up", tone === "down" && "text-down")}>{value}</div>
+      <div className="truncate text-[12px] text-ink-3">{label}</div>
+      <div className={cn("display-num mt-1 truncate text-[20px] text-ink", tone === "up" && "text-up", tone === "down" && "text-down")}>{value}</div>
       {sub && <div className="num mt-0.5 truncate text-xs text-ink-3">{sub}</div>}
     </div>
   );

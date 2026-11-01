@@ -7,6 +7,7 @@ import { analyseChart, type AnalysisResult } from "@/server/actions/chart-analys
 import { Alert, Spinner } from "@/components/auth/auth-ui";
 import { GlassIcon } from "@/components/icons/glass-icon";
 import { Glass } from "@/components/ui/glass";
+import { ChartReport } from "./chart-report";
 
 export function ChartUploader() {
   const input = useRef<HTMLInputElement>(null);
@@ -15,6 +16,7 @@ export function ChartUploader() {
   const [drag, setDrag] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [pending, start] = useTransition();
+  const [question, setQuestion] = useState("");
   useEffect(() => { if (!file) { setUrl(null); return; } const u = URL.createObjectURL(file); setUrl(u); return () => URL.revokeObjectURL(u); }, [file]);
   const pick = (f: File | undefined) => { if (f) { setFile(f); setResult(null); } };
 
@@ -40,14 +42,18 @@ export function ChartUploader() {
         </div>
       )}
       <input ref={input} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => pick(e.target.files?.[0])} />
+      <label className="mt-4 block">
+        <span className="sr-only">Question about this chart (optional)</span>
+        <input value={question} onChange={(e) => setQuestion(e.target.value)} maxLength={500} placeholder="Optional: ask something specific, e.g. where is liquidity resting?" className="inset h-11 w-full rounded-2xl px-4 text-sm text-ink outline-none placeholder:text-ink-3" />
+      </label>
       <button
         disabled={!file || pending}
-        onClick={() => start(async () => { const fd = new FormData(); fd.set("chart", file!); setResult(await analyseChart(fd)); })}
+        onClick={() => start(async () => { const fd = new FormData(); fd.set("chart", file!); fd.set("question", question); setResult(await analyseChart(fd)); })}
         className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl press bg-brand text-[15px] font-medium text-white shadow-[0_10px_24px_-10px_var(--accent-glow)] hover:brightness-110 disabled:opacity-50 disabled:shadow-none"
       >
         {pending ? <Spinner /> : <GlassIcon name="ai" size={26} active />} Analyse with AI <ArrowRight className="h-4 w-4" />
       </button>
-      {result && <div className="mt-3"><Alert tone={result.ok ? "up" : "warn"}>{result.ok ? result.text : result.error}</Alert></div>}
+      {result && <div className="mt-4">{result.ok ? <ChartReport r={result.reading} at={result.analysedAt} /> : <Alert tone="warn">{result.error}</Alert>}</div>}
     </Glass>
   );
 }
