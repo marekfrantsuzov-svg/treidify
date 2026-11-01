@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { Globe2, Smartphone } from "lucide-react";
 import { ButtonLink } from "@/components/ui/button";
-import { Phone, Shot } from "./shot";
+import { PhoneMock } from "../lx/mocks";
 
 /** Web is the product today; the iOS app is announced, with no download link until it is actually published. */
 export function AppStoreSoon() {
@@ -25,7 +25,7 @@ export function AppStoreSoon() {
           </div>
           <p className="mt-3 text-[12.5px] text-ink-3">Not yet available to download. There is no Treidify app in the App Store until we announce it here.</p>
         </div>
-        <div className="mx-auto w-[220px] sm:w-[250px]"><Phone><Shot name="phone-macro" alt="Treidify Macro Desk on iPhone, shown with sample data." /></Phone></div>
+        <div className="lx-app-phone mx-auto w-[220px] sm:w-[260px]" role="img" aria-label="Treidify on iPhone, illustrative preview"><PhoneMock /></div>
       </div>
     </div>
   );
