@@ -1,7 +1,7 @@
 import { ArrowDownRight, ArrowUpRight, Sparkles } from "lucide-react";
 import { Alert } from "@/components/auth/auth-ui";
 import { PageHeader } from "@/components/app/status";
-import { biasText, biasTone } from "@/components/intel/gauge";
+import { biasText, biasTone } from "@/components/intel/bias";
 import { HeadlineList } from "@/components/intel/news-list";
 import { Glass } from "@/components/ui/glass";
 import type { InstrumentIntel } from "@/lib/intelligence";

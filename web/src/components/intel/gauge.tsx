@@ -11,11 +11,13 @@ import { Modal } from "./modal";
  */
 const SWEEP = 240, START = -120;
 const angleFor = (score: number) => START + ((Math.max(-100, Math.min(100, score)) + 100) / 200) * SWEEP;
-const polar = (cx: number, cy: number, r: number, deg: number) => { const a = ((deg - 90) * Math.PI) / 180; return [cx + r * Math.cos(a), cy + r * Math.sin(a)] as const; };
+// Rounded so server and browser trig agree to the last digit (avoids hydration mismatches).
+const r2 = (n: number) => Math.round(n * 100) / 100;
+const polar = (cx: number, cy: number, r: number, deg: number) => { const a = ((deg - 90) * Math.PI) / 180; return [r2(cx + r * Math.cos(a)), r2(cy + r * Math.sin(a))] as const; };
 const arc = (cx: number, cy: number, r: number, a0: number, a1: number) => { const [x0, y0] = polar(cx, cy, r, a0), [x1, y1] = polar(cx, cy, r, a1); return `M ${x0} ${y0} A ${r} ${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1} ${y1}`; };
 
-export const biasText: Record<BiasLabel, string> = { bullish: "Bullish", bearish: "Bearish", neutral: "Neutral", insufficient: "Insufficient data" };
-export const biasTone: Record<BiasLabel, string> = { bullish: "text-up", bearish: "text-down", neutral: "text-ink-2", insufficient: "text-ink-3" };
+import { biasText, biasTone } from "./bias";
+export { biasText, biasTone };
 
 export interface GaugeProps {
   title: string; subtitle: string; bias: BiasLabel; score: number | null; confidence?: string | null;

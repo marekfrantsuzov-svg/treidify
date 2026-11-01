@@ -3,7 +3,7 @@ import { linkFromOutbox, totp, uniqueEmail } from "./helpers";
 
 /**
  * Journey A: a new visitor creates an account with email, verifies it, completes onboarding with the
- * 72-hour trial, reaches the dashboard with Account Health first, edits their profile, protects the
+ * 72-hour trial, reaches the dashboard led by Market Intelligence, edits their profile, protects the
  * account with two-step sign-in, and signs back in with it.
  */
 test("sign up, verify, onboard, dashboard, profile, two-step sign-in", async ({ page }, info) => {
@@ -52,26 +52,29 @@ test("sign up, verify, onboard, dashboard, profile, two-step sign-in", async ({ 
   await enter.click();
 
   await expect(page).toHaveURL(/\/app\?welcome=trial/);
-  const health = page.getByRole("heading", { name: "Your Account Health" });
-  await expect(health).toBeVisible();
   await expect(page.getByText(/72-hour Premium trial is active/)).toBeVisible();
-  // Account Health is the first section of the dashboard.
-  const firstSection = page.locator("main section").first();
-  await expect(firstSection).toContainText("Your Account Health");
-  // Without a market-data provider nothing pretends to be live: charts are badged and explained.
-  await expect(page.getByText(/sample candles until the market-data provider is connected/)).toBeVisible();
-  await expect(page.getByText(/Example headlines and illustrations that show the layout/)).toBeVisible();
+  // Market Intelligence leads the dashboard; Account Health follows it.
+  await expect(page.getByText("Market Intelligence Today")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Your Account Health" })).toBeVisible();
+  // Without a market-data provider nothing pretends to be live: the engine runs on clearly labelled sample bars.
+  await expect(page.getByText(/Market data is not connected\. Everything below runs the real engine on sample bars/)).toBeVisible();
 
   // Every section in the navigation opens a real page.
-  for (const [path, heading] of [["/app/macro", "Macro Desk"], ["/app/markets", "Markets"], ["/app/news", "Global News"], ["/app/ai-analysis", "AI Chart Analysis"], ["/app/journal", "Trading Journal"], ["/app/performance", "Performance"], ["/app/coach", "AI Coach"], ["/app/community", "Community"], ["/app/calendar", "Economic Calendar"], ["/app/accounts", "Account connections"], ["/app/settings/accounts", "Account connections"]] as const) {
+  for (const [path, heading] of [["/app/intelligence", "Market Intelligence"], ["/app/macro", "Macro Desk"], ["/app/markets", "Charts"], ["/app/news", "News & Calendar"], ["/app/ai-analysis", "AI Chart Analysis"], ["/app/journal", "Trading Journal"], ["/app/performance", "Performance"], ["/app/coach", "AI Coach"], ["/app/community", "Community"], ["/app/accounts", "Account connections"], ["/app/settings/accounts", "Account connections"]] as const) {
     await page.goto(path);
     await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
   }
+  // The old calendar address now opens the calendar tab of News & Calendar.
+  await page.goto("/app/calendar");
+  await expect(page).toHaveURL(/\/app\/news\?tab=calendar/);
 
   // Without a sync provider the connect form is shown but cannot send anything.
   await page.goto("/app/accounts");
   await expect(page.getByText(/Account sync is not switched on yet/)).toBeVisible();
+  await page.getByRole("button", { name: "Connect MetaTrader" }).click();
+  await expect(page.getByRole("dialog", { name: /Connect MetaTrader/ })).toBeVisible();
   await expect(page.getByRole("button", { name: "Connect read-only" })).toBeDisabled();
+  await page.keyboard.press("Escape");
 
   // One click adds a labelled demo account, and every module then works on it.
   await page.getByRole("button", { name: "Load demo account" }).click();
@@ -80,7 +83,6 @@ test("sign up, verify, onboard, dashboard, profile, two-step sign-in", async ({ 
 
   await page.goto("/app");
   await expect(page.getByText(/^Sample( account)?$/).filter({ visible: true }).first()).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Today’s outlook" })).toBeVisible();
 
   await page.goto("/app/performance?period=ALL");
   await expect(page.getByRole("heading", { name: "Equity curve" })).toBeVisible();

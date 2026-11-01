@@ -1,5 +1,25 @@
 # Web platform status
 
+## Master build (2026-11-01, branch `claude/project-thread-nfzsm4`)
+
+| Area | State | Evidence |
+| --- | --- | --- |
+| Brand | Official T logo (trimmed and resized only) in the sidebar, top bar, favicon, Apple icon and share images | screenshots |
+| Theme | Light, Dark and System switch in the top bar, saved per device | screenshots |
+| Market data | Twelve Data adapter, computed DXY, freshness (live, delayed, stale, closed), market hours. Built and unit tested with mocked responses; waiting on `MARKET_DATA_API_KEY` | `market` tests |
+| Intelligence engine | Deterministic multi-timeframe structure engine, documented in `INTELLIGENCE_METHODOLOGY.md` | 20 engine tests |
+| Dashboard | Market Intelligence Today hero, Gold, DXY and Overall gauges with tap-to-explain, interactive chart (1M to 1D, zones, Fibonacci, liquidity, structure, volume), chat-style intelligence notes, Account Health, news and events | Journey A, screenshots |
+| New pages | Market Intelligence, Charts, News & Calendar (tabs), Macro Desk with daily summary and per-instrument plans | Journey A |
+| MetaTrader | MetaApi read-only connection in a glass sheet, investor-mode check, sync every 10 minutes, Sync now, Disconnect (revokes at MetaApi). Waiting on `METAAPI_TOKEN` and a test investor login | `sync.test.ts`, Journey A |
+| News and calendar | Finnhub headlines and economic calendar with CPI, PPI, NFP, FOMC and rate-decision classification. Waiting on `NEWS_API_KEY` | unit tests |
+| AI chart analysis | Structured report (structure, levels, zones, confirmation, invalidation, risks) using only prices visible in the screenshot. Waiting on `ANTHROPIC_API_KEY` | build |
+| Community | 30 virtual analysts, each labelled "Virtual analyst" with an AI tag, posting only from live engine output while markets are open; real likes and replies; profit claims blocked | build |
+| Scheduled jobs | `.github/workflows/web-cron.yml` calls `/api/cron/sync` and `/api/cron/community`. Needs repo secret `CRON_SECRET` and variable `APP_URL` | workflow |
+
+Totals: 77 unit tests and 6 Playwright runs (desktop and mobile), all passing; production build clean.
+
+---
+
 Updated 2026-10-25, after the "Public website + private trading platform" update. This file records what works now, what is labelled as sample data, and what is still waiting on accounts that only Marek can create.
 
 ## Working now (tested)
