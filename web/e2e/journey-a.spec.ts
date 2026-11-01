@@ -119,6 +119,16 @@ test("sign up, verify, onboard, dashboard, profile, two-step sign-in", async ({ 
   await expect(page.getByText(/returns to Free automatically/)).toBeVisible();
 
   await page.goto("/app/settings/security");
+  // TEMP diagnostics for a CI-only mobile failure; removed with the fix.
+  await page.waitForTimeout(1500);
+  console.log("DIAG", JSON.stringify(await page.evaluate(() => {
+    const b = [...document.querySelectorAll("button")].find((x) => x.textContent?.includes("Set up"))!;
+    const r = b.getBoundingClientRect();
+    const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+    const tf = [] as string[];
+    for (let e: Element | null = b; e; e = e.parentElement) { const cs = getComputedStyle(e); if (cs.transform !== "none" || cs.filter !== "none" || cs.zoom !== "1" || cs.willChange !== "auto") tf.push(`${e.tagName}.${String(e.className).slice(0, 40)} t=${cs.transform} f=${cs.filter} z=${cs.zoom} wc=${cs.willChange}`); }
+    return { r: [r.x, r.y, r.width, r.height], vw: innerWidth, vh: innerHeight, sw: document.documentElement.scrollWidth, sh: document.documentElement.scrollHeight, sy: scrollY, vv: [visualViewport?.scale, visualViewport?.offsetTop, visualViewport?.pageTop, visualViewport?.height], dpr: devicePixelRatio, hit: hit?.outerHTML.slice(0, 120), tf };
+  })));
   await page.getByRole("button", { name: "Set up" }).click();
   await page.getByLabel("Confirm your password").fill(password);
   await page.getByRole("button", { name: "Continue" }).click();
