@@ -30,8 +30,8 @@ describe("gold pip convention (1 pip = $0.10)", () => {
 });
 
 describe("50-pip ($5.00) structural stop rule for XAUUSD", () => {
-  it("accepts a setup whose structural stop is exactly 50 pips ($5.00)", () => {
-    const s = tradeSetup(gold([zone({ lower: 3965.5, upper: 3970, inv: 3965 })]));
+  it("accepts a confirmed setup whose structural stop is exactly 50 pips ($5.00)", () => {
+    const s = tradeSetup(gold([zone({ lower: 3965.5, upper: 3970, inv: 3965, status: "confirmed" })]));
     expect(s.status).toBe("valid");
     expect(s.stopPips).toBe(50);
     expect(s.stop).toBe(3965);
@@ -58,17 +58,24 @@ describe("50-pip ($5.00) structural stop rule for XAUUSD", () => {
     expect(s.status).toBe("wait");
   });
   it("accepts a sell whose stop fits", () => {
-    const s = tradeSetup(gold([zone({ side: "sell", lower: 3975, upper: 3977, inv: 3978.5 })], { bias: "bearish", levels: [{ id: "s1", kind: "support", lower: 3960, upper: 3961, touches: 2, lastTouch: 0, swingIndices: [] }] }));
+    const s = tradeSetup(gold([zone({ side: "sell", lower: 3975, upper: 3977, inv: 3978.5, status: "confirmed" })], { bias: "bearish", levels: [{ id: "s1", kind: "support", lower: 3960, upper: 3961, touches: 2, lastTouch: 0, swingIndices: [] }] }));
     expect(s.stopPips).toBe(35);
     expect(s.status).toBe("valid");
     expect(s.targets[0]).toBe(3961);
+  });
+  it("never calls a setup just because price is inside or near a zone", () => {
+    const inZone = tradeSetup(gold([zone({ lower: 3965.5, upper: 3970, inv: 3965, status: "in-zone" })]));
+    expect(inZone.status).toBe("wait");
+    expect(inZone.reasons[0]).toMatch(/confirmation has not printed/);
+    expect(inZone.stopPips).toBe(50);
+    expect(tradeSetup(gold([zone({ lower: 3965.5, upper: 3970, inv: 3965, status: "watching" })])).status).toBe("wait");
   });
   it("is WAIT with mixed structure or no with-trend zone", () => {
     expect(tradeSetup(gold([], { bias: "neutral" })).status).toBe("wait");
     expect(tradeSetup(gold([zone({ lower: 3965.5, upper: 3970, inv: 3965, withTrend: false })])).status).toBe("wait");
   });
   it("is WAIT when no target is at least 1R away", () => {
-    const s = tradeSetup(gold([zone({ lower: 3965.5, upper: 3970, inv: 3965 })], { levels: [{ id: "r1", kind: "resistance", lower: 3971, upper: 3972, touches: 2, lastTouch: 0, swingIndices: [] }] }));
+    const s = tradeSetup(gold([zone({ lower: 3965.5, upper: 3970, inv: 3965, status: "confirmed" })], { levels: [{ id: "r1", kind: "resistance", lower: 3971, upper: 3972, touches: 2, lastTouch: 0, swingIndices: [] }] }));
     expect(s.status).toBe("wait");
   });
 });

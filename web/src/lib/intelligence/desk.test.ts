@@ -3,10 +3,10 @@ import type { InstrumentIntel, Zone } from "./engine";
 import { tradeSetup } from "./setup";
 import { dxyRelation, headlinesAbout, momentumLabel, scenarios, silverRelation, zoneBrief } from "./desk";
 
-function zone(p: { lower: number; upper: number; inv: number; side?: "buy" | "sell"; withTrend?: boolean }): Zone {
+function zone(p: { lower: number; upper: number; inv: number; side?: "buy" | "sell"; withTrend?: boolean; status?: Zone["status"] }): Zone {
   const side = p.side ?? "buy";
   return { id: `${side}-${p.lower}`, side, lower: p.lower, upper: p.upper, timeframe: "1H", reasons: ["1H support formed by 3 swing lows"], withTrend: p.withTrend ?? true,
-    confirmation: "Wait for 5M confirmation.", invalidation: { level: p.inv, text: "inv" }, status: "in-zone", distanceATR: 0 };
+    confirmation: "Wait for 5M confirmation.", invalidation: { level: p.inv, text: "inv" }, status: p.status ?? "in-zone", distanceATR: 0 };
 }
 function intel(extra: Partial<InstrumentIntel> = {}): InstrumentIntel {
   return {
@@ -28,8 +28,8 @@ describe("zone readiness obeys the 50-pip XAUUSD rule", () => {
     expect(b.readinessText).toMatch(/\$5\.00/);
     expect(b.diagram.stop).toBe(3948);
   });
-  it("marks the setup's zone ready when the stop fits", () => {
-    const z = zone({ lower: 3965.5, upper: 3970, inv: 3965 });
+  it("marks the setup's zone ready when the stop fits and 5M has confirmed", () => {
+    const z = zone({ lower: 3965.5, upper: 3970, inv: 3965, status: "confirmed" });
     const i = intel({ zones: [z] });
     const b = zoneBrief(i, z, tradeSetup(i));
     expect(b.readiness).toBe("ready");

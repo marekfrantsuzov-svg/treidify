@@ -6,12 +6,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { IntelSnapshot } from "@/server/market/intelligence";
 import { tradeSetup, type TradeSetup } from "@/lib/intelligence";
 import { cn } from "@/lib/cn";
+import { formatPips } from "@/lib/trading/pips";
 import { AssetMark } from "@/components/ui/flags";
 import dynamic from "next/dynamic";
 import { useIntel } from "@/components/intel/market-intel";
 
 // The chart library loads after first paint, so the dashboard text is interactive sooner.
-const IntelChart = dynamic(() => import("@/components/intel/intel-chart").then((m) => m.IntelChart), {
+const TerminalChart = dynamic(() => import("@/components/terminal/terminal-chart").then((m) => m.TerminalChart), {
   ssr: false,
   loading: () => <div className="skeleton h-[392px] flex-1 rounded-2xl sm:h-auto sm:min-h-[372px]" role="status" aria-label="Loading chart" />,
 });
@@ -69,8 +70,9 @@ export function GoldDesk({ initial }: { initial: IntelSnapshot }) {
   return (
     <>
       <section ref={card} aria-labelledby="xau-title" className="dcard dcard-pad d-chart chart-full flex flex-col">
-        <IntelChart
-          symbol="XAUUSD" intel={g} sample={sample} compact fill={!narrow && !full} height={full ? Math.max(360, vh - 230) : 210}
+        <TerminalChart
+          symbol="XAUUSD" digits={g.digits} htfTrend={g.trends["4H"]} sample={sample} initialTf="1H" showToggles={full} defaultLayers={{ zones: true }}
+          fill={!narrow && !full} height={full ? Math.max(360, vh - 260) : 330}
           lead={
             <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 max-sm:w-full">
               <AssetMark symbol="XAUUSD" size={narrow ? 34 : 42} />
@@ -121,7 +123,7 @@ export function GoldDesk({ initial }: { initial: IntelSnapshot }) {
           <dl className="num mt-3 grid gap-1.5 text-[13.5px]">
             <Row k="Entry" v={`${fmt(setup.entry!.lower, g.digits)} – ${fmt(setup.entry!.upper, g.digits)}`} />
             {setup.targets.map((t, i) => <Row key={t} k={`TP${i + 1}`} v={fmt(t, g.digits)} />)}
-            <Row k="SL" v={`${fmt(setup.stop!, g.digits)}`} note={`${setup.stopPips} pips`} />
+            <Row k="SL" v={`${fmt(setup.stop!, g.digits)}`} note={formatPips("XAUUSD", setup.stopPips!)} />
           </dl>
         ) : (
           <div className="mt-2.5 grid gap-2 text-[12px] leading-snug text-ink-2">
@@ -129,7 +131,7 @@ export function GoldDesk({ initial }: { initial: IntelSnapshot }) {
               <dl className="num grid gap-1 rounded-xl bg-[var(--surface-inset)] px-2.5 py-2 text-[12px] text-ink-2 [&>div]:flex [&>div]:flex-wrap [&>div]:justify-between [&>div]:gap-x-2 [&_dd]:whitespace-nowrap [&_dd]:font-semibold [&_dd]:text-ink">
                 <div><dt className="capitalize">{setup.side} zone</dt><dd>{fmt(setup.entry.lower, g.digits)} – {fmt(setup.entry.upper, g.digits)}</dd></div>
 
-                <div className="text-down-ink font-semibold [&_dd]:!text-[var(--down-ink,var(--down))]"><dt>Stop needed</dt><dd>{setup.stopPips} / {setup.maxStopPips} pips</dd></div>
+                <div className={cn("font-semibold", setup.stopPips !== null && setup.maxStopPips !== null && setup.stopPips > setup.maxStopPips && "[&_dd]:!text-[var(--down-ink,var(--down))]")}><dt>Structural stop</dt><dd>{setup.stopPips} / {setup.maxStopPips} pips</dd></div>
               </dl>
             )}
             <p className="line-clamp-3 text-[11.5px] min-[1360px]:hidden">{setup.stopPips !== null && setup.maxStopPips !== null && setup.stopPips > setup.maxStopPips
