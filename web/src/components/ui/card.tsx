@@ -32,7 +32,7 @@ export function CardHeader({ title, caption, icon, href, hrefLabel, children, id
 export function Stat({ icon, label, value, sub, tone, className }: { icon: React.ReactNode; label: string; value: React.ReactNode; sub?: React.ReactNode; tone?: "up" | "down" | "muted"; className?: string }) {
   return (
     <div className={cn("flex min-w-0 items-center gap-3", className)}>
-      <span className="stat-icon max-sm:hidden" aria-hidden>{icon}</span>
+      <span className="stat-icon" aria-hidden>{icon}</span>
       <div className="min-w-0">
         <div className={cn("display-num truncate text-[clamp(1.15rem,1.6vw,1.5rem)] leading-tight", tone === "down" ? "text-down" : tone === "muted" ? "text-ink-3" : "text-ink")}>{value}</div>
         <div className="line-clamp-2 text-[12px] leading-snug text-ink-3">{label}{sub ? <> · {sub}</> : null}</div>

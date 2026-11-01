@@ -100,7 +100,7 @@ export function AccountOverview(p: AccountOverviewProps) {
           <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-5 lg:grid-cols-4 lg:divide-x lg:divide-[var(--border)]">
             <Stat className="lg:pr-4" icon={<Wallet className="h-[18px] w-[18px]" />} label="Total balance" tone={none ? "muted" : undefined}
               value={p.balance === null ? money(0) : <CountUp value={p.balance} format={(v) => money(v)} />}
-              sub={none ? "syncs on connect" : pnlPct === null ? undefined : fmtPct(pnlPct, 1, true)} />
+              sub={none ? undefined : pnlPct === null ? undefined : fmtPct(pnlPct, 1, true)} />
             <Stat className="lg:px-6" icon={<Activity className="h-[18px] w-[18px]" />} label={`Net P&L · ${periodName.toLowerCase()}`} tone={none ? "muted" : m.netProfit < 0 ? "down" : undefined}
               value={<CountUp value={m.netProfit} format={(v) => fmtSignedMoney(v, p.currency)} />} />
             <Stat className="lg:px-6" icon={<Target className="h-[18px] w-[18px]" />} label={`Win rate · ${m.wins}W / ${m.losses}L`} tone={none ? "muted" : undefined}
