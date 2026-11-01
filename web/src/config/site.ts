@@ -33,6 +33,7 @@ export const footerNav = [
       { href: "/brokers", title: "Supported brokers" },
       { href: "/pricing", title: "Pricing" },
       { href: "/signup", title: "Get started free" },
+      { href: "/#app", title: "iOS app (coming soon)" },
       { href: "/login", title: "Log In" },
     ],
   },
@@ -41,7 +42,7 @@ export const footerNav = [
     links: [
       { href: "/about", title: "About Treidify" },
       { href: "/help", title: "Help Center" },
-      { href: "/contact", title: "Contact" },
+      { href: "/contact", title: "Contact support" },
     ],
   },
   {

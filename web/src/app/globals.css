@@ -180,8 +180,10 @@ body {
 /* Liquid glass surface. Blur stays modest so text keeps contrast. */
 /* Layered surface: a faint top-lit gradient, a hairline border and one soft shadow. Blur is modest; the surface
    carries enough fill on its own that text never competes with what is behind it. */
+/* Position lives in the components layer so utilities like absolute, fixed and sticky can override it
+   (unlayered rules beat every Tailwind layer, which had silently turned absolute glass menus into relative ones). */
+@layer components { .glass { position: relative; } }
 .glass {
-  position: relative;
   background: linear-gradient(180deg, var(--surface-top), var(--surface) 46%);
   border: 1px solid var(--border);
   box-shadow: var(--shadow), inset 0 1px 0 var(--highlight);
@@ -989,3 +991,47 @@ body { font-feature-settings: "cv11", "ss01", "calt"; letter-spacing: -0.006em; 
 
 /* Theme switch crossfade (View Transitions API where supported; instant elsewhere and with reduced motion). */
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 380ms; animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1); }
+
+/* ───────── Landing v3 ───────── */
+.shot-dark { display: none; }
+:root[data-theme="dark"] .shot-light { display: none; }
+:root[data-theme="dark"] .shot-dark { display: block; }
+
+.hero-logo { display: grid; place-items: center; width: 92px; height: 92px; border-radius: 26px; background: var(--surface-strong); border: 1px solid var(--border); box-shadow: 0 24px 50px -24px color-mix(in oklab, var(--accent) 70%, transparent), inset 0 1px 0 var(--highlight); }
+
+.device-laptop { position: relative; }
+.device-laptop-screen { position: relative; border-radius: 18px; padding: 0; background: var(--surface-strong); border: 1px solid var(--border); box-shadow: 0 50px 100px -40px rgba(30, 20, 90, 0.45), 0 20px 40px -24px rgba(30, 20, 90, 0.25), inset 0 1px 0 var(--highlight); overflow: hidden; }
+:root[data-theme="dark"] .device-laptop-screen { box-shadow: 0 50px 110px -40px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.06); }
+.device-bar { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-bottom: 1px solid var(--border); background: var(--surface); }
+.device-bar span { width: 9px; height: 9px; border-radius: 999px; background: var(--border-strong, rgba(120, 120, 140, 0.35)); }
+.device-bar em { margin: 0 auto; padding-right: 40px; font-style: normal; font-size: 11px; color: var(--text-3); }
+.device-laptop-base { height: 12px; margin: 0 -3%; border-radius: 0 0 16px 16px; background: linear-gradient(180deg, var(--surface-strong), var(--surface-inset)); border: 1px solid var(--border); border-top: 0; box-shadow: 0 18px 30px -18px rgba(30, 20, 90, 0.35); }
+@media (max-width: 639.98px) { .device-bar { height: 22px; } .device-bar span { width: 7px; height: 7px; } .device-bar em { display: none; } .device-laptop-base { height: 8px; } }
+
+.device-phone { padding: 9px; border-radius: 44px; background: linear-gradient(160deg, #2a2a33, #0d0d12); box-shadow: 0 40px 80px -30px rgba(20, 10, 60, 0.55), inset 0 0 0 1.5px rgba(255, 255, 255, 0.12); }
+.device-phone-screen { position: relative; overflow: hidden; border-radius: 36px; background: #000; }
+.device-island { position: absolute; top: 9px; left: 50%; width: 30%; height: 22px; margin-left: -15%; border-radius: 999px; background: #000; }
+
+.hero-phone { position: absolute; right: 0; bottom: -40px; width: clamp(130px, 21%, 250px); }
+.hero-chip { position: absolute; display: flex; align-items: center; gap: 6px; padding: 8px 10px; border-radius: 18px; box-shadow: var(--shadow-lg); }
+.hero-chip-a { left: -8px; top: 22%; }
+.hero-chip-b { left: -14px; top: 54%; }
+@media (max-width: 767.98px) { .hero-chip { display: none; } .hero-phone { right: 2px; bottom: -24px; width: 31%; } .device-phone { padding: 5px; border-radius: 26px; } .device-phone-screen { border-radius: 22px; } .device-island { height: 12px; top: 6px; } }
+
+.feature-card { transition: transform 300ms var(--ease-spring), box-shadow 300ms var(--ease-out-3), border-color 200ms linear; }
+@media (hover: hover) and (pointer: fine) { .feature-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg), 0 26px 50px -30px color-mix(in oklab, var(--accent) 60%, transparent); border-color: color-mix(in oklab, var(--accent) 22%, var(--border)); } }
+@media (prefers-reduced-motion: reduce) { .feature-card, .feature-card:hover { transition: none; transform: none; } }
+
+.tour-step { padding: 8px 0 48px; transition: opacity 400ms var(--ease-out-3); }
+@media (min-width: 1024px) { .tour-step { min-height: 62vh; display: flex; flex-direction: column; justify-content: center; padding: 0; opacity: 0.38; } .tour-step.is-active { opacity: 1; } }
+.tour-frame { opacity: 0; transform: scale(0.985); transition: opacity 520ms var(--ease-out-3), transform 700ms var(--ease-spring); }
+.tour-frame.is-active { opacity: 1; transform: none; }
+.tour-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--border-strong, rgba(120, 120, 140, 0.35)); transition: width 300ms var(--ease-spring), background-color 300ms; }
+.tour-dot.is-active { width: 22px; background: var(--accent); }
+@media (prefers-reduced-motion: reduce) { .tour-step, .tour-frame, .tour-dot { transition: none; } }
+
+.step-num { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 16px; font-size: 24px; font-weight: 650; color: #fff; background: linear-gradient(140deg, var(--accent), color-mix(in oklab, var(--accent) 40%, var(--grad-b, #fe85d0))); box-shadow: 0 14px 28px -14px color-mix(in oklab, var(--accent) 70%, transparent); }
+
+.appstore { background-image: radial-gradient(80% 90% at 100% 0%, color-mix(in oklab, var(--grad-b, #fe85d0) 18%, transparent), transparent 60%), radial-gradient(70% 80% at 0% 100%, color-mix(in oklab, var(--accent) 14%, transparent), transparent 60%); }
+.app-icon { display: block; width: 84px; height: 84px; flex-shrink: 0; overflow: hidden; border-radius: 22px; background: #fff; box-shadow: 0 18px 36px -16px color-mix(in oklab, var(--accent) 70%, transparent), 0 0 0 1px var(--border); }
+.appstore-badge { display: inline-flex; align-items: center; gap: 9px; height: 52px; padding: 0 18px 0 14px; border-radius: 14px; color: var(--text); background: var(--surface-inset); border: 1px dashed var(--border-strong, var(--border)); cursor: default; user-select: none; }
