@@ -272,7 +272,7 @@ export function PositionsCard({ rows, currency, sample, connected }: { rows: Pos
         <ul className="num mt-2 sm:hidden">
           {rows.map((r) => (
             <li key={r.id}>
-              <Link href={`/app/journal?symbol=${encodeURIComponent(r.symbol)}`} className="flex items-center gap-3 border-t border-line py-3 first:border-t-0" aria-label={`View ${r.symbol} history`}>
+              <Link href={`/app/journal?symbol=${encodeURIComponent(r.symbol)}`} className="flex items-center gap-3 border-t border-line py-3 first:border-t-0" title={`View ${r.symbol} history`}>
                 <InstrumentIcon symbol={r.symbol} className="h-8 w-8 text-[10px]" />
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2 text-[14px] font-semibold text-ink">{r.symbol}<span className={cn("rounded-full px-1.5 py-0.5 text-[10.5px] font-semibold", r.side === "buy" ? "bg-up-soft text-up" : "bg-down-soft text-down")}>{r.side === "buy" ? "Buy" : "Sell"} {fmtNumber(r.volume, 2)}</span></span>
@@ -297,7 +297,7 @@ export function PositionsCard({ rows, currency, sample, connected }: { rows: Pos
                   <td className={cn("font-semibold", (r.floatingPnl ?? 0) >= 0 ? "text-up" : "text-down")}>{r.floatingPnl === null ? "—" : fmtSignedMoney(r.floatingPnl, currency)}</td>
                   <td className="text-ink-3">{r.stopLoss === null ? "—" : fmtNumber(r.stopLoss, dp(r.symbol))}</td>
                   <td className="text-ink-3">{r.takeProfit === null ? "—" : fmtNumber(r.takeProfit, dp(r.symbol))}</td>
-                  <td className="text-center"><Link href={`/app/journal?symbol=${encodeURIComponent(r.symbol)}`} className="inset inline-flex h-7 items-center rounded-lg px-3.5 font-sans text-[11.5px] font-medium text-ink-2 hover:text-ink" aria-label={`View ${r.symbol} history`}>View</Link></td>
+                  <td className="text-center"><Link href={`/app/journal?symbol=${encodeURIComponent(r.symbol)}`} className="inset inline-flex h-7 items-center rounded-lg px-3.5 font-sans text-[11.5px] font-medium text-ink-2 hover:text-ink">View<span className="sr-only"> {r.symbol} history</span></Link></td>
                 </tr>
               ))}
             </tbody>
@@ -338,9 +338,9 @@ export function RecentTradesCard({ rows, currency, sample, nowIso }: { rows: Tra
               <InstrumentIcon symbol={t.symbol} className="h-6 w-6 text-[9px]" />
               <span className="w-16 font-medium text-ink">{t.symbol}</span>
               <span className={cn("w-10 font-medium", t.side === "buy" ? "text-up" : "text-down")}>{t.side === "buy" ? "Buy" : "Sell"}</span>
-              {sample && <TradeSpark id={t.id} up={t.net >= 0} />}
+              {sample && <span className="hidden 2xl:block"><TradeSpark id={t.id} up={t.net >= 0} /></span>}
               <span className={cn("ml-auto font-semibold", t.net >= 0 ? "text-up" : "text-down")}>{fmtSignedMoney(t.net, currency)}</span>
-              <span className="w-16 text-right text-xs text-ink-3">{ago(t.closeTime, now)}</span>
+              <span className="w-14 shrink-0 text-right text-xs text-ink-3">{ago(t.closeTime, now)}</span>
             </li>
           ))}
         </ul>

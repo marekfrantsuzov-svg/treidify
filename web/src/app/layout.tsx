@@ -1,8 +1,19 @@
 import type { Metadata, Viewport } from "next";
+import localFont from "next/font/local";
 import "./globals.css";
 import { site } from "@/config/site";
 import { Providers } from "@/components/providers/providers";
 import { GlassIconDefs } from "@/components/icons/glass-icon";
+import { Waves } from "@/components/brand/waves";
+
+/** Inter (variable, latin), self-hosted and preloaded by Next with a metric-matched fallback: no layout shift. */
+const inter = localFont({
+  src: "../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2",
+  weight: "100 900",
+  variable: "--font-inter",
+  display: "swap",
+  fallback: ["-apple-system", "BlinkMacSystemFont", "Segoe UI", "system-ui", "sans-serif"],
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
@@ -29,10 +40,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={inter.variable}>
       <body className="min-h-dvh">
         <Providers>
           <div className="atmosphere" aria-hidden />
+          <Waves />
           <GlassIconDefs />
           {children}
         </Providers>

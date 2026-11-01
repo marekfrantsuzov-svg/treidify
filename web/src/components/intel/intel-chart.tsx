@@ -15,13 +15,14 @@ const LAYERS: { id: Layer; label: string }[] = [{ id: "zones", label: "Zones" },
 
 const css = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || "#888";
 
-interface Band { id: string; top: number; height: number; side: "buy" | "sell"; label: string }
+interface Band { id: string; top: number; height: number; side: "buy" | "sell"; label: string; range: string }
+const fmtP = (v: number, d: number) => v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
 
 /**
  * Interactive candlestick chart (TradingView Lightweight Charts, Apache-2.0, attribution kept on).
  * Overlays come only from the engine output passed in; zones are drawn as glass bands between their exact prices.
  */
-export function IntelChart({ symbol, intel, initial, initialTf = "1H", sample, height = 420, className }: { symbol: string; intel: InstrumentIntel; initial?: Candle[]; initialTf?: Tf; sample?: boolean; height?: number; className?: string }) {
+export function IntelChart({ symbol, intel, initial, initialTf = "1H", sample, height = 420, className, compact = false, fill = false, lead, actions }: { symbol: string; intel: InstrumentIntel; initial?: Candle[]; initialTf?: Tf; sample?: boolean; height?: number; className?: string; compact?: boolean; fill?: boolean; lead?: React.ReactNode; actions?: React.ReactNode }) {
   const box = useRef<HTMLDivElement>(null);
   const chart = useRef<IChartApi | null>(null);
   const series = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -33,7 +34,7 @@ export function IntelChart({ symbol, intel, initial, initialTf = "1H", sample, h
   const [state, setState] = useState<"ready" | "loading" | "error">(initial?.length ? "ready" : "loading");
   const [err, setErr] = useState<string | null>(null);
   const [meta, setMeta] = useState<{ sample: boolean; freshness: string | null; method: string | null }>({ sample: !!sample, freshness: null, method: null });
-  const [layers, setLayers] = useState<Record<Layer, boolean>>({ zones: true, fib: true, liquidity: true, structure: true, volume: false });
+  const [layers, setLayers] = useState<Record<Layer, boolean>>(compact ? { zones: true, fib: false, liquidity: false, structure: false, volume: false } : { zones: true, fib: true, liquidity: true, structure: true, volume: false });
   const [bands, setBands] = useState<Band[]>([]);
   const { resolvedTheme } = useTheme();
   // Phone widths: axis labels only (no stacked titles), Fibonacci off by default, a legend under the chart instead.
@@ -52,7 +53,7 @@ export function IntelChart({ symbol, intel, initial, initialTf = "1H", sample, h
     if (!box.current) return;
     const c = createChart(box.current, {
       autoSize: true,
-      layout: { background: { type: ColorType.Solid, color: "transparent" }, textColor: css("--text-3"), fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter Variable', sans-serif", fontSize: 11, attributionLogo: true },
+      layout: { background: { type: ColorType.Solid, color: "transparent" }, textColor: css("--text-3"), fontFamily: getComputedStyle(document.body).fontFamily, fontSize: 11, attributionLogo: true },
       grid: { vertLines: { color: css("--chart-grid") }, horzLines: { color: css("--chart-grid") } },
       rightPriceScale: { borderVisible: false, scaleMargins: { top: 0.12, bottom: 0.12 } },
       timeScale: { borderVisible: false, timeVisible: true, secondsVisible: false, rightOffset: 6 },
@@ -121,7 +122,7 @@ export function IntelChart({ symbol, intel, initial, initialTf = "1H", sample, h
     const next = intel.zones.flatMap((z) => {
       const a = s.priceToCoordinate(z.upper), b = s.priceToCoordinate(z.lower);
       if (a === null || b === null) return [];
-      return [{ id: z.id, top: Math.min(a, b), height: Math.max(3, Math.abs(b - a)), side: z.side, label: narrow ? `${z.side === "buy" ? "BUY" : "SELL"} zone · 1H` : `${z.side === "buy" ? "Potential BUY" : "Potential SELL"} · 1H · ${z.lower.toFixed(intel.digits)}–${z.upper.toFixed(intel.digits)}` }];
+      return [{ id: z.id, top: Math.min(a, b), height: Math.max(3, Math.abs(b - a)), side: z.side, label: `${z.side === "buy" ? "Buy" : "Sell"} Zone`, range: `${fmtP(z.lower, intel.digits)} – ${fmtP(z.upper, intel.digits)}` }];
     });
     setBands((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
   }, [intel, layers.zones, narrow]);
@@ -141,31 +142,39 @@ export function IntelChart({ symbol, intel, initial, initialTf = "1H", sample, h
 
   return (
     <div className={cn("flex min-w-0 flex-col", className)}>
-      <div className="flex flex-wrap items-center gap-2">
-        <div role="tablist" aria-label="Timeframe" className="inset relative flex rounded-full p-0.5">
-          <SlidingPill watch={tf} className="bg-brand rounded-full shadow-[0_4px_12px_-4px_var(--accent-glow)]" />
-          {TFS.map((t) => (
-            <button key={t} role="tab" aria-selected={tf === t} data-active={tf === t} onClick={() => setTf(t)} className={cn("relative z-[1] rounded-full px-2.5 py-1 text-[12px] font-medium text-ink-3 transition-colors hover:text-ink", tf === t && "text-white hover:text-white")}>{t}</button>
-          ))}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        {lead}
+        <div className={cn("flex flex-wrap items-center gap-2", lead ? "ml-auto" : "")}>
+          <div role="tablist" aria-label="Timeframe" className="inset relative flex rounded-full p-0.5">
+            <SlidingPill watch={tf} className="rounded-full bg-[var(--text)] shadow-[0_4px_12px_-6px_rgba(0,0,0,0.5)]" />
+            {TFS.map((t) => (
+              <button key={t} role="tab" aria-selected={tf === t} data-active={tf === t} onClick={() => setTf(t)} className={cn("num relative z-[1] min-w-[34px] rounded-full px-2 py-1 text-[12px] font-semibold text-ink-2 transition-colors duration-150 hover:text-ink", tf === t && "text-[var(--bg-0)] hover:text-[var(--bg-0)]")}>{t === "1D" ? "D" : t}</button>
+            ))}
+          </div>
+          {actions}
         </div>
-        <div className="flex flex-wrap gap-1" aria-label="Overlays">
-          {LAYERS.map((l) => (
-            <button key={l.id} aria-pressed={layers[l.id]} onClick={() => setLayers((x) => ({ ...x, [l.id]: !x[l.id] }))} className={cn("press rounded-full border px-2.5 py-1 text-[11.5px] font-medium transition-colors", layers[l.id] ? "border-transparent bg-accent-soft text-accent" : "border-line text-ink-3 hover:text-ink")}>{l.label}</button>
-          ))}
-        </div>
-        <span className="ml-auto text-[11px] text-ink-3">{(meta.sample || sample) ? <span className="font-semibold text-warn">SAMPLE BARS</span> : meta.method === "computed-ice" || (symbol === "DXY" && !meta.sample) ? "DXY computed from ICE weights" : null}</span>
+        {!compact && (
+          <div className="flex w-full flex-wrap items-center gap-1" aria-label="Overlays">
+            {LAYERS.map((l) => (
+              <button key={l.id} aria-pressed={layers[l.id]} onClick={() => setLayers((x) => ({ ...x, [l.id]: !x[l.id] }))} className={cn("press rounded-full border px-2.5 py-1 text-[11.5px] font-medium transition-colors", layers[l.id] ? "border-transparent bg-accent-soft text-accent" : "border-line text-ink-3 hover:text-ink")}>{l.label}</button>
+            ))}
+            <span className="ml-auto text-[11px] text-ink-3">{(meta.sample || sample) ? <span className="font-semibold text-warn">SAMPLE BARS</span> : meta.method === "computed-ice" || (symbol === "DXY" && !meta.sample) ? "DXY computed from ICE weights" : null}</span>
+          </div>
+        )}
       </div>
-      <div className="relative mt-3 overflow-hidden rounded-3xl" style={{ height }}>
+      <div className={cn("relative mt-3 overflow-hidden rounded-2xl", fill && "min-h-[300px] flex-1")} style={fill ? undefined : { height }}>
         <div ref={box} className="absolute inset-0" />
         {bands.map((b) => (
-          <div key={b.id} className={cn("pointer-events-none absolute left-0 right-[64px] rounded-md border backdrop-blur-[1px]", b.side === "buy" ? "border-[color-mix(in_oklab,var(--up)_45%,transparent)] bg-[color-mix(in_oklab,var(--up)_12%,transparent)]" : "border-[color-mix(in_oklab,var(--down)_45%,transparent)] bg-[color-mix(in_oklab,var(--down)_12%,transparent)]")} style={{ top: b.top, height: b.height }}>
-            <span className={cn("absolute left-2 top-1/2 -translate-y-1/2 rounded-full px-2 py-0.5 text-[10.5px] font-semibold backdrop-blur-md", b.side === "buy" ? "bg-up-soft text-up" : "bg-down-soft text-down")}>{b.label}</span>
+          <div key={b.id} className={cn("pointer-events-none absolute left-0 right-[64px] border-y", b.side === "buy" ? "border-[color-mix(in_oklab,var(--up)_40%,transparent)] bg-[linear-gradient(180deg,color-mix(in_oklab,var(--up)_16%,transparent),color-mix(in_oklab,var(--up)_6%,transparent))]" : "border-[color-mix(in_oklab,var(--down)_40%,transparent)] bg-[linear-gradient(180deg,color-mix(in_oklab,var(--down)_6%,transparent),color-mix(in_oklab,var(--down)_16%,transparent))]")} style={{ top: b.top, height: b.height }}>
+            <span className={cn("zone-bubble", b.side === "buy" ? "is-buy" : "is-sell", b.top < 44 ? "top-full mt-1.5" : "bottom-full mb-1.5")}>
+              <b>{b.label}</b><span className="num">{b.range}</span>
+            </span>
           </div>
         ))}
         {state === "loading" && <div className="absolute inset-0 grid place-items-center"><div className="skeleton h-full w-full rounded-3xl" /></div>}
         {state === "error" && <div className="absolute inset-0 grid place-items-center p-6 text-center text-sm text-ink-2">{err} Nothing is drawn rather than a guess.</div>}
       </div>
-      {(layers.fib || layers.liquidity || layers.zones) && (
+      {!compact && (layers.fib || layers.liquidity || layers.zones) && (
         <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 px-1 text-[11px] text-ink-3" aria-label="Chart legend">
           {layers.zones && <span className="inline-flex items-center gap-1.5"><span className="h-2 w-3 rounded-sm border border-[color-mix(in_oklab,var(--up)_45%,transparent)] bg-up-soft" />Zones</span>}
           {layers.fib && intel.fib && <span className="inline-flex items-center gap-1.5"><span className="h-0 w-3 border-t-2 border-dotted border-[var(--accent-ice)]" />Fibonacci {intel.fib.levels.map((l) => `${(l.ratio * 100).toFixed(1)}`).join(" · ")}%</span>}

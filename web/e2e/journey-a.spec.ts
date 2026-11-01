@@ -55,8 +55,11 @@ test("sign up, verify, onboard, dashboard, profile, two-step sign-in", async ({ 
   await expect(page).toHaveURL(/\/app\?welcome=trial/, { timeout: 30_000 });
   await expect(page.getByText(/72-hour Premium trial is active/)).toBeVisible();
   // Market Intelligence leads the dashboard; Account Health follows it.
-  await expect(page.getByText("Market Intelligence Today")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Your Account Health" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "AI Market Analysis" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Account Health" })).toBeVisible();
+  await expect(page.getByText(/^(WAIT · NO VALID SETUP|BUY SETUP|SELL SETUP)$/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Market Overview" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Main" }).or(page.getByRole("complementary", { name: "Main" })).first()).toBeVisible();
   // Without a market-data provider nothing pretends to be live: the engine runs on clearly labelled sample bars.
   await expect(page.getByText(/Market data is not connected\. Everything below runs the real engine on sample bars/)).toBeVisible();
 

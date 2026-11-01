@@ -147,7 +147,7 @@ export function HeroWidgets() {
       <div className="grid gap-1.5">
         {[{ t: "US CPI m/m", i: 3 }, { t: "FOMC minutes", i: 3 }, { t: "ECB speech", i: 2 }].map((e) => (
           <div key={e.t} className="flex items-center gap-2 text-[11.5px]">
-            <span className="flex gap-0.5" aria-label={`Impact ${e.i} of 3`}>
+            <span className="flex gap-0.5" role="img" aria-label={`Impact ${e.i} of 3`}>
               {[1, 2, 3].map((n) => <span key={n} className={cn("h-2.5 w-1 rounded-full", n <= e.i ? (e.i === 3 ? "bg-down" : "bg-warn") : "bg-[var(--border-strong)]")} />)}
             </span>
             <span className="flex-1 truncate text-ink-2">{e.t}</span>

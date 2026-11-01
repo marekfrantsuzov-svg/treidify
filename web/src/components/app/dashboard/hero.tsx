@@ -1,15 +1,16 @@
-import { MarketStatusChips } from "@/components/app/app-shell";
+"use client";
 
-/** Page hero: date, greeting and live market status, with an optional control (account picker) on the right. */
-export function DashboardHero({ greeting, name, timezone, children }: { greeting: string; name: string; timezone: string; children?: React.ReactNode }) {
+import { useEffect, useState } from "react";
+import { marketLine } from "@/components/app/app-shell";
+
+/** Phone greeting (reference 1 mobile). On desktop the greeting sits in the header instead. */
+export function MobileGreeting({ greeting, name }: { greeting: string; name: string }) {
+  const [now, setNow] = useState<Date | null>(null);
+  useEffect(() => { setNow(new Date()); const id = setInterval(() => setNow(new Date()), 60_000); return () => clearInterval(id); }, []);
   return (
-    <header className="flex flex-wrap items-end justify-between gap-3 px-0.5 pt-1">
-      <div className="min-w-0">
-        <p className="text-[13px] font-medium text-ink-3" suppressHydrationWarning>{new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: timezone }).format(new Date())}</p>
-        <h1 className="mt-0.5 text-[28px] font-semibold leading-[1.1] tracking-[-0.04em] text-ink sm:text-[34px]">{greeting}, <span className="text-brand">{name}</span></h1>
-        <div className="mt-2.5"><MarketStatusChips /></div>
-      </div>
-      {children}
+    <header className="mb-3.5 px-0.5 pt-1 lg:hidden">
+      <h1 className="t-title text-ink">{greeting}, {name} <span aria-hidden>👋</span></h1>
+      <p className="mt-0.5 text-[13.5px] leading-snug text-ink-2" suppressHydrationWarning>{now ? marketLine(now) : " "}</p>
     </header>
   );
 }
