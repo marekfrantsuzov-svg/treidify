@@ -79,7 +79,7 @@ export function Header() {
               key={item.href}
               href={item.href}
               aria-current={pathname === item.href ? "page" : undefined}
-              className={cn("rounded-full px-3 py-2 text-sm text-ink-2 transition-colors hover:text-ink", pathname === item.href && "text-ink")}
+              className={cn("whitespace-nowrap rounded-full px-2 py-2 text-sm text-ink-2 transition-colors hover:text-ink xl:px-3", pathname === item.href && "text-ink")}
             >
               {item.title}
             </Link>
@@ -87,10 +87,10 @@ export function Header() {
         </nav>
         <div className="ml-auto flex items-center gap-2">
           <ThemeToggle className="hidden md:inline-flex" />
-          <Link href="/login" className="hidden rounded-full px-3 py-2 text-sm text-ink-2 hover:text-ink sm:block">
+          <Link href="/login" className="hidden whitespace-nowrap rounded-full px-3 py-2 text-sm text-ink-2 hover:text-ink sm:block">
             Log In
           </Link>
-          <ButtonLink href="/signup" size="sm" className="hidden sm:inline-flex">
+          <ButtonLink href="/signup" size="sm" className="hidden whitespace-nowrap sm:inline-flex">
             Get Started Free
           </ButtonLink>
           <button
