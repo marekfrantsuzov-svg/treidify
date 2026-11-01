@@ -33,7 +33,7 @@ export function Gauge(p: GaugeProps) {
   return (
     <>
       <button onClick={() => setOpen(true)} className="group press relative grid w-full min-w-0 justify-items-center rounded-[28px] px-0 pb-3 pt-1 sm:px-2 text-center outline-none focus-visible:ring-2 focus-visible:ring-accent" aria-label={`${p.title}: ${biasText[p.bias]}${p.score !== null ? `, score ${p.score}` : ""}. Show how this is calculated.`}>
-        <svg viewBox="0 -14 220 196" className="w-full max-w-[260px] overflow-visible" aria-hidden>
+        <svg viewBox="0 -14 220 196" className="w-full max-w-[200px] overflow-visible" aria-hidden>
           <defs>
             <linearGradient id={`${id}-band`} x1="0" y1="0" x2="1" y2="0">
               <stop offset="0" stopColor="var(--down)" /><stop offset=".42" stopColor="var(--silver)" stopOpacity=".55" /><stop offset=".58" stopColor="var(--silver)" stopOpacity=".55" /><stop offset="1" stopColor="var(--up)" />

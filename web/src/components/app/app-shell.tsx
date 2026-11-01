@@ -72,7 +72,7 @@ function ThemeSwitch({ compact = false }: { compact?: boolean }) {
 }
 
 /** Session, market open/closed and the freshness of the last data the dashboard received. */
-function MarketStatusChips() {
+export function MarketStatusChips() {
   const [now, setNow] = useState<Date | null>(null);
   const f = useFreshness();
   useEffect(() => { setNow(new Date()); const id = setInterval(() => setNow(new Date()), 30_000); return () => clearInterval(id); }, []);
@@ -346,18 +346,18 @@ export function AppShell({ user, plan, account, timezone, greeting, unread, chil
     window.addEventListener("keydown", onKey); return () => window.removeEventListener("keydown", onKey);
   }, []);
   useEffect(() => setMore(false), [path]);
-  const first = user.name.split(" ")[0];
   const pageTitle = path === "/app" ? null : appNav.find((n) => isActive(path, n.href))?.label ?? (path.startsWith("/app/notifications") ? "Notifications" : null);
   // Collapsible sidebar, remembered on this device.
-  const [collapsed, setCollapsed] = useState(false);
-  useEffect(() => { setCollapsed(localStorage.getItem("treidify.sidebar") === "collapsed"); }, []);
+  // Slim icon rail by default (the reference layout); expanding to labels is remembered on this device.
+  const [collapsed, setCollapsed] = useState(true);
+  useEffect(() => { setCollapsed(localStorage.getItem("treidify.sidebar") !== "open"); }, []);
   const toggle = () => setCollapsed((c) => { localStorage.setItem("treidify.sidebar", c ? "open" : "collapsed"); return !c; });
 
   return (
-    <div className={cn("min-h-dvh transition-[padding] duration-500 ease-[var(--ease-spring)]", collapsed ? "lg:pl-[100px]" : "lg:pl-[260px]")}>
+    <div className={cn("min-h-dvh transition-[padding] duration-500 ease-[var(--ease-spring)]", collapsed ? "lg:pl-[92px]" : "lg:pl-[260px]")}>
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-accent focus:px-4 focus:py-2 focus:text-white">Skip to content</a>
 
-      <aside data-collapsed={collapsed} className={cn("group/side fixed inset-y-3 left-3 z-40 hidden flex-col transition-[width] duration-500 ease-[var(--ease-spring)] lg:flex", collapsed ? "w-[80px]" : "w-[240px]")} aria-label="Main">
+      <aside data-collapsed={collapsed} className={cn("group/side fixed inset-y-3 left-3 z-40 hidden flex-col transition-[width] duration-500 ease-[var(--ease-spring)] lg:flex", collapsed ? "w-[72px]" : "w-[240px]")} aria-label="Main">
         <div className="glass flex h-full flex-col rounded-[28px] px-3 pb-3 pt-5">
           <div className={cn("flex items-center pb-6", collapsed ? "justify-center px-0" : "justify-between px-3")}>
             {collapsed ? <Link href="/app" aria-label="Treidify home"><LogoMark size={34} priority /></Link> : <Wordmark href="/app" className="text-[23px]" />}
@@ -385,19 +385,14 @@ export function AppShell({ user, plan, account, timezone, greeting, unread, chil
 
       <MobileTopBar user={user} plan={plan} unread={unread} onSearch={() => setSearch(true)} title={pageTitle} />
 
-      <header className="relative z-30 hidden px-5 pt-4 lg:block">
-        <div className="flex items-center gap-3 rounded-full py-1">
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-[27px] font-bold leading-tight tracking-[-0.03em] text-ink">{greeting}, {first} <span aria-hidden>👋</span></p>
-            <div className="mt-1"><MarketStatusChips /></div>
-          </div>
+      <header className="relative z-30 hidden px-6 pt-5 lg:block">
+        <div className="mx-auto flex max-w-[1560px] items-center gap-3">
+          <button onClick={() => setSearch(true)} className="glass press flex h-11 w-[min(420px,32vw)] items-center gap-2.5 rounded-full px-4 text-sm text-ink-3 hover:border-[var(--border-strong)] hover:text-ink-2">
+            <Search className="h-[18px] w-[18px] text-ink-2" />
+            <span className="flex-1 truncate text-left">Search markets, pages and settings…</span>
+            <kbd className="inset rounded-md px-1.5 py-0.5 text-[11px] font-medium text-ink-3">⌘K</kbd>
+          </button>
           <div className="ml-auto flex shrink-0 items-center gap-2.5">
-            <button onClick={() => setSearch(true)} className="glass press hidden h-11 w-[min(340px,22vw)] items-center gap-2.5 rounded-full px-4 text-sm text-ink-3 hover:border-[var(--border-strong)] hover:text-ink-2 2xl:flex">
-              <Search className="h-[18px] w-[18px] text-ink-2" />
-              <span className="flex-1 truncate text-left">Search markets, news, or ask AI…</span>
-              <kbd className="inset rounded-md px-1.5 py-0.5 text-[11px] font-medium text-ink-3">⌘K</kbd>
-            </button>
-            <button onClick={() => setSearch(true)} aria-label="Search" className="glass press grid h-11 w-11 place-items-center rounded-full 2xl:hidden"><Search className="h-[18px] w-[18px] text-ink-2" /></button>
             <DateSelector />
             <Link href="/app/notifications" aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"} className="glass press relative grid h-11 w-11 place-items-center rounded-full hover:text-accent">
               <Bell className="h-5 w-5 text-ink-2" />
@@ -409,14 +404,7 @@ export function AppShell({ user, plan, account, timezone, greeting, unread, chil
         </div>
       </header>
 
-      <main id="main" className="m-main mx-auto w-full max-w-[1400px] px-4 pt-2 sm:px-5 lg:pb-12 lg:pt-4">
-        {path === "/app" && (
-          <div className="mb-4 px-0.5 lg:hidden">
-            <p className="text-[13px] font-medium text-ink-3" suppressHydrationWarning>{new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: timezone }).format(new Date())}</p>
-            <p className="mt-0.5 text-[28px] font-bold leading-[1.1] tracking-[-0.035em] text-ink">{greeting}, <span className="text-brand">{first}</span></p>
-            <div className="mt-2.5"><MarketStatusChips /></div>
-          </div>
-        )}
+      <main id="main" className="m-main mx-auto w-full max-w-[1560px] px-4 pt-2 sm:px-5 lg:px-6 lg:pb-12 lg:pt-6">
         {children}
       </main>
 

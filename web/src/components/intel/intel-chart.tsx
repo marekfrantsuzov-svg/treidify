@@ -105,7 +105,8 @@ export function IntelChart({ symbol, intel, initial, initialTf = "1H", sample, h
     const s = series.current; if (!s) return;
     for (const l of lines.current) s.removePriceLine(l);
     lines.current = [];
-    const add = (price: number, color: string, title: string, style = LineStyle.Dashed) => lines.current.push(s.createPriceLine({ price, color, lineWidth: 1, lineStyle: style, axisLabelVisible: true, title: narrow ? "" : title }));
+    // Axis labels only: line titles pile up where levels cluster, so the legend under the chart names them instead.
+    const add = (price: number, color: string, _title: string, style = LineStyle.Dashed) => lines.current.push(s.createPriceLine({ price, color, lineWidth: 1, lineStyle: style, axisLabelVisible: true, title: "" }));
     if (layers.fib && intel.fib) for (const l of intel.fib.levels) add(l.price, css("--accent-ice"), `Fib ${(l.ratio * 100).toFixed(1)}%`, LineStyle.Dotted);
     if (layers.liquidity) for (const p of intel.liquidity) add(p.price, css("--brand-pink") || "#ed74ce", p.side === "buy" ? "Equal highs" : "Equal lows", LineStyle.SparseDotted);
     vol.current?.applyOptions({ visible: layers.volume });
@@ -164,7 +165,7 @@ export function IntelChart({ symbol, intel, initial, initialTf = "1H", sample, h
         {state === "loading" && <div className="absolute inset-0 grid place-items-center"><div className="skeleton h-full w-full rounded-3xl" /></div>}
         {state === "error" && <div className="absolute inset-0 grid place-items-center p-6 text-center text-sm text-ink-2">{err} Nothing is drawn rather than a guess.</div>}
       </div>
-      {narrow && (layers.fib || layers.liquidity || layers.zones) && (
+      {(layers.fib || layers.liquidity || layers.zones) && (
         <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 px-1 text-[11px] text-ink-3" aria-label="Chart legend">
           {layers.zones && <span className="inline-flex items-center gap-1.5"><span className="h-2 w-3 rounded-sm border border-[color-mix(in_oklab,var(--up)_45%,transparent)] bg-up-soft" />Zones</span>}
           {layers.fib && intel.fib && <span className="inline-flex items-center gap-1.5"><span className="h-0 w-3 border-t-2 border-dotted border-[var(--accent-ice)]" />Fibonacci {intel.fib.levels.map((l) => `${(l.ratio * 100).toFixed(1)}`).join(" · ")}%</span>}

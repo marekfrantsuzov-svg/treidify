@@ -20,7 +20,7 @@ const fresh: Record<string, { label: string; cls: string }> = {
 };
 
 /** Polls the intelligence endpoint once a minute while the tab is visible (live data only). */
-function useIntel(initial: IntelSnapshot) {
+export function useIntel(initial: IntelSnapshot) {
   const [snap, setSnap] = useState(initial);
   useEffect(() => {
     setFreshness({ mode: snap.mode, freshness: snap.freshness, asOf: snap.asOf, vendor: snap.vendor });
@@ -38,7 +38,7 @@ function useIntel(initial: IntelSnapshot) {
   return snap;
 }
 
-function DataChips({ s }: { s: IntelSnapshot }) {
+export function DataChips({ s }: { s: IntelSnapshot }) {
   const time = new Date(s.asOf).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   return (
     <div className="flex flex-wrap items-center gap-1.5 text-[11.5px] font-medium">
@@ -55,7 +55,7 @@ function DataChips({ s }: { s: IntelSnapshot }) {
   );
 }
 
-function outlookLines(s: IntelSnapshot): string[] {
+export function outlookLines(s: IntelSnapshot): string[] {
   const g = s.gold, d = s.dxy;
   const out: string[] = [];
   if (g.bias === "insufficient") return ["Not enough verified data to form an outlook. Treidify shows nothing rather than a guess."];
@@ -70,7 +70,7 @@ function outlookLines(s: IntelSnapshot): string[] {
   return out;
 }
 
-const SYMS = [{ id: "XAUUSD", label: "Gold" }, { id: "DXY", label: "DXY" }, { id: "XAGUSD", label: "Silver" }] as const;
+export const SYMS = [{ id: "XAUUSD", label: "Gold" }, { id: "DXY", label: "DXY" }, { id: "XAGUSD", label: "Silver" }] as const;
 
 export function MarketIntel({ initial }: { initial: IntelSnapshot }) {
   const s = useIntel(initial);

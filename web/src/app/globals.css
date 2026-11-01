@@ -21,18 +21,19 @@
   --ribbon-a: rgba(255, 255, 255, 0.9);
   --ribbon-b: rgba(196, 184, 240, 0.4);
   --ribbon-c: rgba(237, 116, 206, 0.14);
-  --surface: rgba(255, 255, 255, 0.62);
-  --surface-strong: rgba(255, 255, 255, 0.86);
-  --surface-inset: rgba(244, 242, 249, 0.8);
-  --border: rgba(40, 24, 90, 0.07);
-  --border-strong: rgba(40, 24, 90, 0.13);
+  --surface: rgba(255, 255, 255, 0.7);
+  --surface-top: rgba(255, 255, 255, 0.94);
+  --surface-strong: rgba(255, 255, 255, 0.9);
+  --surface-inset: rgba(243, 241, 248, 0.86);
+  --border: rgba(40, 24, 90, 0.075);
+  --border-strong: rgba(40, 24, 90, 0.14);
   --edge: rgba(255, 255, 255, 0.95);
   --highlight: rgba(255, 255, 255, 1);
-  --shadow: 0 1px 2px rgba(30, 20, 70, 0.04), 0 14px 34px -14px rgba(60, 40, 140, 0.16);
+  --shadow: 0 1px 2px rgba(30, 20, 70, 0.05), 0 10px 28px -14px rgba(60, 40, 140, 0.18);
   --shadow-lg: 0 2px 4px rgba(30, 20, 70, 0.04), 0 40px 80px -32px rgba(70, 45, 160, 0.26);
-  --text: #13111c;
-  --text-2: #4b4759;
-  --text-3: #767186;
+  --text: #121019;
+  --text-2: #484456;
+  --text-3: #6f6a80;
   --accent: #533ff5;
   --accent-2: #ed74ce;
   --accent-ice: #8a6dff;
@@ -55,25 +56,26 @@
 }
 
 [data-theme="dark"] {
-  --bg-0: #08070d;
-  --bg-1: #040308;
+  --bg-0: #0b0a10;
+  --bg-1: #060509;
   --glow-a: rgba(83, 63, 245, 0.24);
   --glow-b: rgba(237, 116, 206, 0.11);
   --ribbon-a: rgba(190, 170, 255, 0.06);
   --ribbon-b: rgba(60, 40, 140, 0.3);
   --ribbon-c: rgba(237, 116, 206, 0.1);
-  --surface: rgba(22, 19, 34, 0.62);
-  --surface-strong: rgba(28, 24, 42, 0.86);
-  --surface-inset: rgba(10, 8, 18, 0.58);
-  --border: rgba(200, 185, 255, 0.09);
-  --border-strong: rgba(200, 185, 255, 0.17);
-  --edge: rgba(150, 125, 255, 0.24);
-  --highlight: rgba(230, 220, 255, 0.08);
-  --shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 18px 44px -18px rgba(0, 0, 0, 0.85);
+  --surface: rgba(20, 18, 27, 0.78);
+  --surface-top: rgba(34, 31, 44, 0.78);
+  --surface-strong: rgba(28, 25, 37, 0.94);
+  --surface-inset: rgba(255, 255, 255, 0.035);
+  --border: rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(255, 255, 255, 0.13);
+  --edge: rgba(255, 255, 255, 0.06);
+  --highlight: rgba(255, 255, 255, 0.06);
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 24px 48px -24px rgba(0, 0, 0, 0.9);
   --shadow-lg: 0 40px 100px -30px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(150, 125, 255, 0.07);
-  --text: #f4f2fa;
-  --text-2: #bdb8cf;
-  --text-3: #837e96;
+  --text: #f5f4f8;
+  --text-2: #b9b5c6;
+  --text-3: #8a8599;
   --accent: #8b7bff;
   --accent-2: #f08ad8;
   --accent-ice: #b9adff;
@@ -88,7 +90,7 @@
   --down-soft: rgba(255, 93, 108, 0.12);
   --warn: #f5b44a;
   --warn-soft: rgba(245, 180, 74, 0.13);
-  --chart-grid: rgba(200, 185, 255, 0.06);
+  --chart-grid: rgba(255, 255, 255, 0.055);
   --icon-face: linear-gradient(160deg, rgba(110, 90, 190, 0.5), rgba(34, 26, 70, 0.55) 55%, rgba(16, 12, 34, 0.7));
   --icon-rim: rgba(170, 150, 255, 0.45);
   --icon-shadow: 0 8px 18px -8px rgba(83, 63, 245, 0.6), 0 0 0 1px rgba(150, 125, 255, 0.12);
@@ -176,13 +178,15 @@ body {
 }
 
 /* Liquid glass surface. Blur stays modest so text keeps contrast. */
+/* Layered surface: a faint top-lit gradient, a hairline border and one soft shadow. Blur is modest; the surface
+   carries enough fill on its own that text never competes with what is behind it. */
 .glass {
   position: relative;
-  background: var(--surface);
+  background: linear-gradient(180deg, var(--surface-top), var(--surface) 46%);
   border: 1px solid var(--border);
-  box-shadow: var(--shadow), inset 0 1px 0 var(--highlight), inset 0 0 0 1px color-mix(in oklab, var(--edge) 35%, transparent);
-  backdrop-filter: blur(26px) saturate(170%);
-  -webkit-backdrop-filter: blur(26px) saturate(170%);
+  box-shadow: var(--shadow), inset 0 1px 0 var(--highlight);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
 }
 .glass-strong {
   background: var(--surface-strong);
@@ -606,3 +610,56 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   .atmosphere::before, .atmosphere::after, .ai-orb, .tab-icon.is-active, .sheet-up { animation: none !important; }
   .m-topbar-title { transition: none; }
 }
+
+/* ───────── Design system v2 (2026-11-01) ─────────
+   One surface language across desktop and mobile: cards, card headers, round icon buttons, segmented
+   controls and stat blocks. Dark is calm and near-black with a single violet ambient light; light mirrors it. */
+[data-theme="dark"] .atmosphere::before, [data-theme="dark"] .atmosphere::after { opacity: 0.28; }
+[data-theme="dark"] .atmosphere {
+  background:
+    radial-gradient(55rem 32rem at 18% -8%, rgba(83, 63, 245, 0.2), transparent 62%),
+    radial-gradient(40rem 30rem at 96% 4%, rgba(237, 116, 206, 0.08), transparent 60%),
+    radial-gradient(60rem 40rem at 60% 115%, rgba(83, 63, 245, 0.12), transparent 65%),
+    linear-gradient(180deg, var(--bg-0), var(--bg-1));
+}
+
+.card-title { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; color: var(--text); }
+.card-kicker { font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-3); }
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  background: var(--surface-inset);
+  transition: color 160ms linear, border-color 200ms linear, background-color 200ms linear, transform 160ms var(--ease-out-3);
+}
+.icon-btn:hover { color: var(--text); border-color: var(--border-strong); }
+.icon-btn:active { transform: scale(0.94); }
+.stat-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  background: var(--surface-inset);
+}
+.display-num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum", "cv11"; letter-spacing: -0.035em; font-weight: 600; }
+
+/* Dashboard grid: 12 columns from 1024px, 6 from 640px, one column on phones. */
+.dash-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+@media (min-width: 640px) { .dash-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px; } }
+@media (min-width: 1024px) { .dash-grid { grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 18px; } }
+@media (min-width: 1680px) { .dash-grid { gap: 22px; } }
+.dash-grid > * { min-width: 0; grid-column: 1 / -1; }
+@media (min-width: 1024px) {
+  .span-3 { grid-column: span 3; } .span-4 { grid-column: span 4; } .span-5 { grid-column: span 5; }
+  .span-6 { grid-column: span 6; } .span-7 { grid-column: span 7; } .span-8 { grid-column: span 8; }
+}
+@media (min-width: 640px) and (max-width: 1023.98px) { .md-span-3 { grid-column: span 3; } }
+.section-label { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 6px 2px 0; }

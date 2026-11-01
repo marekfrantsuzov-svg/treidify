@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { EconEvent, Headline, Result } from "@/server/news/service";
 import { cn } from "@/lib/cn";
 import { Glass } from "@/components/ui/glass";
+import { Card, CardHeader } from "@/components/ui/card";
 
 const imp = { high: "bg-down-soft text-down", medium: "bg-warn-soft text-warn", low: "bg-inset text-ink-3" } as const;
 const ago = (iso: string, now: number) => { const m = Math.max(0, Math.round((now - Date.parse(iso)) / 60000)); return m < 60 ? `${m}m ago` : m < 1440 ? `${Math.round(m / 60)}h ago` : `${Math.round(m / 1440)}d ago`; };
@@ -67,5 +68,24 @@ export function NewsPanel({ news, events, tz, nowMs }: { news: Result<Headline[]
         <p className="mt-2 px-1 text-[11px] text-ink-3">Times in your time zone ({tz}).</p>
       </Glass>
     </div>
+  );
+}
+
+/** Dashboard cards in the shared card language. */
+export function NewsCardV2({ news, nowMs }: { news: Result<Headline[]>; nowMs: number }) {
+  return (
+    <Card aria-labelledby="news-title" className="flex h-full flex-col">
+      <CardHeader id="news-title" title="Latest market news" caption="Gold, DXY and macro headlines" icon={<span className="stat-icon h-8 w-8"><Newspaper className="h-4 w-4" /></span>} href="/app/news" hrefLabel="All news" />
+      <div className="mt-3"><HeadlineList r={news} nowMs={nowMs} limit={5} compact /></div>
+    </Card>
+  );
+}
+
+export function CalendarCardV2({ events, tz }: { events: Result<EconEvent[]>; tz: string }) {
+  return (
+    <Card aria-labelledby="cal-title" className="flex h-full flex-col">
+      <CardHeader id="cal-title" title="Economic calendar" caption={`Events that could change the outlook · ${tz}`} icon={<span className="stat-icon h-8 w-8"><CalendarClock className="h-4 w-4" /></span>} href="/app/news?tab=calendar" hrefLabel="Open calendar" />
+      <div className="mt-3"><EventList r={events} tz={tz} limit={5} /></div>
+    </Card>
   );
 }
