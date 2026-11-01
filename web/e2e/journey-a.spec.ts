@@ -68,6 +68,15 @@ test("sign up, verify, onboard, dashboard, profile, two-step sign-in", async ({ 
     await page.goto(path);
     await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
   }
+  // Macro Desk: three market cards, the XAUUSD zones under the 50-pip rule, scenarios, and honest sentiment states.
+  await page.goto("/app/macro");
+  for (const h of ["Gold", "US Dollar Index", "Silver", "Bullish scenario", "Bearish scenario", "Wait / no trade", "Possible implications for Gold"]) {
+    await expect(page.getByRole("heading", { name: h, exact: true })).toBeVisible();
+  }
+  await expect(page.getByText(/^(Buy|Sell) zone$/i).first()).toBeVisible();
+  await expect(page.getByText(/News not connected/).first()).toBeVisible();
+  await expect(page.getByText("Model interpretation").first()).toBeVisible();
+
   // The old calendar address now opens the calendar tab of News & Calendar.
   await page.goto("/app/calendar");
   await expect(page).toHaveURL(/\/app\/news\?tab=calendar/);

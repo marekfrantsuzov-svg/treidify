@@ -1,3 +1,5 @@
+import { EmptyState } from "@/components/app/status";
+import { BellRing } from "lucide-react";
 import { desc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { PageHeader } from "@/components/app/status";
@@ -18,7 +20,7 @@ export default async function Notifications() {
         {unread && <form action={markAllRead}><button className="text-sm font-medium text-accent hover:underline">Mark all as read</button></form>}
       </PageHeader>
       <Glass className="divide-y divide-[var(--border)] p-2">
-        {rows.length === 0 && <p className="p-6 text-center text-sm text-ink-3">You’re all caught up. Nothing to show yet.</p>}
+        {rows.length === 0 && <EmptyState icon={BellRing} title="You’re all caught up">Sync updates, alerts, community replies and account notices will appear here.</EmptyState>}
         {rows.map((n) => {
           const body = (
             <div className="flex gap-3 p-4">

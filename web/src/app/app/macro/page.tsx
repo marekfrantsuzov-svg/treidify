@@ -1,10 +1,10 @@
-import { ArrowDownRight, ArrowUpRight, Sparkles } from "lucide-react";
-import { Alert } from "@/components/auth/auth-ui";
+import { CalendarClock, Crosshair, Map as MapIcon, Radar, Waves } from "lucide-react";
 import { PageHeader } from "@/components/app/status";
-import { biasText, biasTone } from "@/components/intel/bias";
-import { HeadlineList } from "@/components/intel/news-list";
-import { Glass } from "@/components/ui/glass";
-import type { InstrumentIntel } from "@/lib/intelligence";
+import { MarketCard, ScenarioCard, SentimentGrid, ZoneCard } from "@/components/macro/desk";
+import { SectionHead, SourceChip } from "@/components/macro/parts";
+import { Reveal, RevealItem } from "@/components/motion/reveal";
+import { Flag } from "@/components/ui/flags";
+import { dxyRelation, goldImpact, headlinesAbout, releases, scenarios, silverRelation, tradeSetup, zoneBrief, type SentHeadline } from "@/lib/intelligence";
 import { cn } from "@/lib/cn";
 import { deskNote } from "@/server/ai/notes";
 import { loadIntel } from "@/server/market/load";
@@ -13,76 +13,83 @@ import { requireOnboarded } from "@/server/session";
 
 export const metadata = { title: "Macro Desk" };
 
-const NAMES: Record<string, string> = { XAUUSD: "Gold", DXY: "DXY", XAGUSD: "Silver" };
+const DAY = 86_400_000;
 
-function summaryLine(i: InstrumentIntel) {
-  if (i.bias === "insufficient") return "Not enough verified data for a reading.";
-  const top = [...i.components].filter((c) => c.contribution !== null && c.contribution !== 0).sort((a, b) => Math.abs(b.contribution!) - Math.abs(a.contribution!)).slice(0, 2);
-  return `${NAMES[i.symbol]} is ${biasText[i.bias].toLowerCase()} mainly because: ${top.map((c) => c.detail.replace(/\.$/, "")).join("; ") || "no input is pushing strongly"}.`;
-}
-function plan(i: InstrumentIntel) {
-  if (i.bias === "insufficient") return null;
-  const withTrend = i.zones.find((z) => z.withTrend);
-  if (i.bias === "neutral" || !withTrend) return "Conditions are mixed. Favour patience: wait for 4H and 1H structure to agree before considering either side.";
-  return `Conditions favour monitoring ${withTrend.side.toUpperCase()} opportunities on confirmed pullbacks into ${withTrend.lower.toFixed(i.digits)}–${withTrend.upper.toFixed(i.digits)} rather than chasing extended moves.`;
-}
-
+/**
+ * Macro Desk. Presentation of the existing engine: Gold, DXY and Silver cards, Gold's key zones under the 50-pip
+ * rule, three scenarios, and a sentiment section that separates verified data from model interpretation.
+ */
 export default async function Macro() {
   const s = await requireOnboarded("/app/macro");
-  const now = new Date();
-  const [snap, news, cal] = await Promise.all([loadIntel(), latestHeadlines(30), economicCalendar(now, new Date(now.getTime() + 7 * 86_400_000))]);
-  const live = snap.mode === "live";
-  const events: EconEvent[] = cal.ok ? cal.data.filter((e) => e.importance === "high" && (e.country === "US" || e.kind)).slice(0, 6) : [];
-  const evFacts = events.map((e) => `Upcoming: ${e.country} ${e.title} at ${e.at}`);
-  const instruments = [snap.gold, snap.dxy, snap.silver];
-  const notes = await Promise.all(instruments.map((i) => deskNote(i, live, evFacts)));
+  const now = new Date(), nowMs = now.getTime();
   const tz = s.profile.timezone;
+  const [snap, news, cal] = await Promise.all([loadIntel(), latestHeadlines(40), economicCalendar(new Date(nowMs - 45 * DAY), new Date(nowMs + 7 * DAY))]);
+  const live = snap.mode === "live", sample = snap.mode === "sample";
+  const upcoming: EconEvent[] = cal.ok ? cal.data.filter((e) => Date.parse(e.at) >= nowMs && e.importance === "high").sort((a, b) => Date.parse(a.at) - Date.parse(b.at)) : [];
+  const evFacts = upcoming.slice(0, 6).map((e) => `Upcoming: ${e.country} ${e.title} at ${e.at}`);
+  const [gNote, dNote, sNote] = await Promise.all([snap.gold, snap.dxy, snap.silver].map((i) => deskNote(i, live, evFacts)));
+
+  const g = snap.gold;
+  const setup = tradeSetup(g);
+  const buyZ = g.zones.find((z) => z.side === "buy"), sellZ = g.zones.find((z) => z.side === "sell");
+  const heads: SentHeadline[] = news.ok ? news.data : [];
+  const impact = goldImpact(g, snap.dxy, heads, cal.ok ? cal.data.filter((e) => Date.parse(e.at) >= nowMs - 3600_000 && e.importance !== "low") : [], now);
+  const asOf = new Date(snap.asOf).toLocaleTimeString("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit" });
+
   return (
     <>
-      <PageHeader title="Macro Desk" subtitle="What each market is doing, why, the levels that matter and what would change the view." />
-      {snap.message && <div className="mb-4"><Alert tone="warn">{snap.message}</Alert></div>}
-      <Glass strong className="mb-4 p-5 sm:p-6">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">Daily market summary</p>
-        <div className="mt-2 grid gap-1.5 text-[14.5px] leading-relaxed text-ink">
-          {instruments.map((i) => <p key={i.symbol}><b className={biasTone[i.bias]}>{NAMES[i.symbol]} — {biasText[i.bias].toUpperCase()}.</b> <span className="text-ink-2">{summaryLine(i)}</span></p>)}
-          <p className="mt-1"><b>XAUUSD plan.</b> <span className="text-ink-2">{plan(snap.gold) ?? "No plan without data."}</span></p>
-          {events.length > 0 && <p className="text-ink-2"><b className="text-ink">Event risk.</b> {events.slice(0, 3).map((e) => `${e.country} ${e.title} (${new Date(e.at).toLocaleString("en-GB", { timeZone: tz, weekday: "short", hour: "2-digit", minute: "2-digit" })})`).join(", ")}.</p>}
+      <PageHeader title="Macro Desk" subtitle="Gold, the dollar and silver: direction, the levels that matter, and what would change the view.">
+        <div className="flex flex-wrap items-center gap-2">
+          {live ? <SourceChip kind="fact" label={`Live · ${snap.vendor ?? "market data"} · ${asOf}`} /> : sample ? <SourceChip kind="sample" label={`Sample bars · ${asOf}`} /> : <SourceChip kind="na" label="Market data error" />}
+          <SourceChip kind={news.ok ? "fact" : "na"} label={news.ok ? `News · ${news.vendor}` : "News not connected"} />
         </div>
-        <p className="mt-3 text-[11px] text-ink-3">Generated from computed market structure at {new Date(snap.asOf).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}{snap.mode === "sample" ? " on SAMPLE bars" : ""}. Analysis, not advice.</p>
-      </Glass>
-      <div className="grid gap-4 xl:grid-cols-3">
-        {instruments.map((i, k) => {
-          const related = news.ok ? { ...news, data: news.data.filter((n) => n.instruments.includes(i.symbol as never)) } : news;
-          const buy = i.zones.find((z) => z.side === "buy"), sell = i.zones.find((z) => z.side === "sell");
-          return (
-            <Glass key={i.symbol} className="flex flex-col p-5">
-              <div className="flex items-baseline justify-between"><h2 className="text-[17px] font-semibold text-ink">{NAMES[i.symbol]}</h2><span className={cn("text-[15px] font-semibold", biasTone[i.bias])}>{biasText[i.bias]}{i.score !== null ? ` ${i.score > 0 ? "+" : ""}${i.score}` : ""}</span></div>
-              <p className="mt-2 text-[13.5px] text-ink-2">{summaryLine(i)}</p>
-              {notes[k] && <div className="mt-3 rounded-2xl bg-accent-soft p-3.5 text-[13.5px] text-ink"><span className="mb-1 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-accent"><Sparkles className="h-3.5 w-3.5" />AI explanation of the computed facts</span>{notes[k]}</div>}
-              <dl className="mt-3 grid gap-2 text-[13px]">
-                <div className="inset rounded-2xl px-3.5 py-2.5"><dt className="text-[11px] font-semibold uppercase tracking-wide text-ink-3">Structure</dt><dd className="mt-0.5 text-ink">4H {i.trends["4H"] ?? "n/a"} · 1H {i.trends["1H"] ?? "n/a"} · 15M {i.trends["15M"] ?? "n/a"}</dd></div>
-                <div className="inset rounded-2xl px-3.5 py-2.5"><dt className="text-[11px] font-semibold uppercase tracking-wide text-ink-3">Momentum</dt><dd className="mt-0.5 text-ink">{i.components.find((c) => c.id === "momentum")?.detail} {i.components.find((c) => c.id === "trend")?.detail}</dd></div>
-                <div className="inset rounded-2xl px-3.5 py-2.5"><dt className="text-[11px] font-semibold uppercase tracking-wide text-ink-3">Scenarios</dt>
-                  <dd className="mt-1 grid gap-1.5">
-                    {buy && <p className="flex gap-1.5 text-ink"><ArrowUpRight className="mt-0.5 h-4 w-4 shrink-0 text-up" />Bullish if price holds {buy.lower.toFixed(i.digits)}–{buy.upper.toFixed(i.digits)} and 5M confirms. Invalid on {buy.invalidation.text.replace("A 1H close", "a 1H close").replace(" invalidates the zone.", "")}.</p>}
-                    {sell && <p className="flex gap-1.5 text-ink"><ArrowDownRight className="mt-0.5 h-4 w-4 shrink-0 text-down" />Bearish if price rejects {sell.lower.toFixed(i.digits)}–{sell.upper.toFixed(i.digits)} and 5M confirms. Invalid on {sell.invalidation.text.replace("A 1H close", "a 1H close").replace(" invalidates the zone.", "")}.</p>}
-                    {!buy && !sell && <p className="text-ink-3">No qualified zone near price.</p>}
-                  </dd></div>
-                {i.invalidation && <div className="rounded-2xl bg-warn-soft px-3.5 py-2.5 text-ink"><dt className="text-[11px] font-semibold uppercase tracking-wide text-ink-3">What invalidates the outlook</dt><dd className="mt-0.5">{i.invalidation}</dd></div>}
-              </dl>
-              <h3 className="mt-4 text-[12px] font-semibold uppercase tracking-wide text-ink-3">Relevant news</h3>
-              <div className="mt-1"><HeadlineList r={related} limit={3} nowMs={now.getTime()} compact /></div>
-            </Glass>
-          );
-        })}
-      </div>
-      <Glass className="mt-4 p-5">
-        <h2 className="text-[15px] font-semibold text-ink">Macro drivers this week</h2>
-        {!cal.ok ? <p className="mt-2 text-sm text-ink-2">{cal.message}{cal.needs?.length ? ` Needs: ${cal.needs.join(", ")}.` : ""}</p> : events.length === 0 ? <p className="mt-2 text-sm text-ink-3">No high-impact events in the next 7 days.</p> : (
-          <ul className="mt-2 grid gap-1.5 sm:grid-cols-2">{events.map((e) => <li key={e.id} className="inset rounded-2xl px-3.5 py-2.5 text-[13px]"><b className="text-ink">{e.kind ?? e.title}</b> <span className="text-ink-2">· {e.country} {e.title}</span><div className="text-[11.5px] text-ink-3">{new Date(e.at).toLocaleString("en-GB", { timeZone: tz, weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}{e.forecast ? ` · forecast ${e.forecast}` : ""}{e.previous ? ` · previous ${e.previous}` : ""}</div></li>)}</ul>
+      </PageHeader>
+      {snap.message && <p className="mb-4 rounded-2xl bg-warn-soft px-4 py-2.5 text-[13px] leading-snug text-ink">{snap.message}</p>}
+
+      <SectionHead id="markets" icon={<Radar />} title="Market intelligence" sub="Structure on 4H, 1H, 15M and 5M. Dots: green bullish, red bearish, grey no confirmed structure." />
+      <Reveal className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <RevealItem><MarketCard i={g} quote={snap.quotes.XAUUSD} sample={sample} note={gNote} /></RevealItem>
+        <RevealItem><MarketCard i={snap.dxy} quote={snap.quotes.DXY} sample={sample} note={dNote} relation={{ title: "Relationship with Gold", ...dxyRelation(g, snap.dxy) }} /></RevealItem>
+        <RevealItem className="md:col-span-2 xl:col-span-1"><MarketCard i={snap.silver} quote={snap.quotes.XAGUSD} sample={sample} note={sNote} relation={{ title: "Versus Gold", ...silverRelation(g, snap.silver) }} /></RevealItem>
+      </Reveal>
+
+      <SectionHead id="zones" icon={<Crosshair />} title="Key zones · XAUUSD" sub="1H zones with their stop measured at structural invalidation. $1.00 = 100 pips; a stop over 50 pips means WAIT, and it is never tightened." />
+      <Reveal className="grid gap-3 sm:gap-4 lg:grid-cols-2">
+        <RevealItem><ZoneCard side="buy" digits={g.digits} b={buyZ ? zoneBrief(g, buyZ, setup) : null} /></RevealItem>
+        <RevealItem><ZoneCard side="sell" digits={g.digits} b={sellZ ? zoneBrief(g, sellZ, setup) : null} /></RevealItem>
+      </Reveal>
+
+      <SectionHead id="scenarios" icon={<MapIcon />} title="Scenarios · XAUUSD" sub="What has to happen before a buy or a sell, and why the answer may be to wait." />
+      <Reveal className="grid gap-3 sm:gap-4 lg:grid-cols-3">
+        {scenarios(g, setup).map((sc) => <RevealItem key={sc.id} className="h-full"><ScenarioCard s={sc} /></RevealItem>)}
+      </Reveal>
+
+      <SectionHead id="sentiment" icon={<Waves />} title="Market sentiment" sub="Verified data and headlines are labelled as such. Model interpretation is labelled separately. Missing sources stay empty." />
+      <SentimentGrid
+        newsOk={news.ok} newsNeeds={news.ok ? undefined : news.needs} calOk={cal.ok} calNeeds={cal.ok ? undefined : cal.needs}
+        risk={heads.filter((h) => /\b(risk[- ]?(on|off)|stocks|equities|wall street|selloff|sell-off|vix|volatility)\b/i.test(h.title)).slice(0, 3)}
+        geo={headlinesAbout(heads, "geo")} cb={headlinesAbout(heads, "cb")} yld={headlinesAbout(heads, "yld")}
+        relevant={heads.filter((h) => h.instruments.includes("XAUUSD") || h.instruments.includes("DXY"))}
+        rates={releases(cal.ok ? cal.data.filter((e) => e.country === "US") : [], ["FOMC", "Rate decision"], nowMs)}
+        inflation={releases(cal.ok ? cal.data.filter((e) => e.country === "US") : [], ["CPI", "PCE", "PPI"], nowMs)}
+        dxy={snap.dxy} sample={sample} impact={impact} tz={tz} now={nowMs}
+      />
+
+      <SectionHead id="drivers" icon={<CalendarClock />} title="This week's drivers" sub="High-impact scheduled events in the next 7 days." />
+      <div className="dcard dcard-pad">
+        {!cal.ok ? <p className="text-[13px] text-ink-2">{cal.message}{cal.needs?.length ? ` Needs: ${cal.needs.join(", ")}.` : ""}</p> : upcoming.length === 0 ? <p className="text-[13px] text-ink-3">No high-impact events in the next 7 days.</p> : (
+          <ul className="divide-y divide-[var(--border)]">
+            {upcoming.slice(0, 8).map((e) => (
+              <li key={e.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
+                <Flag code={e.country} size={22} />
+                <div className="min-w-0 flex-1"><p className="truncate text-[13.5px] font-semibold text-ink">{e.title}</p><p className="num text-[12px] text-ink-3">{e.forecast ? `Forecast ${e.forecast}` : ""}{e.forecast && e.previous ? " · " : ""}{e.previous ? `Previous ${e.previous}` : ""}</p></div>
+                <span className={cn("num shrink-0 text-right text-[12.5px] text-ink-2")}>{new Date(e.at).toLocaleString("en-GB", { timeZone: tz, weekday: "short", hour: "2-digit", minute: "2-digit" })}</span>
+              </li>
+            ))}
+          </ul>
         )}
-        <p className="mt-2 text-[11px] text-ink-3">US 10-year and real yields will join this desk when a yields source (for example FRED) is connected.</p>
-      </Glass>
+      </div>
+      <p className="mt-4 text-[11.5px] text-ink-3">Analysis computed from market structure at {asOf}{sample ? " on sample bars" : ""}. It is analysis, not advice, and not a prediction.</p>
     </>
   );
 }
