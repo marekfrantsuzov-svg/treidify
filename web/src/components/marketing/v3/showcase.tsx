@@ -13,7 +13,7 @@ const ITEMS: { shot: ShotName; kicker: string; title: string; body: string; poin
 ];
 
 /** Scroll-driven product tour: text on the left, the matching real screen crossfades in a sticky laptop on the right. */
-export function Showcase() {
+export function Showcase({ syncLive, marketLive }: { syncLive: boolean; marketLive: boolean }) {
   const [active, setActive] = useState(0);
   const refs = useRef<(HTMLDivElement | null)[]>([]);
   useEffect(() => {
@@ -31,6 +31,7 @@ export function Showcase() {
             <p className="text-[13px] font-semibold uppercase tracking-[0.14em] text-accent">{it.kicker}</p>
             <h3 className="mt-3 text-[28px] font-semibold leading-[1.1] tracking-[-0.03em] text-ink sm:text-[34px]">{it.title}</h3>
             <p className="mt-3 text-[16px] leading-relaxed text-ink-2">{it.body}</p>
+            {((it.shot === "health" || it.shot === "coach") && !syncLive) || ((it.shot === "macro" || it.shot === "zones") && !marketLive) ? <p className="mt-3 text-[13px] font-medium text-ink-3">{it.shot === "health" || it.shot === "coach" ? "MT5 sync opening soon. Try it now with a labelled demo account." : "Live market data coming soon. Shown here on labelled sample data."}</p> : null}
             <ul className="mt-4 grid gap-2">{it.points.map((p) => <li key={p} className="flex items-start gap-2 text-[15px] text-ink"><CircleCheck className="mt-0.5 h-[18px] w-[18px] shrink-0 text-accent" />{p}</li>)}</ul>
             <div className="mt-6 lg:hidden"><Laptop><Shot name={it.shot} alt={it.alt} /></Laptop></div>
           </div>

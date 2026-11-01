@@ -730,6 +730,7 @@ body { font-feature-settings: "cv11", "ss01", "calt"; letter-spacing: -0.006em; 
 .side-panel::-webkit-scrollbar { display: none; }
 .side-bull { width: 100%; max-width: 220px; height: auto; margin: 0 auto -18px; filter: drop-shadow(0 18px 28px color-mix(in oklab, var(--accent) 30%, transparent)); pointer-events: none; user-select: none; }
 @media (max-height: 820px) { .side-bull { display: none; } }
+@media (max-height: 1060px) { .side-panel:has(.side-sub[aria-expanded="true"]) .side-bull { display: none; } }
 .side-premium { position: relative; border-radius: 22px; padding: 16px; background: var(--surface-top); border: 1px solid var(--border); box-shadow: var(--shadow); }
 [data-theme="dark"] .side-premium { background: var(--surface-strong); }
 
