@@ -1,7 +1,8 @@
 import type { BiasLabel, EngineTf, InstrumentIntel, Zone } from "./engine";
 import type { LiquidityPool } from "./liquidity";
 import type { StructureEvent } from "./structure";
-import { MAX_STOP_PIPS, PIP_SIZE, pips, type TradeSetup } from "./setup";
+import type { TradeSetup } from "./setup";
+import { maxStopPrice, stopCheck } from "@/lib/trading/pips";
 
 /**
  * Presentation models for the Macro Desk. Everything here is derived from the engine's computed output: no new
@@ -120,10 +121,11 @@ export function zoneBrief(i: InstrumentIntel, z: Zone, setup: TradeSetup): ZoneB
   const structure = z.withTrend ? `With the 4H trend (${t4}). ${z.status === "confirmed" ? "A 5M structure break has printed inside the zone." : z.status === "in-zone" ? "Price is inside the zone now." : `Price is ${z.distanceATR} × 1H ATR away.`}`
     : `Against the 4H trend (${t4 ?? "unavailable"}). Counter-trend zones need extra confirmation.`;
   const worst = buy ? z.upper : z.lower;
-  const stopPips = pips(i.symbol, worst - z.invalidation.level);
-  const max = MAX_STOP_PIPS[i.symbol] ?? null;
+  const check = stopCheck(i.symbol, worst, z.invalidation.level);
+  const stopPips = check.pips;
+  const max = check.max;
   let readiness: ZoneBrief["readiness"] = "wait", readinessText: string;
-  if (max !== null && stopPips > max) readinessText = `WAIT / NO VALID SETUP: the structural stop needs ${stopPips} pips, above the ${max}-pip maximum ($${(max * (PIP_SIZE[i.symbol] ?? 0)).toFixed(2)}). The stop is never tightened to fit.`;
+  if (!check.eligible && max !== null) readinessText = `WAIT / NO VALID SETUP: the structural stop needs ${stopPips} pips, above the ${max}-pip maximum ($${check.maxPrice!.toFixed(2)} of price movement). The stop is never tightened to fit.`;
   else if (setup.status === "valid" && setup.zoneId === z.id) { readiness = "ready"; readinessText = z.status === "confirmed" ? "Setup is valid and 5M has confirmed inside the zone." : "Setup is valid. Entry still needs the 5M confirmation described below."; }
   else if (!z.withTrend) readinessText = "Wait: this zone is against the 4H trend.";
   else if (setup.status === "wait" && setup.zoneId === z.id) readinessText = `Wait: ${setup.reasons[0]}`;
@@ -162,7 +164,7 @@ export function scenarios(i: InstrumentIntel, setup: TradeSetup): Scenario[] {
       i.trends["4H"] === "bullish" ? "4H structure is bullish (in place)." : "4H structure turns bullish with a bullish BOS.",
       i.trends["1H"] === "bullish" ? "1H structure agrees (in place)." : "1H prints a bullish break of structure.",
       buyZ ? `Price trades into ${rng(buyZ.lower, buyZ.upper, d)} and 5M closes above its last swing high (CHOCH).` : "A 1H support or 61.8–78.6% retracement zone forms below price.",
-      ...(i.symbol === "XAUUSD" ? ["The structural stop fits within 50 pips ($0.50)."] : []),
+      ...(i.symbol === "XAUUSD" ? [`The structural stop fits within 50 pips ($${maxStopPrice("XAUUSD")!.toFixed(2)}).`] : []),
     ],
     invalidation: buyZ ? buyZ.invalidation.text : i.invalidation ?? "Without a zone there is nothing to invalidate.",
     alignment: align("bullish"),
@@ -174,7 +176,7 @@ export function scenarios(i: InstrumentIntel, setup: TradeSetup): Scenario[] {
       i.trends["4H"] === "bearish" ? "4H structure is bearish (in place)." : "4H structure turns bearish with a bearish BOS.",
       i.trends["1H"] === "bearish" ? "1H structure agrees (in place)." : "1H prints a bearish break of structure.",
       sellZ ? `Price trades into ${rng(sellZ.lower, sellZ.upper, d)} and 5M closes below its last swing low (CHOCH).` : "A 1H resistance or 61.8–78.6% retracement zone forms above price.",
-      ...(i.symbol === "XAUUSD" ? ["The structural stop fits within 50 pips ($0.50)."] : []),
+      ...(i.symbol === "XAUUSD" ? [`The structural stop fits within 50 pips ($${maxStopPrice("XAUUSD")!.toFixed(2)}).`] : []),
     ],
     invalidation: sellZ ? sellZ.invalidation.text : i.invalidation ?? "Without a zone there is nothing to invalidate.",
     alignment: align("bearish"),

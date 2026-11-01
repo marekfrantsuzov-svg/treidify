@@ -53,7 +53,7 @@ export default async function Macro() {
         <RevealItem className="md:col-span-2 xl:col-span-1"><MarketCard i={snap.silver} quote={snap.quotes.XAGUSD} sample={sample} note={sNote} relation={{ title: "Versus Gold", ...silverRelation(g, snap.silver) }} /></RevealItem>
       </Reveal>
 
-      <SectionHead id="zones" icon={<Crosshair />} title="Key zones · XAUUSD" sub="1H zones with their stop measured at structural invalidation. $1.00 = 100 pips; a stop over 50 pips means WAIT, and it is never tightened." />
+      <SectionHead id="zones" icon={<Crosshair />} title="Key zones · XAUUSD" sub="1H zones with their stop measured at structural invalidation. 1 pip = $0.10 (10 pips = $1.00); a stop over 50 pips ($5.00) means WAIT, and it is never tightened." />
       <Reveal className="grid gap-3 sm:gap-4 lg:grid-cols-2">
         <RevealItem><ZoneCard side="buy" digits={g.digits} b={buyZ ? zoneBrief(g, buyZ, setup) : null} /></RevealItem>
         <RevealItem><ZoneCard side="sell" digits={g.digits} b={sellZ ? zoneBrief(g, sellZ, setup) : null} /></RevealItem>

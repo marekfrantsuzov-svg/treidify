@@ -1,15 +1,16 @@
 import type { InstrumentIntel, Zone } from "./engine";
+import { MAX_STOP_PIPS, PIP_SIZE, pips, stopCheck } from "@/lib/trading/pips";
+
+export { MAX_STOP_PIPS, PIP_SIZE, pips };
 
 /**
  * Turns the engine's zones into one actionable setup, or WAIT.
  *
- * Gold pip convention (house rule): $1.00 of XAUUSD price movement = 100 pips, so 1 pip = $0.01.
- * Hard rule: a Gold setup whose stop loss needs more than 50 pips ($0.50) is not a valid trade. The stop is never
+ * Gold pip convention (house rule, see lib/trading/pips.ts): 1 pip = $0.10 of XAUUSD price movement, 10 pips = $1.00.
+ * Hard rule: a Gold setup whose stop loss needs more than 50 pips ($5.00) is not a valid trade. The stop is never
  * tightened to fit the rule: it is placed where the zone is structurally invalidated, and if that is too far the
  * answer is WAIT.
  */
-export const PIP_SIZE: Record<string, number> = { XAUUSD: 0.01, XAGUSD: 0.001, DXY: 0.01 };
-export const MAX_STOP_PIPS: Record<string, number> = { XAUUSD: 50 };
 
 export interface TradeSetup {
   symbol: string;
@@ -30,7 +31,6 @@ export interface TradeSetup {
   asOf: string;
 }
 
-export const pips = (symbol: string, priceDistance: number) => Math.round(Math.abs(priceDistance) / (PIP_SIZE[symbol] ?? 0.0001) * 10) / 10;
 
 function wait(i: InstrumentIntel, reasons: string[], extra: Partial<TradeSetup> = {}): TradeSetup {
   return { symbol: i.symbol, status: "wait", side: null, entry: null, stop: null, targets: [], stopPips: null, maxStopPips: MAX_STOP_PIPS[i.symbol] ?? null, quality: null, timeframe: "1H", zoneId: null, reasons, asOf: i.asOf, ...extra };
@@ -58,13 +58,14 @@ export function tradeSetup(i: InstrumentIntel): TradeSetup {
   const buy = side === "buy";
   const worstEntry = buy ? z.upper : z.lower;
   const stop = z.invalidation.level;
-  const stopPips = pips(i.symbol, worstEntry - stop);
-  const max = MAX_STOP_PIPS[i.symbol] ?? null;
+  const check = stopCheck(i.symbol, worstEntry, stop);
+  const stopPips = check.pips;
+  const max = check.max;
   const entry = { lower: z.lower, upper: z.upper };
-  if (max !== null && stopPips > max) {
+  if (!check.eligible && max !== null) {
     return wait(i, [
       `The ${side} zone ${z.lower.toFixed(i.digits)}–${z.upper.toFixed(i.digits)} is only invalidated at ${stop.toFixed(i.digits)}, a ${stopPips}-pip stop from the zone edge.`,
-      `That is above the ${max}-pip maximum ($${(max * (PIP_SIZE[i.symbol] ?? 0)).toFixed(2)}), so there is no valid trade. The stop is not tightened to fit.`,
+      `That is above the ${max}-pip maximum ($${check.maxPrice!.toFixed(2)} of price movement), so there is no valid trade. The stop is not tightened to fit.`,
     ], { side, entry, stop, stopPips, zoneId: z.id });
   }
 

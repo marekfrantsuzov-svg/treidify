@@ -137,7 +137,7 @@ export function GoldDesk({ initial }: { initial: IntelSnapshot }) {
               : setup.reasons[0]}</p>
           </div>
         )}
-        <div className="mt-auto flex flex-wrap items-center gap-x-2.5 gap-y-1 pt-2.5" title="XAUUSD: $1.00 = 100 pips. Setups needing a stop over 50 pips are shown as WAIT. Analysis, not advice.">
+        <div className="mt-auto flex flex-wrap items-center gap-x-2.5 gap-y-1 pt-2.5" title="XAUUSD: 1 pip = $0.10 of price movement (10 pips = $1.00). Setups needing a structural stop over 50 pips ($5.00) are shown as WAIT. Analysis, not advice.">
           <QualityRing quality={setup.quality} />
           <div className="min-w-0 leading-tight">
             <div className="text-[12px] text-ink-2">Signal quality</div>
