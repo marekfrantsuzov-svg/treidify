@@ -1102,7 +1102,7 @@ body { font-feature-settings: "cv11", "ss01", "calt"; letter-spacing: -0.006em; 
 .tz-bos.is-bull { border-color: color-mix(in oklab, var(--up) 80%, transparent); }
 .tz-bos.is-bear { border-color: color-mix(in oklab, var(--down) 80%, transparent); }
 .tz-bos.is-choch { border-top-style: dashed; }
-.tz-bos-label { position: absolute; left: 50%; translate: -50% -115%; font-size: 9.5px; font-weight: 800; letter-spacing: 0.06em; padding: 0 4px; border-radius: 4px; background: color-mix(in oklab, var(--surface-strong) 85%, transparent); }
+.tz-bos-label { position: absolute; left: 50%; translate: -50% -115%; font-size: 10.5px; font-weight: 800; letter-spacing: 0.06em; padding: 0 4px; border-radius: 4px; background: color-mix(in oklab, var(--surface-strong) 85%, transparent); }
 .tz-bos.is-bull .tz-bos-label { color: var(--up); }
 .tz-bos.is-bear .tz-bos-label { color: var(--down); }
 

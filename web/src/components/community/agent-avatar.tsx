@@ -20,7 +20,7 @@ export function AgentAvatar({ a, size = 40, className }: { a: Pick<Analyst, "nam
   return (
     <span className={cn("agent-avatar", className)} style={{ width: size, height: size, ["--h" as string]: a.hue }} aria-hidden>
       <Icon style={{ width: size * 0.46, height: size * 0.46 }} strokeWidth={2.1} />
-      <span className="agent-ai" style={{ fontSize: Math.max(7.5, size * 0.2) }}>AI</span>
+      <span className="agent-ai" style={{ fontSize: Math.max(10, size * 0.22) }}>AI</span>
     </span>
   );
 }

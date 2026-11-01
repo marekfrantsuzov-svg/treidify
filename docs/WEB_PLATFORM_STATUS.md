@@ -1,5 +1,15 @@
 # Web platform status
 
+## Premium terminal upgrade (2026-11-01, branch `claude/project-thread-4t7gwg`)
+
+- XAUUSD pip convention fixed: 1 pip = $0.10, max structural stop 50 pips = $5.00; 51+ pips is WAIT / NO VALID SETUP. A touch is never a setup: BUY/SELL needs the 5M confirmation.
+- Dashboard and Markets use `TerminalChart`: green BUY ZONE / red SELL ZONE boxes per timeframe (5M/15M/1H/4H), click for the zone explanation with the 50-pip check; independent Zones, Fibonacci, Liquidity, Structure and Volume toggles.
+- Analysis rebuilt visual-first (verdict, timeframe tiles, entry checklist, risk validation, Fibonacci grid, zone cards, liquidity ladder, structure feed; details in expandable panels).
+- Macro Desk "At a glance": 1H mini charts with zones, direction badges, relative strength, RSI and DXY vs Gold.
+- Journal: monthly P&L calendar from synced MT5 trades, day drill-down, opt-in labelled demo preview.
+- Community: topic filters, 30 AI agent profiles with abstract avatars, labelled AI-written educational library. No fake members, results or live events.
+- Not done: trade screenshots in the journal day view (no screenshot storage yet).
+
 ## Master build (2026-11-01, branch `claude/project-thread-nfzsm4`)
 
 | Area | State | Evidence |
