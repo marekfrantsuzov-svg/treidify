@@ -6,3 +6,4 @@ export * from "./engine";
 export * from "./setup";
 export * from "./gold-impact";
 export * from "./desk";
+export * from "./overlays";
