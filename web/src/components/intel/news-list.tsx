@@ -1,3 +1,4 @@
+import { EmptyState } from "@/components/app/status";
 import { ArrowUpRight, CalendarClock, Newspaper } from "lucide-react";
 import Link from "next/link";
 import type { EconEvent, Headline, Result } from "@/server/news/service";
@@ -9,7 +10,7 @@ const imp = { high: "bg-down-soft text-down", medium: "bg-warn-soft text-warn", 
 const ago = (iso: string, now: number) => { const m = Math.max(0, Math.round((now - Date.parse(iso)) / 60000)); return m < 60 ? `${m}m ago` : m < 1440 ? `${Math.round(m / 60)}h ago` : `${Math.round(m / 1440)}d ago`; };
 
 function NotConnected({ what, needs }: { what: string; needs?: string[] }) {
-  return <p className="rounded-2xl bg-inset px-4 py-4 text-sm text-ink-2">{what} is not connected, so nothing is shown here. No example headlines are used.{needs?.length ? <span className="mt-1 block text-xs text-ink-3">Needs: {needs.join(", ")}</span> : null}</p>;
+  return <EmptyState icon={Newspaper} title={`${what} is not connected`} needs={needs} compact>Nothing is shown here until it is. No example headlines are used.</EmptyState>;
 }
 
 export function HeadlineList({ r, limit = 6, nowMs, compact }: { r: Result<Headline[]>; limit?: number; nowMs: number; compact?: boolean }) {

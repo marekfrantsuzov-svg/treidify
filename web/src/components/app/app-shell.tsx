@@ -57,6 +57,19 @@ function useNow(every = 30_000) {
   return now;
 }
 
+/** Switches theme with a short crossfade where the View Transitions API exists; instant otherwise or with reduced motion. */
+function crossfadeTheme(setTheme: (t: string) => void, t: string) {
+  const doc = document as Document & { startViewTransition?: (cb: () => void) => unknown };
+  const apply = () => {
+    const resolved = t === "system" ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : t;
+    document.documentElement.setAttribute("data-theme", resolved);
+    document.documentElement.style.colorScheme = resolved;
+    setTheme(t);
+  };
+  if (!doc.startViewTransition || matchMedia("(prefers-reduced-motion: reduce)").matches) return setTheme(t);
+  doc.startViewTransition(apply);
+}
+
 /** Light / Dark / System, persisted by next-themes (localStorage). */
 function ThemeSwitch() {
   const { theme, setTheme } = useTheme();
@@ -68,7 +81,7 @@ function ThemeSwitch() {
     <div role="radiogroup" aria-label="Theme" className="inset relative grid grid-cols-3 rounded-full p-1">
       <SlidingPill watch={current} className="rounded-full bg-[var(--surface-strong)] shadow-[var(--shadow)]" />
       {opts.map(({ id, label, Icon }) => (
-        <button key={id} role="radio" aria-checked={current === id} data-active={current === id} onClick={() => setTheme(id)}
+        <button key={id} role="radio" aria-checked={current === id} data-active={current === id} onClick={() => crossfadeTheme(setTheme, id)}
           className={cn("relative z-[1] flex h-8 items-center justify-center gap-1.5 rounded-full px-2 text-[12.5px] font-medium text-ink-3 transition-colors hover:text-ink", current === id && "text-ink")}>
           <Icon className="h-[15px] w-[15px]" />{label}
         </button>
@@ -84,7 +97,7 @@ function ThemeToggle({ className }: { className?: string }) {
   useEffect(() => setMounted(true), []);
   const dark = mounted && resolvedTheme === "dark";
   return (
-    <button onClick={() => { setTheme(dark ? "light" : "dark"); playSound("tap"); }} aria-label={dark ? "Switch to light theme" : "Switch to dark theme"} title={dark ? "Light theme" : "Dark theme"} className={cn("hdr-btn press", className)}>
+    <button onClick={() => { crossfadeTheme(setTheme, dark ? "light" : "dark"); playSound("tap"); }} aria-label={dark ? "Switch to light theme" : "Switch to dark theme"} title={dark ? "Light theme" : "Dark theme"} className={cn("hdr-btn press", className)}>
       {dark ? <Sun className="h-[19px] w-[19px]" /> : <Moon className="h-[19px] w-[19px]" />}
     </button>
   );
@@ -348,6 +361,7 @@ function BottomNav({ path, search }: { path: string; search: string }) {
   return (
     <nav aria-label="Main" className="m-nav">
       <div className="m-nav-inner">
+        <SlidingPill watch={path + search} />
         {mobileTabBar.map((t) => {
           const active = isActive(path, t.href, search);
           const Icon = t.line;
