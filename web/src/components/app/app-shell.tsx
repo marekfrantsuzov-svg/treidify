@@ -1,6 +1,7 @@
 "use client";
 
-import { Bell, CalendarDays, LayoutGrid, Check, ChevronDown, LogOut, Moon, Search, Sun, X } from "lucide-react";
+import { Bell, CalendarDays, LayoutGrid, Check, ChevronDown, ChevronsLeft, LogOut, Monitor, Moon, Search, Sun, X } from "lucide-react";
+import { useFreshness } from "@/components/intel/freshness-store";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
@@ -12,6 +13,7 @@ import { PERIOD_IDS, PERIOD_NAMES, readPeriod } from "@/lib/period-param";
 import { GlassIcon, Glyph } from "@/components/icons/glass-icon";
 import { SlidingPill } from "@/components/ui/sliding-pill";
 import { Wordmark } from "@/components/ui/wordmark";
+import { LogoMark } from "@/components/brand/logo-mark";
 import { appNav, isActive, mobileTabs, primaryNav, toolNav, type NavItem } from "./nav";
 
 export interface ShellUser { name: string; username: string | null; email: string; avatar: string | null; isAdmin: boolean }
@@ -48,15 +50,44 @@ function sessionLine(now: Date) {
   return active.length ? `${active.join(" and ")} session${active.length > 1 ? "s" : ""} open.` : "Between major sessions.";
 }
 
-function ThemeSwitch() {
-  const { resolvedTheme, setTheme } = useTheme();
+/** Light / Dark / System, persisted by next-themes (localStorage). */
+function ThemeSwitch({ compact = false }: { compact?: boolean }) {
+  const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  const dark = mounted && resolvedTheme === "dark";
+  const current = mounted ? theme ?? "system" : "system";
+  const opts = [{ id: "light", label: "Light", Icon: Sun }, { id: "dark", label: "Dark", Icon: Moon }, { id: "system", label: "System", Icon: Monitor }] as const;
   return (
-    <button onClick={() => setTheme(dark ? "light" : "dark")} aria-label={dark ? "Switch to light mode" : "Switch to dark mode"} title={dark ? "Light mode" : "Dark mode"} className="glass grid h-11 w-11 place-items-center rounded-full text-ink-2 transition-colors hover:text-ink">
-      {dark ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
-    </button>
+    <div role="radiogroup" aria-label="Theme" className="glass relative flex h-11 items-center rounded-full p-1">
+      <SlidingPill watch={current} className="rounded-full bg-[var(--surface-strong)] shadow-[var(--shadow),0_0_0_1px_color-mix(in_oklab,var(--accent)_14%,transparent)]" />
+      {opts.map(({ id, label, Icon }) => (
+        <button key={id} role="radio" aria-checked={current === id} data-active={current === id} onClick={() => setTheme(id)} title={label} aria-label={`${label} theme`}
+          className={cn("relative z-[1] grid h-9 place-items-center rounded-full text-ink-3 transition-colors hover:text-ink", compact ? "w-9" : "w-9 xl:w-auto xl:grid-flow-col xl:gap-1.5 xl:px-3", current === id && "text-accent")}>
+          <Icon className="h-[17px] w-[17px]" />{!compact && <span className="hidden text-[12.5px] font-medium xl:inline">{label}</span>}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Session, market open/closed and the freshness of the last data the dashboard received. */
+function MarketStatusChips() {
+  const [now, setNow] = useState<Date | null>(null);
+  const f = useFreshness();
+  useEffect(() => { setNow(new Date()); const id = setInterval(() => setNow(new Date()), 30_000); return () => clearInterval(id); }, []);
+  if (!now) return <div className="h-7" />;
+  const status = marketStatus(now);
+  const active = activeSessions(now).map((id) => SESSIONS.find((x) => x.id === id)!.name);
+  const fl = f.mode === "sample" ? { t: "Sample data", c: "bg-warn-soft text-warn" } : f.freshness === "live" ? { t: "Data up to date", c: "bg-up-soft text-up" } : f.freshness === "delayed" ? { t: "Data delayed", c: "bg-warn-soft text-warn" } : f.freshness === "stale" ? { t: "Data stale", c: "bg-down-soft text-down" } : null;
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 whitespace-nowrap text-[12px] font-medium">
+      <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-1", status === "open" ? "bg-up-soft text-up" : "bg-inset text-ink-2")}>
+        <span className={cn("h-1.5 w-1.5 rounded-full", status === "open" ? "bg-up shadow-[0_0_8px_var(--up)] motion-safe:animate-pulse" : "bg-ink-3")} />
+        {status === "open" ? "Gold market open" : status === "dailyBreak" ? "Daily break" : "Market closed"}
+      </span>
+      <span className="inline-flex items-center gap-1 rounded-full bg-inset px-2.5 py-1 text-ink-2">{status !== "open" ? "No session" : active.length ? `${active.join(" + ")} session` : "Between sessions"}</span>
+      {fl && <span className={cn("inline-flex items-center rounded-full px-2.5 py-1", fl.c)} title={f.asOf ? `Last calculated ${new Date(f.asOf).toLocaleTimeString()}` : undefined}>{fl.t}</span>}
+    </div>
   );
 }
 
@@ -160,18 +191,6 @@ function SearchPalette({ open, onClose }: { open: boolean; onClose: () => void }
   );
 }
 
-function ThemeItem({ className }: { className: string }) {
-  const { resolvedTheme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  const dark = mounted && resolvedTheme === "dark";
-  return (
-    <button role="menuitem" onClick={() => setTheme(dark ? "light" : "dark")} className={cn(className, "w-full")}>
-      {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}{dark ? "Light mode" : "Dark mode"}
-    </button>
-  );
-}
-
 function UserMenu({ user, plan }: { user: ShellUser; plan: ShellPlan }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
@@ -193,7 +212,6 @@ function UserMenu({ user, plan }: { user: ShellUser; plan: ShellPlan }) {
           <Link role="menuitem" href="/app/settings/profile" onClick={() => setOpen(false)} className={item}><Glyph name="profile" size={18} />Profile and privacy</Link>
           <Link role="menuitem" href="/app/settings/plan" onClick={() => setOpen(false)} className={item}><Glyph name="spark" size={18} />Plan</Link>
           <Link role="menuitem" href="/app/settings/security" onClick={() => setOpen(false)} className={item}><Glyph name="shield" size={18} />Security</Link>
-          <ThemeItem className={item} />
           <div className="my-1 h-px bg-[var(--border)]" />
           <button role="menuitem" onClick={async () => { await authClient.signOut(); router.replace("/login"); router.refresh(); }} className={cn(item, "w-full hover:bg-down-soft hover:text-down")}><LogOut className="h-4 w-4" />Sign out</button>
         </div>
@@ -208,7 +226,7 @@ function MoreSheet({ open, onClose, path }: { open: boolean; onClose: () => void
     <div className="scrim-in fixed inset-0 z-50 bg-[rgba(20,12,40,0.3)] backdrop-blur-sm lg:hidden" onClick={onClose}>
       <div role="dialog" aria-label="More" className="glass glass-strong sheet-in safe-bottom absolute inset-x-3 bottom-3 rounded-[28px] p-4 shadow-[var(--shadow-lg)]" onClick={(e) => e.stopPropagation()}>
         <div className="mb-3 flex items-center justify-between px-1"><span className="text-sm font-semibold text-ink">All sections</span><button onClick={onClose} aria-label="Close" className="grid h-8 w-8 place-items-center rounded-full text-ink-3"><X className="h-4 w-4" /></button></div>
-        <div className="mb-4 flex items-center gap-2 px-1"><DateSelector /><ThemeSwitch /></div>
+        <div className="mb-4 flex flex-wrap items-center gap-2 px-1"><DateSelector /><ThemeSwitch compact /></div>
         <div className="grid grid-cols-4 gap-y-4">
           {appNav.map((n) => (
             <Link key={n.href} href={n.href} onClick={onClose} className="press grid justify-items-center gap-1.5 text-center text-[11px] font-medium text-ink-2">
@@ -225,7 +243,6 @@ export function AppShell({ user, plan, account, timezone, greeting, unread, chil
   const path = usePathname();
   const [search, setSearch] = useState(false);
   const [more, setMore] = useState(false);
-  const line = "Here’s your market overview. Stay disciplined.";
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setSearch(true); } };
     window.addEventListener("keydown", onKey); return () => window.removeEventListener("keydown", onKey);
@@ -233,24 +250,33 @@ export function AppShell({ user, plan, account, timezone, greeting, unread, chil
   useEffect(() => setMore(false), [path]);
   const first = user.name.split(" ")[0];
   const moreActive = !mobileTabs.some((h) => isActive(path, h));
+  // Collapsible sidebar, remembered on this device.
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => { setCollapsed(localStorage.getItem("treidify.sidebar") === "collapsed"); }, []);
+  const toggle = () => setCollapsed((c) => { localStorage.setItem("treidify.sidebar", c ? "open" : "collapsed"); return !c; });
 
   return (
-    <div className="min-h-dvh lg:pl-[248px]">
+    <div className={cn("min-h-dvh transition-[padding] duration-500 ease-[var(--ease-spring)]", collapsed ? "lg:pl-[100px]" : "lg:pl-[260px]")}>
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-accent focus:px-4 focus:py-2 focus:text-white">Skip to content</a>
 
-      <aside className="fixed inset-y-3 left-3 z-40 hidden w-[228px] flex-col lg:flex" aria-label="Main">
+      <aside data-collapsed={collapsed} className={cn("group/side fixed inset-y-3 left-3 z-40 hidden flex-col transition-[width] duration-500 ease-[var(--ease-spring)] lg:flex", collapsed ? "w-[80px]" : "w-[240px]")} aria-label="Main">
         <div className="glass flex h-full flex-col rounded-[28px] px-3 pb-3 pt-5">
-          <div className="px-3 pb-6"><Wordmark href="/app" className="text-[23px]" /></div>
+          <div className={cn("flex items-center pb-6", collapsed ? "justify-center px-0" : "justify-between px-3")}>
+            {collapsed ? <Link href="/app" aria-label="Treidify home"><LogoMark size={34} priority /></Link> : <Wordmark href="/app" className="text-[23px]" />}
+            <button onClick={toggle} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} aria-expanded={!collapsed} className={cn("grid h-8 w-8 place-items-center rounded-full text-ink-3 transition-[transform,color] hover:text-ink", collapsed && "absolute -right-3 top-6 glass h-7 w-7")}>
+              <ChevronsLeft className={cn("h-4 w-4 transition-transform duration-500", collapsed && "rotate-180")} />
+            </button>
+          </div>
           <nav className="relative grid gap-1 overflow-y-auto [scrollbar-width:none]">
             <SlidingPill watch={path} className="rounded-2xl bg-[var(--surface-strong)] shadow-[var(--shadow),0_0_0_1px_color-mix(in_oklab,var(--accent)_12%,transparent)]" />
-            {primaryNav.map((n) => <SideLink key={n.href} item={n} path={path} />)}
+            {primaryNav.map((n) => <SideLink key={n.href} item={n} path={path} collapsed={collapsed} />)}
             <div className="mx-3 my-2 h-px bg-[var(--border)]" />
-            {toolNav.map((n) => <SideLink key={n.href} item={n} path={path} />)}
+            {toolNav.map((n) => <SideLink key={n.href} item={n} path={path} collapsed={collapsed} />)}
           </nav>
           <div className="mt-auto grid gap-2 pt-3">
-            <Link href="/app/accounts" className="glass glass-strong glass-hover press flex items-center gap-3 rounded-2xl px-3.5 py-3">
+            <Link href="/app/accounts" title="Trading account" className={cn("glass glass-strong glass-hover press flex items-center gap-3 rounded-2xl py-3", collapsed ? "justify-center px-0" : "px-3.5")}>
               <span className={cn("h-3 w-3 shrink-0 rounded-full", account?.status === "connected" ? "bg-up shadow-[0_0_10px_var(--up)]" : account?.sample ? "bg-warn shadow-[0_0_10px_var(--warn)]" : "bg-[var(--border-strong)]")} />
-              <span className="min-w-0">
+              <span className={cn("min-w-0", collapsed && "sr-only")}>
                 <span className="block truncate text-[13px] font-semibold text-ink">{account ? (account.sample ? "Sample account" : account.status === "connected" ? "Connected" : "Connecting") : "Not connected"}</span>
                 <span className="block truncate text-[11.5px] text-ink-3">{account ? (account.sample ? "Demo data, not live" : account.label.startsWith("MT4") ? "MetaTrader 4" : "MetaTrader 5") : "Connect MetaTrader"}</span>
               </span>
@@ -262,26 +288,27 @@ export function AppShell({ user, plan, account, timezone, greeting, unread, chil
       <header className="sticky top-0 z-30 px-3 pt-3 sm:px-5 lg:pt-4">
         <div className="flex items-center gap-3 rounded-full py-1 max-lg:glass max-lg:h-14 max-lg:pl-4 max-lg:pr-1.5">
           <div className="lg:hidden"><Wordmark href="/app" /></div>
-          <div className="hidden min-w-0 lg:block">
+          <div className="hidden min-w-0 flex-1 lg:block">
             <p className="truncate text-[27px] font-bold leading-tight tracking-[-0.03em] text-ink">{greeting}, {first} <span aria-hidden>👋</span></p>
-            <p className="truncate text-[15px] text-ink-3">{line}</p>
+            <div className="mt-1"><MarketStatusChips /></div>
           </div>
-          <div className="ml-auto flex items-center gap-2.5">
-            <button onClick={() => setSearch(true)} className="glass press hidden h-11 w-[min(400px,30vw)] items-center gap-2.5 rounded-full px-4 text-sm text-ink-3 hover:border-[var(--border-strong)] hover:text-ink-2 xl:flex">
+          <div className="ml-auto flex shrink-0 items-center gap-2.5">
+            <button onClick={() => setSearch(true)} className="glass press hidden h-11 w-[min(340px,22vw)] items-center gap-2.5 rounded-full px-4 text-sm text-ink-3 hover:border-[var(--border-strong)] hover:text-ink-2 2xl:flex">
               <Search className="h-[18px] w-[18px] text-ink-2" />
               <span className="flex-1 truncate text-left">Search markets, news, or ask AI…</span>
               <kbd className="inset rounded-md px-1.5 py-0.5 text-[11px] font-medium text-ink-3">⌘K</kbd>
             </button>
-            <button onClick={() => setSearch(true)} aria-label="Search" className="glass press grid h-11 w-11 place-items-center rounded-full xl:hidden max-lg:hidden"><Search className="h-[18px] w-[18px] text-ink-2" /></button>
+            <button onClick={() => setSearch(true)} aria-label="Search" className="glass press grid h-11 w-11 place-items-center rounded-full 2xl:hidden max-lg:hidden"><Search className="h-[18px] w-[18px] text-ink-2" /></button>
             <div className="hidden lg:block"><DateSelector /></div>
             <Link href="/app/notifications" aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"} className="press relative grid h-11 w-11 place-items-center rounded-full hover:text-accent lg:glass">
               <Bell className="h-5 w-5 text-ink-2" />
               {unread > 0 && <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-down ring-2 ring-[var(--surface-strong)]" />}
             </Link>
+            <div className="hidden md:block"><ThemeSwitch /></div>
             <UserMenu user={user} plan={plan} />
           </div>
         </div>
-        <p className="mt-4 px-1 text-[22px] font-bold tracking-[-0.03em] text-ink lg:hidden">{greeting}, {first} <span aria-hidden>👋</span></p>
+        <div className="mt-4 px-1 lg:hidden"><p className="text-[22px] font-bold tracking-[-0.03em] text-ink">{greeting}, {first} <span aria-hidden>👋</span></p><div className="mt-1.5"><MarketStatusChips /></div></div>
       </header>
 
       <main id="main" className="mx-auto w-full max-w-[1400px] px-3 pb-36 pt-4 sm:px-5 lg:pb-12">{children}</main>
@@ -311,15 +338,15 @@ export function AppShell({ user, plan, account, timezone, greeting, unread, chil
 }
 
 /** Sidebar entry: a line icon, and a violet glass disc with a white glyph when active. The shared pill travels behind it. */
-function SideLink({ item, path }: { item: NavItem; path: string }) {
+function SideLink({ item, path, collapsed }: { item: NavItem; path: string; collapsed?: boolean }) {
   const active = isActive(path, item.href);
   const Icon = item.line;
   return (
-    <Link href={item.href} data-active={active} aria-current={active ? "page" : undefined} className={cn("group relative z-[1] flex items-center gap-3 rounded-2xl px-2 py-1.5 text-[15px] text-ink-2 transition-colors duration-200 hover:text-ink", !active && "hover:bg-[var(--surface-inset)]", active && "font-semibold text-ink")}>
+    <Link href={item.href} title={collapsed ? item.label : undefined} data-active={active} aria-current={active ? "page" : undefined} className={cn("group relative z-[1] flex items-center gap-3 rounded-2xl px-2 py-1.5 text-[14.5px] text-ink-2 transition-colors duration-200 hover:text-ink", collapsed && "justify-center px-0", !active && "hover:bg-[var(--surface-inset)]", active && "font-semibold text-ink")}>
       <span className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-full transition-[background,box-shadow,transform,color] duration-300 ease-[var(--ease-spring)] group-active:scale-90", active ? "bg-brand text-white shadow-[0_6px_16px_-6px_var(--accent-glow),inset_0_1px_0_rgba(255,255,255,0.5)]" : "group-hover:text-accent")}>
         <Icon className="h-[19px] w-[19px]" strokeWidth={active ? 2.1 : 1.7} />
       </span>
-      {item.label}
+      <span className={cn("truncate", collapsed && "sr-only")}>{item.label}</span>
     </Link>
   );
 }

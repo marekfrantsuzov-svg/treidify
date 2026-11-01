@@ -1,7 +1,7 @@
 import "server-only";
 import { analyzeInstrument, overallConditions, type EngineTf, type InstrumentIntel, type UpcomingEvent } from "@/lib/intelligence";
 import type { Candle } from "@/lib/analytics/types";
-import { sampleSeries } from "@/lib/demo/markets";
+import { sampleMtf } from "@/lib/demo/markets";
 import { INSTRUMENTS, type MarketSymbol } from "./instruments";
 import { getMultiTimeframe, marketDataStatus, type SeriesResult } from "./service";
 import type { Freshness } from "./freshness";
@@ -41,7 +41,7 @@ function build(series: Record<MarketSymbol, Partial<Record<EngineTf, Candle[]>>>
 export async function marketIntelligence(events: UpcomingEvent[] = [], now = new Date()): Promise<IntelSnapshot> {
   const st = marketDataStatus();
   if (!st.configured) {
-    const series = Object.fromEntries((["XAUUSD", "DXY", "XAGUSD"] as const).map((s) => [s, Object.fromEntries(TFS.map((tf) => [tf, sampleSeries(s, tf)]))])) as Record<MarketSymbol, Record<EngineTf, Candle[]>>;
+    const series = Object.fromEntries((["XAUUSD", "DXY", "XAGUSD"] as const).map((s) => [s, sampleMtf(s)])) as Record<MarketSymbol, Record<EngineTf, Candle[]>>;
     const sampleNow = new Date(series.XAUUSD["5M"].at(-1)!.t * 1000);
     const r = build(series, sampleNow, []);
     return { mode: "sample", asOf: sampleNow.toISOString(), vendor: null, dxyMethod: null, freshness: null, needs: st.needs, message: "Market data is not connected. Everything below runs the real engine on sample bars so you can see the layout. It is not a market reading.", ...r,
