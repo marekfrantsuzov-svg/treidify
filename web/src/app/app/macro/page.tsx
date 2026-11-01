@@ -1,7 +1,8 @@
-import { CalendarClock, Crosshair, Map as MapIcon, Radar, Waves } from "lucide-react";
+import { Activity, CalendarClock, Crosshair, Map as MapIcon, Radar, Waves } from "lucide-react";
 import { PageHeader } from "@/components/app/status";
 import { MarketCard, ScenarioCard, SentimentGrid, ZoneCard } from "@/components/macro/desk";
 import { SectionHead, SourceChip } from "@/components/macro/parts";
+import { MacroPulse } from "@/components/terminal/macro-pulse";
 import { Reveal, RevealItem } from "@/components/motion/reveal";
 import { Flag } from "@/components/ui/flags";
 import { dxyRelation, goldImpact, headlinesAbout, releases, scenarios, silverRelation, tradeSetup, zoneBrief, type SentHeadline } from "@/lib/intelligence";
@@ -45,6 +46,9 @@ export default async function Macro() {
         </div>
       </PageHeader>
       {snap.message && <p className="mb-4 rounded-2xl bg-warn-soft px-4 py-2.5 text-[13px] leading-snug text-ink">{snap.message}</p>}
+
+      <SectionHead id="pulse" icon={<Activity />} title="At a glance" sub="1H charts with their nearest buy and sell zones, timeframe direction, momentum and the dollar link. Tap a market to open its chart." />
+      <MacroPulse snap={snap} />
 
       <SectionHead id="markets" icon={<Radar />} title="Market intelligence" sub="Structure on 4H, 1H, 15M and 5M. Dots: green bullish, red bearish, grey no confirmed structure." />
       <Reveal className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
