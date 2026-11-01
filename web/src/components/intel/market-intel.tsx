@@ -38,7 +38,7 @@ export function useIntel(initial: IntelSnapshot) {
   return snap;
 }
 
-export function DataChips({ s }: { s: IntelSnapshot }) {
+export function DataChips({ s }: { s: Pick<IntelSnapshot, "mode" | "asOf" | "vendor" | "dxyMethod" | "freshness"> }) {
   const time = new Date(s.asOf).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   return (
     <div className="flex flex-wrap items-center gap-1.5 text-[11.5px] font-medium">

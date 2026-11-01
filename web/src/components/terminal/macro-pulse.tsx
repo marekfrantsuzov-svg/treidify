@@ -5,7 +5,8 @@ import Link from "next/link";
 import type { IntelSnapshot } from "@/server/market/intelligence";
 import type { Candle } from "@/lib/analytics/types";
 import type { InstrumentIntel } from "@/lib/intelligence";
-import { momentumLabel, rsiOf, dxyRelation } from "@/lib/intelligence";
+import { momentumLabel, rsiOf, dxyRelation, silverRelation } from "@/lib/intelligence";
+import { INSTRUMENTS } from "@/lib/markets/registry";
 import type { TfOverlays } from "@/lib/intelligence/overlays";
 import { cn } from "@/lib/cn";
 import { AssetMark } from "@/components/ui/flags";
@@ -60,37 +61,35 @@ function Dir({ t, tf }: { t: InstrumentIntel["trends"]["4H"]; tf: string }) {
 
 /** Five-second read: each market's chart with its zones, timeframe direction, momentum and relative strength. */
 export function MacroPulse({ snap }: { snap: IntelSnapshot }) {
-  const g = useTfOverlays("XAUUSD", snap.gold.digits, ["1H"]);
-  const d = useTfOverlays("DXY", snap.dxy.digits, ["1H"]);
-  const s = useTfOverlays("XAGUSD", snap.silver.digits, ["1H"]);
-  const rows = [{ i: snap.gold, st: ready(g["1H"]) }, { i: snap.dxy, st: ready(d["1H"]) }, { i: snap.silver, st: ready(s["1H"]) }];
-  const changes = rows.map((r) => snap.quotes[r.i.symbol as keyof typeof snap.quotes].changePct);
+  const items: PulseItem[] = (["XAUUSD", "DXY", "XAGUSD"] as const).map((sym) => ({ intel: sym === "XAUUSD" ? snap.gold : sym === "DXY" ? snap.dxy : snap.silver, quote: snap.quotes[sym], status: snap.mode === "sample" ? "sample" : "live" }));
+  return <DeskPulse items={items} dxy={snap.dxy} />;
+}
+
+export interface PulseItem { intel: InstrumentIntel; quote: { last: number | null; changePct: number | null }; status: "live" | "sample" | "unavailable" | "error" }
+const nameOf = (s: string) => NAMES[s] ?? INSTRUMENTS[s]?.short ?? s;
+const LINE_A = "#d4a017";
+
+/**
+ * The same five-second read for any three instruments. The comparison chart puts the first card against DXY when it
+ * has a dollar link, otherwise against the second card, both rebased to 100.
+ */
+export function DeskPulse({ items, dxy }: { items: PulseItem[]; dxy: InstrumentIntel | null }) {
+  const a = items[0]!.intel;
+  const vsDxy = a.symbol !== "DXY" && !!INSTRUMENTS[a.symbol]?.dxyLink && !!dxy;
+  const b: InstrumentIntel = vsDxy ? dxy! : (items.find((x) => x.intel.symbol !== a.symbol)?.intel ?? items[1]!.intel);
+  const ao = useTfOverlays(a.symbol, a.digits, ["1H"]);
+  const bo = useTfOverlays(b.symbol, b.digits, ["1H"]);
+  const changes = items.map((r) => r.quote.changePct);
   const maxAbs = Math.max(0.01, ...changes.map((c) => Math.abs(c ?? 0)));
-  const rel = dxyRelation(snap.gold, snap.dxy);
-  const gc = ready(g["1H"])?.candles.slice(-BARS) ?? [], dc = ready(d["1H"])?.candles.slice(-BARS) ?? [];
-  const rho = snap.gold.components.find((c) => c.id === "dxy")?.detail.match(/ρ = (-?[\d.]+)/)?.[1];
+  const rel = vsDxy ? dxyRelation(a, b) : b.symbol === "DXY" ? dxyRelation(a, b) : silverRelation(a, b);
+  const ac = ready(ao["1H"])?.candles.slice(-BARS) ?? [], bc = ready(bo["1H"])?.candles.slice(-BARS) ?? [];
+  const rho = vsDxy ? a.components.find((c) => c.id === "dxy")?.detail.match(/ρ = (-?[\d.]+)/)?.[1] : undefined;
+  const title = `${nameOf(b.symbol)} versus ${nameOf(a.symbol)}`;
 
   return (
     <div className="grid gap-3 sm:gap-4">
       <div className="grid gap-3 sm:gap-4 md:grid-cols-3">
-        {rows.map(({ i, st }) => {
-          const q = snap.quotes[i.symbol as keyof typeof snap.quotes];
-          const mom = momentumLabel(rsiOf(i));
-          return (
-            <Link key={i.symbol} href={`/app/markets?symbol=${i.symbol}&layers=zones,structure`} className={cn("dcard dcard-pad lift block", `glow-${i.bias}`)} aria-label={`${NAMES[i.symbol]}: ${i.bias}. Open the chart.`}>
-              <div className="flex items-center gap-2.5">
-                <AssetMark symbol={i.symbol} size={28} />
-                <div className="min-w-0 flex-1 leading-tight"><div className="text-[14.5px] font-semibold text-ink">{NAMES[i.symbol]}</div><div className="num text-[12px] text-ink-3">{q.last !== null ? fmtPrice(q.last, i.digits) : "—"}{q.changePct !== null && <span className={q.changePct >= 0 ? " text-up" : " text-down"}> {q.changePct >= 0 ? "+" : "−"}{Math.abs(q.changePct).toFixed(2)}%</span>}</div></div>
-                <span className={cn("bias-pill", `is-${i.bias}`)}>{i.bias === "insufficient" ? "No reading" : i.bias}</span>
-              </div>
-              <div className="mt-2">{st ? <MiniChart candles={st.candles} o={st.overlays} digits={i.digits} label={`${NAMES[i.symbol]} 1H chart with its nearest buy and sell zones`} /> : <div className="skeleton h-[120px] rounded-xl" />}</div>
-              <div className="mt-2 flex items-center justify-between gap-2">
-                <div className="flex gap-1">{(["4H", "1H", "15M", "5M"] as const).map((tf) => <Dir key={tf} tf={tf} t={i.trends[tf]} />)}</div>
-                <span className={cn("text-[11.5px] font-semibold", mom.tone === "bullish" ? "text-up" : mom.tone === "bearish" ? "text-down" : "text-ink-3")}>{mom.label}</span>
-              </div>
-            </Link>
-          );
-        })}
+        {items.map((it) => <PulseCard key={it.intel.symbol} it={it} />)}
       </div>
 
       <div className="grid gap-3 sm:gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
@@ -98,11 +97,11 @@ export function MacroPulse({ snap }: { snap: IntelSnapshot }) {
           <h3 id="rs-title" className="text-[14.5px] font-semibold text-ink">Relative strength &amp; momentum</h3>
           <p className="text-[12px] text-ink-3">24-hour change and 1H RSI(14). Bars are scaled to the largest move.</p>
           <ul className="mt-3 grid gap-3">
-            {rows.map(({ i }, k) => {
+            {items.map(({ intel: i }, k) => {
               const c = changes[k] ?? null, r = rsiOf(i);
               return (
                 <li key={i.symbol} className="grid grid-cols-[64px_minmax(0,1fr)_58px] items-center gap-2 text-[12.5px]">
-                  <span className="font-semibold text-ink">{NAMES[i.symbol]}</span>
+                  <span className="truncate font-semibold text-ink">{nameOf(i.symbol)}</span>
                   <span className="rs-track" aria-hidden><span className={cn("rs-bar", (c ?? 0) >= 0 ? "is-up" : "is-down")} style={{ width: `${(Math.abs(c ?? 0) / maxAbs) * 50}%` }} /></span>
                   <span className={cn("num text-right font-semibold", (c ?? 0) >= 0 ? "text-up" : "text-down")}>{c === null ? "—" : `${c >= 0 ? "+" : "−"}${Math.abs(c).toFixed(2)}%`}</span>
                   <span />
@@ -116,11 +115,11 @@ export function MacroPulse({ snap }: { snap: IntelSnapshot }) {
 
         <section className="dcard dcard-pad" aria-labelledby="dxg-title">
           <div className="flex flex-wrap items-start justify-between gap-2">
-            <div><h3 id="dxg-title" className="text-[14.5px] font-semibold text-ink">DXY versus Gold</h3><p className="text-[12px] text-ink-3">Last {BARS} 1H closes, both rebased to 100. {rho ? `Measured return correlation ρ = ${rho}.` : "Correlation not measurable on these bars."}</p></div>
+            <div><h3 id="dxg-title" className="text-[14.5px] font-semibold text-ink">{title}</h3><p className="text-[12px] text-ink-3">Last {BARS} 1H closes, both rebased to 100. {vsDxy ? (rho ? `Measured return correlation ρ = ${rho}.` : "Correlation not measurable on these bars.") : "Direction comparison only."}</p></div>
             <span className={cn("bias-pill normal-case", rel.tone === "aligned" ? "text-accent" : rel.tone === "diverging" ? "!bg-warn-soft !text-warn" : "")}>{rel.label}</span>
           </div>
-          <RebaseChart a={gc} b={dc} />
-          <div className="mt-1 flex gap-4 text-[11.5px] text-ink-2"><span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-4 rounded bg-[#d4a017]" />Gold</span><span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-4 rounded bg-[var(--accent)]" />DXY</span></div>
+          <RebaseChart a={ac} b={bc} label={`${nameOf(a.symbol)} and ${nameOf(b.symbol)} rebased to 100 over the last ${BARS} hourly closes`} />
+          <div className="mt-1 flex gap-4 text-[11.5px] text-ink-2"><span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-4 rounded" style={{ background: LINE_A }} />{nameOf(a.symbol)}</span><span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-4 rounded bg-[var(--accent)]" />{nameOf(b.symbol)}</span></div>
           <p className="mt-2 text-[12.5px] leading-snug text-ink-2">{rel.text}</p>
         </section>
       </div>
@@ -128,7 +127,33 @@ export function MacroPulse({ snap }: { snap: IntelSnapshot }) {
   );
 }
 
-function RebaseChart({ a, b }: { a: Candle[]; b: Candle[] }) {
+function PulseCard({ it }: { it: PulseItem }) {
+  const i = it.intel, q = it.quote;
+  const o = useTfOverlays(i.symbol, i.digits, ["1H"]);
+  const st = ready(o["1H"]);
+  const err = o["1H"]?.status === "error";
+  const mom = momentumLabel(rsiOf(i));
+  const name = nameOf(i.symbol);
+  return (
+    <Link href={`/app/markets?symbol=${i.symbol}&layers=zones,structure`} className={cn("dcard dcard-pad lift block", `glow-${i.bias}`)} aria-label={`${name}: ${i.bias}. Open the chart.`}>
+      <div className="flex items-center gap-2.5">
+        <AssetMark symbol={i.symbol} size={28} />
+        <div className="min-w-0 flex-1 leading-tight"><div className="truncate text-[14.5px] font-semibold text-ink">{name}</div><div className="num text-[12px] text-ink-3">{q.last !== null ? fmtPrice(q.last, i.digits) : "—"}{q.changePct !== null && <span className={q.changePct >= 0 ? " text-up" : " text-down"}> {q.changePct >= 0 ? "+" : "−"}{Math.abs(q.changePct).toFixed(2)}%</span>}</div></div>
+        <span className={cn("bias-pill", `is-${i.bias}`)}>{i.bias === "insufficient" ? "No reading" : i.bias}</span>
+      </div>
+      <div className="mt-2">{st ? <MiniChart candles={st.candles} o={st.overlays} digits={i.digits} label={`${name} 1H chart with its nearest buy and sell zones`} /> : err ? <div className="grid h-[120px] place-items-center rounded-xl border border-dashed border-line px-3 text-center text-[12px] text-ink-3">No chart data for {i.symbol}</div> : <div className="skeleton h-[120px] rounded-xl" />}</div>
+      <div className="mt-2 flex items-center justify-between gap-2">
+        <div className="flex gap-1">{(["4H", "1H", "15M", "5M"] as const).map((tf) => <Dir key={tf} tf={tf} t={i.trends[tf]} />)}</div>
+        <span className={cn("text-[11.5px] font-semibold", mom.tone === "bullish" ? "text-up" : mom.tone === "bearish" ? "text-down" : "text-ink-3")}>{mom.label}</span>
+      </div>
+    </Link>
+  );
+}
+
+function RebaseChart({ a: a0, b: b0, label }: { a: Candle[]; b: Candle[]; label: string }) {
+  // Only bars both markets printed (an index's cash session against 24-hour FX, for example).
+  const bt = new Set(b0.map((x) => x.t));
+  const a = a0.filter((x) => bt.has(x.t)), at = new Set(a.map((x) => x.t)), b = b0.filter((x) => at.has(x.t));
   if (a.length < 10 || b.length < 10) return <div className="skeleton mt-3 h-[130px] rounded-xl" />;
   const ra = a.map((x) => (x.c / a[0]!.c) * 100), rb = b.map((x) => (x.c / b[0]!.c) * 100);
   const all = [...ra, ...rb], hi = Math.max(...all), lo = Math.min(...all);
@@ -136,9 +161,9 @@ function RebaseChart({ a, b }: { a: Candle[]; b: Candle[] }) {
   const path = (r: number[]) => r.map((v, i) => `${i ? "L" : "M"}${((i / (r.length - 1)) * W).toFixed(1)},${(6 + ((hi - v) / (hi - lo || 1)) * (H - 12)).toFixed(1)}`).join(" ");
   const base = 6 + ((hi - 100) / (hi - lo || 1)) * (H - 12);
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="mt-3 h-[130px] w-full" role="img" aria-label="Gold and DXY rebased to 100 over the last 72 hourly closes">
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="mt-3 h-[130px] w-full" role="img" aria-label={label}>
       <line x1={0} x2={W} y1={base} y2={base} stroke="var(--border-strong)" strokeDasharray="4 4" />
-      <path d={path(ra)} fill="none" stroke="#d4a017" strokeWidth={2} vectorEffect="non-scaling-stroke" />
+      <path d={path(ra)} fill="none" stroke={LINE_A} strokeWidth={2} vectorEffect="non-scaling-stroke" />
       <path d={path(rb)} fill="none" stroke="var(--accent)" strokeWidth={2} vectorEffect="non-scaling-stroke" />
     </svg>
   );

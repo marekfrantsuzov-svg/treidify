@@ -94,7 +94,7 @@ describe("zone readiness never fires on a touch alone", () => {
     expect(zoneReadiness(o, z, "bearish").status).toBe("wait");
   });
   it("51 pips is WAIT / NO VALID SETUP even if everything else lines up", () => {
-    const [o, z] = base({ stop: { pips: 51, priceDistance: 5.1, max: 50, maxPrice: 5, eligible: false } }, { structure: { events: [{ kind: "CHOCH", direction: "bullish", index: 60, t: 0, level: 3999, swing: { kind: "high", index: 55, t: 0, price: 3999 } }], swings: [], displacement: [] } });
+    const [o, z] = base({ stop: { unit: "pip", pips: 51, priceDistance: 5.1, max: 50, maxPrice: 5, eligible: false } }, { structure: { events: [{ kind: "CHOCH", direction: "bullish", index: 60, t: 0, level: 3999, swing: { kind: "high", index: 55, t: 0, price: 3999 } }], swings: [], displacement: [] } });
     const r = zoneReadiness(o, z, "bullish");
     expect(r.status).toBe("wait");
     expect(r.headline).toMatch(/NO VALID SETUP.*51 pips.*\$5\.00/);

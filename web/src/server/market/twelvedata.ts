@@ -14,6 +14,16 @@ export class VendorError extends Error {
   constructor(readonly vendor: string, message: string, readonly status?: number) { super(`${vendor}: ${message}`); }
 }
 
+/**
+ * True when the provider says this symbol is not served (unknown symbol, or not included in the plan), as opposed to
+ * an outage, a bad key or a rate limit. Only these errors mark an instrument "unavailable".
+ */
+export function isCoverageError(e: unknown): boolean {
+  if (!(e instanceof VendorError)) return false;
+  if (e.status === 401 || e.status === 429 || (e.status !== undefined && e.status >= 500)) return false;
+  return e.status === 400 || e.status === 403 || e.status === 404 || /not (found|available)|invalid symbol|symbol .* (is not|not)|upgrade|plan/i.test(e.message);
+}
+
 type Fetch = typeof fetch;
 interface TdValue { datetime: string; open: string; high: string; low: string; close: string; volume?: string }
 interface TdSeries { status?: string; code?: number; message?: string; meta?: { symbol: string; interval: string; exchange_timezone?: string }; values?: TdValue[] }

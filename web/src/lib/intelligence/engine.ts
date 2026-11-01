@@ -37,8 +37,13 @@ export interface InstrumentIntel {
 export interface EngineInput {
   symbol: string; digits: number; now: Date;
   candles: Partial<Record<EngineTf, Candle[]>>;
-  /** For Gold and Silver: the DXY result computed first, plus DXY 1H candles for the correlation check. */
+  /** For instruments with a DXY link: the DXY result computed first, plus DXY 1H candles for the correlation check. */
   dxy?: { intel: InstrumentIntel; h1: Candle[] } | null;
+  /**
+   * The structural relationship the registry expects (default "inverse", e.g. XAUUSD, EURUSD; "direct" for USDJPY).
+   * It is only counted when the measured 1H return correlation confirms it (|ρ| ≥ 0.3 with the expected sign).
+   */
+  dxyLink?: "inverse" | "direct";
   events?: UpcomingEvent[];
 }
 
@@ -99,8 +104,10 @@ export function analyzeInstrument(input: EngineInput): InstrumentIntel {
       const ra = pairs.slice(1).map((p, i) => Math.log(p[0] / pairs[i]![0]));
       const rb = pairs.slice(1).map((p, i) => Math.log(p[1] / pairs[i]![1]));
       const rho = correlation(ra, rb);
-      if (rho !== null && rho <= -0.3) { v = clamp(-dx.intel.score / 100); detail = `${symbol} and DXY 1H returns are inversely correlated (ρ = ${rho.toFixed(2)}, last ${ra.length} bars). DXY reads ${dx.intel.bias} (${dx.intel.score > 0 ? "+" : ""}${dx.intel.score}).`; }
-      else { v = 0; detail = rho === null ? "Too few overlapping bars to measure the DXY relationship." : `The usual inverse DXY relationship is weak right now (ρ = ${rho.toFixed(2)}), so DXY is not counted.`; }
+      const direct = input.dxyLink === "direct";
+      const holds = rho !== null && (direct ? rho >= 0.3 : rho <= -0.3);
+      if (holds) { v = clamp((direct ? 1 : -1) * dx.intel.score / 100); detail = `${symbol} and DXY 1H returns are ${direct ? "positively" : "inversely"} correlated (ρ = ${rho!.toFixed(2)}, last ${ra.length} bars). DXY reads ${dx.intel.bias} (${dx.intel.score > 0 ? "+" : ""}${dx.intel.score}).`; }
+      else { v = 0; detail = rho === null ? "Too few overlapping bars to measure the DXY relationship." : `The usual ${direct ? "positive" : "inverse"} DXY relationship is weak right now (ρ = ${rho.toFixed(2)}), so DXY is not counted.`; }
     }
     comps.push({ id: "dxy", label: "DXY relationship", weight: 15, value: v, contribution: null, detail });
   }
@@ -207,8 +214,10 @@ function buildBubbles(i: InstrumentIntel, input: EngineInput, soon: UpcomingEven
   if (input.dxy?.intel && input.dxy.intel.bias !== "insufficient") {
     const dx = input.dxy.intel;
     const comp = i.components.find((c) => c.id === "dxy");
-    const supports = dx.bias === "bearish" ? "may support" : dx.bias === "bullish" ? "may weigh on" : "is not giving a clear signal for";
-    out.push({ id: "dxy", kind: "context", timeframe: "4H/1H", title: "DXY context", text: `DXY reads ${dx.bias}${dx.score !== null ? ` (${dx.score > 0 ? "+" : ""}${dx.score})` : ""}, which ${supports} ${i.symbol === "XAUUSD" ? "Gold" : i.symbol}${comp?.value === 0 ? ", although their usual inverse link is weak right now" : ""}.` });
+    const up = input.dxyLink === "direct" ? dx.bias === "bullish" : dx.bias === "bearish";
+    const down = input.dxyLink === "direct" ? dx.bias === "bearish" : dx.bias === "bullish";
+    const supports = up ? "may support" : down ? "may weigh on" : "is not giving a clear signal for";
+    out.push({ id: "dxy", kind: "context", timeframe: "4H/1H", title: "DXY context", text: `DXY reads ${dx.bias}${dx.score !== null ? ` (${dx.score > 0 ? "+" : ""}${dx.score})` : ""}, which ${supports} ${i.symbol === "XAUUSD" ? "Gold" : i.symbol}${comp?.value === 0 ? `, although their usual ${input.dxyLink === "direct" ? "positive" : "inverse"} link is weak right now` : ""}.` });
   }
   const sw = i.sweeps.at(-1);
   if (sw) out.push({ id: `sweep-${sw.t}`, kind: "liquidity", timeframe: "15M", title: "Liquidity sweep", text: `15M ${sw.side === "sell" ? "lows" : "highs"} at ${sw.level.toFixed(d)} were swept and price closed back ${sw.side === "sell" ? "above" : "below"}: ${sw.direction} reaction context.` });

@@ -3,6 +3,7 @@ import type { LiquidityPool } from "./liquidity";
 import type { StructureEvent } from "./structure";
 import type { TradeSetup } from "./setup";
 import { maxStopPrice, stopCheck } from "@/lib/trading/pips";
+import { INSTRUMENTS } from "@/lib/markets/registry";
 
 /**
  * Presentation models for the Macro Desk. Everything here is derived from the engine's computed output: no new
@@ -64,28 +65,47 @@ export function biasReasons(i: InstrumentIntel): string[] {
 
 export interface Relation { label: string; tone: "aligned" | "diverging" | "unclear"; text: string }
 
-/** DXY versus Gold. States what the measured relationship and the two structures show; never assumes the inverse link. */
+const nameOf = (i: InstrumentIntel) => (i.symbol === "XAUUSD" ? "Gold" : i.symbol === "XAGUSD" ? "Silver" : INSTRUMENTS[i.symbol]?.short ?? i.symbol);
+
+/**
+ * DXY versus an instrument (Gold by default). States what the measured relationship and the two structures show;
+ * never assumes the link. USD-quoted markets expect an inverse link, USD-based pairs (USDJPY) a positive one, and
+ * markets without a structural dollar link (indices, crypto, oil) say so instead of borrowing Gold's logic.
+ */
 export function dxyRelation(gold: InstrumentIntel, dxy: InstrumentIntel): Relation {
+  const name = nameOf(gold);
+  const link = INSTRUMENTS[gold.symbol]?.dxyLink ?? "inverse";
   const comp = gold.components.find((c) => c.id === "dxy");
+  if (!comp && INSTRUMENTS[gold.symbol] && !INSTRUMENTS[gold.symbol]!.dxyLink) {
+    return { label: "Not modelled", tone: "unclear", text: `${name} has no structural link to the dollar index in Treidify's model, so DXY is shown for context and not scored for ${name}.` };
+  }
   const rho = comp?.detail.match(/ρ = (-?[\d.]+)/)?.[1];
-  if (gold.bias === "insufficient" || dxy.bias === "insufficient") return { label: "Not enough data", tone: "unclear", text: "Both Gold and DXY need verified 4H and 1H structure before their relationship can be read." };
+  if (gold.bias === "insufficient" || dxy.bias === "insufficient") return { label: "Not enough data", tone: "unclear", text: `Both ${name} and DXY need verified 4H and 1H structure before their relationship can be read.` };
   const measured = rho !== undefined ? ` Measured 1H return correlation: ρ = ${rho}.` : " The 1H return correlation could not be measured on the available bars.";
-  const inverseHolding = rho !== undefined && Number(rho) <= -0.3;
+  const direct = link === "direct";
+  const holding = rho !== undefined && (direct ? Number(rho) >= 0.3 : Number(rho) <= -0.3);
   const opposite = (gold.bias === "bullish" && dxy.bias === "bearish") || (gold.bias === "bearish" && dxy.bias === "bullish");
   const same = gold.bias === dxy.bias && gold.bias !== "neutral";
-  if (opposite) return { label: inverseHolding ? "Inverse link holding" : "Opposite, link weak", tone: "aligned", text: `DXY is ${dxy.bias} while Gold is ${gold.bias}, the textbook pattern.${measured}${inverseHolding ? "" : " The link is weak right now, so DXY is not counted in Gold's score."}` };
-  if (same) return { label: "Moving together", tone: "diverging", text: `DXY and Gold are both ${gold.bias}. The usual inverse relationship is not holding on this structure, so a dollar move is not a reliable read for Gold right now.${measured}` };
-  return { label: "No clear link", tone: "unclear", text: `DXY reads ${dxy.bias} and Gold reads ${gold.bias}, so the dollar is not giving Gold a clear signal.${measured}` };
+  const expected = direct ? same : opposite;
+  const against = direct ? opposite : same;
+  const word = direct ? "positive" : "inverse";
+  if (expected) return { label: holding ? `${direct ? "Positive" : "Inverse"} link holding` : `${direct ? "Same way" : "Opposite"}, link weak`, tone: "aligned", text: `DXY is ${dxy.bias} while ${name} is ${gold.bias}, the textbook pattern.${measured}${holding ? "" : ` The link is weak right now, so DXY is not counted in ${name}'s score.`}` };
+  if (against) return { label: direct ? "Diverging" : "Moving together", tone: "diverging", text: `DXY reads ${dxy.bias} and ${name} reads ${gold.bias}. The usual ${word} relationship is not holding on this structure, so a dollar move is not a reliable read for ${name} right now.${measured}` };
+  return { label: "No clear link", tone: "unclear", text: `DXY reads ${dxy.bias} and ${name} reads ${gold.bias}, so the dollar is not giving ${name} a clear signal.${measured}` };
 }
 
-/** Silver versus Gold: does Silver's structure confirm Gold's or diverge from it? */
+/** One instrument versus another (Silver versus Gold by default): does its structure confirm or diverge? */
 export function silverRelation(gold: InstrumentIntel, silver: InstrumentIntel): Relation {
-  if (gold.bias === "insufficient" || silver.bias === "insufficient") return { label: "Not enough data", tone: "unclear", text: "Silver and Gold both need verified 4H and 1H structure to compare." };
+  const a = nameOf(gold), b = nameOf(silver);
+  if (gold.bias === "insufficient" || silver.bias === "insufficient") return { label: "Not enough data", tone: "unclear", text: `${b} and ${a} both need verified 4H and 1H structure to compare.` };
   const t = (i: InstrumentIntel) => i.trends["4H"];
-  if (silver.bias === gold.bias && silver.bias !== "neutral") return { label: "Confirms Gold", tone: "aligned", text: `Silver is ${silver.bias} like Gold${t(silver) === t(gold) && t(gold) && t(gold) !== "none" ? `, and both 4H structures are ${t(gold)}` : ""}. Agreement across metals supports Gold's read.` };
-  if ((silver.bias === "bullish" && gold.bias === "bearish") || (silver.bias === "bearish" && gold.bias === "bullish")) return { label: "Diverges from Gold", tone: "diverging", text: `Silver is ${silver.bias} while Gold is ${gold.bias}. Divergence between the metals lowers conviction in Gold's direction.` };
-  return { label: "Mixed", tone: "unclear", text: `Silver reads ${silver.bias} and Gold reads ${gold.bias}: no confirmation either way.` };
+  const metals = INSTRUMENTS[gold.symbol]?.category === "metals" && INSTRUMENTS[silver.symbol]?.category === "metals";
+  if (silver.bias === gold.bias && silver.bias !== "neutral") return { label: `Confirms ${a}`, tone: "aligned", text: `${b} is ${silver.bias} like ${a}${t(silver) === t(gold) && t(gold) && t(gold) !== "none" ? `, and both 4H structures are ${t(gold)}` : ""}.${metals ? ` Agreement across metals supports ${a}'s read.` : " The two markets agree on direction; that is context, not a trading signal."}` };
+  if ((silver.bias === "bullish" && gold.bias === "bearish") || (silver.bias === "bearish" && gold.bias === "bullish")) return { label: `Diverges from ${a}`, tone: "diverging", text: `${b} is ${silver.bias} while ${a} is ${gold.bias}.${metals ? ` Divergence between the metals lowers conviction in ${a}'s direction.` : " The two markets disagree on direction right now."}` };
+  return { label: "Mixed", tone: "unclear", text: `${b} reads ${silver.bias} and ${a} reads ${gold.bias}: no confirmation either way.` };
 }
+
+export const peerRelation = silverRelation;
 
 export interface ZoneBrief {
   zone: Zone;

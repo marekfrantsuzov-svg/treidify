@@ -1,18 +1,18 @@
 /**
  * Deterministic tagging of headlines and calendar events. Keyword rules, not AI: the UI labels these as automatic tags.
  */
-export type Instrument = "XAUUSD" | "DXY" | "XAGUSD";
-const RULES: { re: RegExp; tags: Instrument[] }[] = [
-  { re: /\bgold\b|\bxau|bullion|precious metal/i, tags: ["XAUUSD"] },
-  { re: /\bsilver\b|\bxag/i, tags: ["XAGUSD"] },
-  { re: /\bdollar\b|\bdxy\b|\bgreenback|\bfed\b|federal reserve|fomc|powell|treasur|yields?\b|\bcpi\b|inflation|payroll|\bnfp\b|jobless|\bppi\b|\bgdp\b|retail sales/i, tags: ["DXY", "XAUUSD"] },
-  { re: /geopolit|war\b|missile|sanction|middle east|ukraine|safe[- ]haven/i, tags: ["XAUUSD"] },
-];
+import { INSTRUMENT_LIST } from "@/lib/markets/registry";
+
+/** Any registry symbol. Each instrument's own keyword rule lives in the registry. */
+export type Instrument = string;
 const HIGH = /fomc|fed(eral)? (funds|interest)|rate decision|interest rate|\bcpi\b|consumer price|non[- ]?farm|\bnfp\b|payrolls|\bppi\b|producer price|\bgdp\b|powell|press conference|pce/i;
 const MEDIUM = /retail sales|ism|pmi|jobless|unemployment|jolts|durable|consumer confidence|michigan|speech|speaks|minutes/i;
 
 export function tagInstruments(text: string): Instrument[] {
-  return [...new Set(RULES.filter((r) => r.re.test(text)).flatMap((r) => r.tags))];
+  const tags = new Set(INSTRUMENT_LIST.filter((i) => i.keywords.test(text)).map((i) => i.symbol));
+  // US macro news moves Gold through the dollar: keep tagging it for Gold, as before the multi-asset registry.
+  if (tags.has("DXY")) tags.add("XAUUSD");
+  return [...tags];
 }
 
 /** Calendar importance: the vendor's impact if given, otherwise our keyword rule. */

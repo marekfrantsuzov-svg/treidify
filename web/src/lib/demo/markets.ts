@@ -1,14 +1,25 @@
 import { analyzeLevels, evaluateBias, type Candle } from "@/lib/analytics";
+import { INSTRUMENTS } from "@/lib/markets/registry";
 import { mulberry32, sampleCandles } from "./sample";
 
-export type SampleSymbol = "XAUUSD" | "DXY" | "XAGUSD";
+/** Any registry symbol. XAUUSD, DXY and XAGUSD keep their original seeds so existing previews are unchanged. */
+export type SampleSymbol = string;
 export type SampleTf = "1D" | "4H" | "1H" | "15M" | "5M" | "1M";
 
-const profile: Record<SampleSymbol, { start: number; vol: number; drift: number; seed: number; digits: number }> = {
+const FIXED: Record<string, { start: number; vol: number; drift: number; seed: number; digits: number }> = {
   XAUUSD: { start: 3920, vol: 0.0042, drift: 0.04, seed: 7, digits: 2 },
   DXY: { start: 99.6, vol: 0.0016, drift: -0.03, seed: 11, digits: 3 },
   XAGUSD: { start: 47.2, vol: 0.0065, drift: 0.03, seed: 23, digits: 3 },
 };
+const hash = (s: string) => { let h = 2166136261; for (const ch of s) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return (h >>> 0) % 997 + 29; };
+/** Sample walk parameters: the registry's reference level and volatility, a per-symbol seed, no market meaning. */
+function profileOf(symbol: string) {
+  const f = FIXED[symbol];
+  if (f) return f;
+  const d = INSTRUMENTS[symbol];
+  const seed = hash(symbol);
+  return { start: d?.sample.ref ?? 100, vol: d?.sample.vol ?? 0.004, drift: ((seed % 7) - 3) / 100, seed, digits: d?.digits ?? 4 };
+}
 const tfScale: Record<SampleTf, { step: number; volMul: number; seedAdd: number }> = {
   "1D": { step: 86_400, volMul: 2.2, seedAdd: 500 },
   "4H": { step: 14_400, volMul: 1, seedAdd: 0 },
@@ -18,11 +29,11 @@ const tfScale: Record<SampleTf, { step: number; volMul: number; seedAdd: number 
   "1M": { step: 60, volMul: 0.09, seedAdd: 400 },
 };
 
-export const digitsFor = (s: SampleSymbol) => profile[s].digits;
+export const digitsFor = (s: SampleSymbol) => profileOf(s).digits;
 
 /** Sample series per symbol and timeframe. Marketing previews only. */
 export function sampleSeries(symbol: SampleSymbol, tf: SampleTf): Candle[] {
-  const p = profile[symbol], s = tfScale[tf];
+  const p = profileOf(symbol), s = tfScale[tf];
   return sampleCandles({ seed: p.seed + s.seedAdd, count: 140, start: p.start, vol: p.vol * s.volMul, drift: p.drift, stepSeconds: s.step });
 }
 
@@ -47,7 +58,7 @@ export const MTF: { tf: SampleTf; role: string }[] = [
 const mtfCache = new Map<SampleSymbol, Record<"5M" | "15M" | "1H" | "4H", Candle[]>>();
 export function sampleMtf(symbol: SampleSymbol): Record<"5M" | "15M" | "1H" | "4H", Candle[]> {
   const hit = mtfCache.get(symbol); if (hit) return hit;
-  const p = profile[symbol];
+  const p = profileOf(symbol);
   const rnd = mulberry32(p.seed * 7919);
   // A second stream adds occasional impulse legs (displacement) and sample tick volume without changing the base walk.
   const imp = mulberry32(p.seed * 104_729);
@@ -62,8 +73,8 @@ export function sampleMtf(symbol: SampleSymbol): Record<"5M" | "15M" | "1H" | "4
     if (burst === 0 && imp() < 0.014) { burst = 2 + Math.floor(imp() * 3); dir = imp() < 0.5 + slow * 0.6 ? 1 : -1; }
     const o = price;
     let c: number, w = vol * price * 0.55;
-    if (burst > 0) { c = Math.max(o + dir * (0.9 + imp() * 0.9) * vol * price, 0.01); w *= 0.25; burst--; }
-    else c = Math.max(o + (r1 - 0.5 + slow * 0.22 + mid * 0.16) * vol * price, 0.01);
+    if (burst > 0) { c = Math.max(o + dir * (0.9 + imp() * 0.9) * vol * price, p.start * 0.02); w *= 0.25; burst--; }
+    else c = Math.max(o + (r1 - 0.5 + slow * 0.22 + mid * 0.16) * vol * price, p.start * 0.02);
     const h = Math.max(o, c) + r2 * w, l = Math.min(o, c) - r3 * w;
     const v = Math.round((600 + imp() * 700) * (Math.abs(c - o) > vol * price * 0.8 ? 2.4 : 1));
     m5.push({ t: end - (N - i) * step, o, h, l, c, v });
