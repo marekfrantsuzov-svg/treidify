@@ -104,9 +104,9 @@ export function ImpactCard({ impact, nowMs }: { impact: GoldImpact; nowMs: numbe
         <p className={cn("text-[22px] font-bold leading-tight tracking-[-0.02em]", tone)}>{impact.label}</p>
         <span className={cn("rounded-lg px-2 py-0.5 text-[11.5px] font-semibold", impact.uncertainty === "high" ? "bg-warn-soft text-warn" : impact.uncertainty === "medium" ? "bg-accent-soft text-accent" : "bg-up-soft text-up")}>{unc}</span>
       </div>
-      <p className="mt-1 text-[12.5px] leading-snug text-ink-2">{impact.reasons[0]}{impact.reasons[1] ? ` ${impact.reasons[1]}` : ""}</p>
-      {impact.reasons.length > 2 && <ul className="mt-2 grid gap-1 text-[12px] leading-snug text-ink-3">{impact.reasons.slice(2).map((r) => <li key={r}>• {r}</li>)}</ul>}
-      <p className="mt-auto pt-3 text-[11px] text-ink-3" suppressHydrationWarning>Qualitative read from DXY and gold structure plus scheduled US events · {ago(impact.asOf, nowMs)} · not a probability</p>
+      <p className="mt-1 line-clamp-3 text-[12px] leading-snug text-ink-2">{impact.reasons[0]}{impact.reasons[1] ? ` ${impact.reasons[1]}` : ""}</p>
+      {impact.reasons.length > 2 && <ul className="mt-1.5 grid gap-0.5 text-[11.5px] leading-snug text-ink-3">{impact.reasons.slice(2, 3).map((r) => <li key={r} className="line-clamp-2">• {r}</li>)}</ul>}
+      <p className="mt-auto pt-2 text-[10.5px] text-ink-3" suppressHydrationWarning>DXY + gold structure + US events · {ago(impact.asOf, nowMs)} · not a probability</p>
     </section>
   );
 }
@@ -121,19 +121,19 @@ export function MacroCard({ tiles }: { tiles: MacroTile[] }) {
         <h2 id="macro-title" className="dcard-title"><ChartNoAxesColumn />Macro Desk</h2>
         <Link href="/app/macro" aria-label="Open Macro Desk" className="see-all"><MoveRight /></Link>
       </div>
-      <div className="mt-3 grid grid-cols-3 gap-2">
+      <div className="mt-2.5 grid grid-cols-3 gap-2">
         {tiles.map((t) => {
           const I = ICON[t.id];
           return (
-            <Link key={t.id} href="/app/macro" className="grid justify-items-center gap-1 rounded-2xl border border-line bg-[var(--surface-top)] px-1.5 py-3 text-center transition-[border-color,transform] duration-150 hover:border-[var(--border-strong)] active:scale-[0.97]">
-              <I className="h-6 w-6 text-ink-2" strokeWidth={1.6} aria-hidden />
+            <Link key={t.id} href="/app/macro" className="grid justify-items-center gap-0.5 rounded-2xl border border-line bg-[var(--surface-top)] px-1 py-2 text-center transition-[border-color,transform] duration-150 hover:border-[var(--border-strong)] active:scale-[0.97]">
+              <I className="h-5 w-5 text-ink-2" strokeWidth={1.7} aria-hidden />
               <span className="text-[12.5px] font-medium text-ink">{t.label}</span>
               <span className={cn("num text-[12px] font-semibold", t.value ? "text-ink" : "text-ink-3")}>{t.value ?? "—"}</span>
             </Link>
           );
         })}
       </div>
-      <p className="mt-2 text-[11px] text-ink-3">{tiles.some((t) => t.value) ? "Latest US release from the economic calendar." : "Latest US releases appear here once the calendar feed is connected."}</p>
+      <p className="sr-only">{tiles.some((t) => t.value) ? "Latest US release from the economic calendar." : "Latest US releases appear here once the calendar feed is connected."}</p>
     </section>
   );
 }
@@ -235,7 +235,7 @@ export function OverviewCard({ rows }: { rows: OverviewRow[] }) {
           {shown.length === 0 && <tr><td colSpan={4} className="py-4 text-center text-[13px] text-ink-3">No {cat.toLowerCase()} instruments tracked yet.</td></tr>}
         </tbody>
       </table>
-      <p className="mt-auto pt-2 text-[11px] text-ink-3">Trend is the direction of market structure (swing highs and lows, BOS / CHOCH) on the timeframe shown, not the 24h change.{anySample ? " Gold, Silver and DXY rows use sample bars until market data is connected." : ""}</p>
+      <p className="mt-auto pt-2 text-[11px] text-ink-3">Trend = market structure (swings, BOS / CHOCH) on the timeframe shown, not the 24h change.{anySample ? " Gold, Silver and DXY use sample bars." : ""}</p>
     </section>
   );
 }

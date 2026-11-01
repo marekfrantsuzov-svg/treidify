@@ -148,7 +148,7 @@ export function IntelChart({ symbol, intel, initial, initialTf = "1H", sample, h
           <div role="tablist" aria-label="Timeframe" className="inset relative flex rounded-full p-0.5">
             <SlidingPill watch={tf} className="rounded-full bg-[var(--text)] shadow-[0_4px_12px_-6px_rgba(0,0,0,0.5)]" />
             {TFS.map((t) => (
-              <button key={t} role="tab" aria-selected={tf === t} data-active={tf === t} onClick={() => setTf(t)} className={cn("num relative z-[1] min-w-[34px] rounded-full px-2 py-1 text-[12px] font-semibold text-ink-2 transition-colors duration-150 hover:text-ink", tf === t && "text-[var(--bg-0)] hover:text-[var(--bg-0)]")}>{t === "1D" ? "D" : t}</button>
+              <button key={t} role="tab" aria-selected={tf === t} data-active={tf === t} onClick={() => setTf(t)} className={cn("num relative z-[1] min-w-[30px] rounded-full px-1.5 py-1 text-[12px] font-semibold text-ink-2 transition-colors duration-150 hover:text-ink", tf === t && "text-[var(--bg-0)] hover:text-[var(--bg-0)]")}>{t === "1D" ? "D" : t}</button>
             ))}
           </div>
           {actions}
@@ -162,7 +162,7 @@ export function IntelChart({ symbol, intel, initial, initialTf = "1H", sample, h
           </div>
         )}
       </div>
-      <div className={cn("relative mt-3 overflow-hidden rounded-2xl", fill && "min-h-[300px] flex-1")} style={fill ? undefined : { height }}>
+      <div className={cn("relative mt-2 overflow-hidden rounded-2xl", fill && "min-h-[230px] flex-1")} style={fill ? undefined : { height }}>
         <div ref={box} className="absolute inset-0" />
         {bands.map((b) => (
           <div key={b.id} className={cn("pointer-events-none absolute left-0 right-[64px] border-y", b.side === "buy" ? "border-[color-mix(in_oklab,var(--up)_40%,transparent)] bg-[linear-gradient(180deg,color-mix(in_oklab,var(--up)_16%,transparent),color-mix(in_oklab,var(--up)_6%,transparent))]" : "border-[color-mix(in_oklab,var(--down)_40%,transparent)] bg-[linear-gradient(180deg,color-mix(in_oklab,var(--down)_6%,transparent),color-mix(in_oklab,var(--down)_16%,transparent))]")} style={{ top: b.top, height: b.height }}>

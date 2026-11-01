@@ -696,7 +696,7 @@ body { font-feature-settings: "cv11", "ss01", "calt"; letter-spacing: -0.006em; 
 .impact-low { background: var(--surface-inset); color: var(--text-3); }
 
 /* Sidebar (reference 1): labelled list with a soft violet active row. */
-.side-link { display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 12px; border-radius: 14px; font-size: 15px; font-weight: 500; color: var(--text-2); transition: background-color 160ms, color 160ms; }
+.side-link { display: flex; align-items: center; gap: 12px; height: 42px; padding: 0 12px; border-radius: 13px; font-size: 14.5px; font-weight: 500; color: var(--text-2); transition: background-color 160ms, color 160ms; }
 .side-link:hover { background: var(--surface-inset); color: var(--text); }
 .side-link[data-active="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
 .side-link svg { width: 20px; height: 20px; flex-shrink: 0; }
@@ -720,7 +720,7 @@ body { font-feature-settings: "cv11", "ss01", "calt"; letter-spacing: -0.006em; 
 .chart-full:fullscreen { background: var(--bg-0); padding: 24px; overflow: auto; }
 
 /* Desktop sidebar panel: sits on the page background like the reference, scrolls on short screens. */
-.side-panel { position: fixed; inset: 0 auto 0 0; z-index: 40; width: 264px; flex-direction: column; padding: 22px 16px 16px; overflow-y: auto; scrollbar-width: none; background: color-mix(in oklab, var(--surface-top) 70%, transparent); border-right: 1px solid var(--border); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.side-panel { position: fixed; inset: 0 auto 0 0; z-index: 40; width: 224px; flex-direction: column; padding: 20px 12px 14px; overflow-y: auto; scrollbar-width: none; background: color-mix(in oklab, var(--surface-top) 70%, transparent); border-right: 1px solid var(--border); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
 .side-panel::-webkit-scrollbar { display: none; }
 .side-bull { width: 100%; max-width: 220px; height: auto; margin: 0 auto -18px; filter: drop-shadow(0 18px 28px color-mix(in oklab, var(--accent) 30%, transparent)); pointer-events: none; user-select: none; }
 @media (max-height: 820px) { .side-bull { display: none; } }
@@ -768,35 +768,7 @@ body { font-feature-settings: "cv11", "ss01", "calt"; letter-spacing: -0.006em; 
 .see-all:hover { color: var(--accent); }
 .see-all svg { width: 15px; height: 15px; }
 
-/* Reference 1 dashboard layout. Phones: one column in the mobile order. Tablets: two columns. Desktop: the approved grid. */
-.d-grid { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: "health" "metrics" "chart" "ai" "overview" "news" "impact" "macro" "calendar" "community"; }
-.d-health { grid-area: health; } .d-metrics { grid-area: metrics; } .d-chart { grid-area: chart; } .d-ai { grid-area: ai; }
-.d-news { grid-area: news; } .d-impact { grid-area: impact; } .d-macro { grid-area: macro; } .d-overview { grid-area: overview; }
-.d-calendar { grid-area: calendar; } .d-community { grid-area: community; }
-@media (min-width: 640px) {
-  .d-grid { gap: 16px; grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-areas: "health health" "metrics metrics" "chart chart" "ai impact" "ai macro" "overview overview" "news calendar" "news community"; }
-}
-@media (min-width: 1280px) {
-  .d-grid { gap: 18px; grid-template-columns: repeat(12, minmax(0, 1fr));
-    grid-template-areas:
-      "health health health health health metrics metrics metrics metrics metrics metrics metrics"
-      "chart chart chart chart chart chart ai ai ai news news news"
-      "chart chart chart chart chart chart macro macro macro impact impact impact"
-      "overview overview overview overview overview overview overview overview calendar calendar calendar calendar"
-      "overview overview overview overview overview overview overview overview community community community community"; }
-}
-@media (min-width: 1280px) and (max-width: 1599.98px) {
-  .d-grid { grid-template-areas:
-      "health health health health metrics metrics metrics metrics metrics metrics metrics metrics"
-      "chart chart chart chart chart chart ai ai ai news news news"
-      "chart chart chart chart chart chart macro macro macro impact impact impact"
-      "overview overview overview overview overview overview overview overview calendar calendar calendar calendar"
-      "overview overview overview overview overview overview overview overview community community community community"; }
-}
-@media (min-width: 1680px) { .d-grid { gap: 20px; } }
-.d-lower { margin-top: 18px; }
+
 @media (max-width: 379px) { .trend-chip { padding: 3px 6px; gap: 3px; font-size: 11px; } .trend-chip svg { width: 13px; height: 13px; } .d-overview table { font-size: 13px; } }
 /* Laptop widths with the sidebar: the lower dashboard rows stack until there is room for two columns. */
 @media (min-width: 1024px) and (max-width: 1279.98px) { .d-lower.dash-grid > * { grid-column: 1 / -1; } }
@@ -807,3 +779,72 @@ body { font-feature-settings: "cv11", "ss01", "calt"; letter-spacing: -0.006em; 
 .bg-warn-soft.text-warn, .impact-medium { color: var(--warn-ink, var(--warn)); }
 .text-up-ink { color: var(--up-ink, var(--up)); }
 .text-down-ink { color: var(--down-ink, var(--down)); }
+
+
+/* ── Reference-locked dashboard grid (Marek, 2026-11-01) ──
+   Explicit grid-template-areas at every tier; tracks are minmax(0, 1fr) so no card can push the page wider.
+   Phone: one column in the reference mobile order. Tablet: two columns. Desktop (sidebar visible, from 1024px):
+   top row Account Health + four metrics; chart left with the intelligence cards right; Market Overview left with
+   Economic Calendar and Community right. */
+.d-health { grid-area: health; } .d-metrics { grid-area: metrics; } .d-chart { grid-area: chart; } .d-ai { grid-area: ai; }
+.d-news { grid-area: news; } .d-impact { grid-area: impact; } .d-macro { grid-area: macro; } .d-overview { grid-area: overview; }
+.d-calendar { grid-area: calendar; } .d-community { grid-area: community; }
+.d-grid { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "health" "metrics" "chart" "overview" "ai" "news" "impact" "macro" "calendar" "community"; }
+.d-metrics { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 640px) {
+  .d-grid { gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas: "health health" "metrics metrics" "chart chart" "overview overview" "ai news" "macro impact" "calendar community"; }
+  .d-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+}
+@media (min-width: 1024px) {
+  /* Laptop: the intelligence cards stack in one column beside a taller chart. */
+  .d-grid { gap: 14px; grid-template-columns: repeat(12, minmax(0, 1fr));
+    grid-template-areas:
+      "health health health health health metrics metrics metrics metrics metrics metrics metrics"
+      "chart chart chart chart chart chart chart ai ai ai ai ai"
+      "chart chart chart chart chart chart chart news news news news news"
+      "chart chart chart chart chart chart chart macro macro macro macro macro"
+      "chart chart chart chart chart chart chart impact impact impact impact impact"
+      "overview overview overview overview overview overview overview calendar calendar calendar calendar calendar"
+      "overview overview overview overview overview overview overview community community community community community"; }
+}
+@media (min-width: 1360px) {
+  /* Desktop, as the reference: health one third, chart ~55%, AI and News side by side over Macro and Impact. */
+  .d-grid { gap: 16px; grid-template-columns: repeat(24, minmax(0, 1fr));
+    grid-template-areas:
+      "health health health health health health health health metrics metrics metrics metrics metrics metrics metrics metrics metrics metrics metrics metrics metrics metrics metrics metrics"
+      "chart chart chart chart chart chart chart chart chart chart chart chart chart ai ai ai ai ai news news news news news news"
+      "chart chart chart chart chart chart chart chart chart chart chart chart chart macro macro macro macro macro impact impact impact impact impact impact"
+      "overview overview overview overview overview overview overview overview overview overview overview overview overview overview overview overview calendar calendar calendar calendar calendar calendar calendar calendar"
+      "overview overview overview overview overview overview overview overview overview overview overview overview overview overview overview overview community community community community community community community community"; }
+}
+@media (min-width: 1024px) and (max-width: 1359.98px) { .d-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } }
+@media (min-width: 1800px) { .d-grid { gap: 18px; } }
+.d-lower { margin-top: 16px; }
+@media (min-width: 1024px) and (max-width: 1279.98px) { .d-lower.dash-grid > * { grid-column: 1 / -1; } }
+
+/* ── Brand palette (Marek, 2026-11-01): Marshmallow White #F0F0F0, Galactic Violet #105BFF, Bubblegum Pink #FE85D0.
+   The reference's violet-to-pink gradient stays for the health ring, bars and highlights. */
+:root:not([data-theme="dark"]) {
+  --brand-violet: #105bff; --brand-pink: #fe85d0; --bg-0: #f0f0f0;
+  --accent: #105bff; --accent-2: #fe85d0; --accent-ice: #6f8dff;
+  --accent-soft: rgba(16, 91, 255, 0.09); --accent-glow: rgba(16, 91, 255, 0.38);
+  --accent-grad: linear-gradient(120deg, #105bff 0%, #6a4cf6 48%, #b45fe0 78%, #fe85d0 100%);
+  --grad-a: #6a3df5; --grad-b: #fe85d0;
+}
+/* Dark (Quantix-inspired): charcoal and near-black surfaces, quiet borders, restrained glow. */
+:root[data-theme="dark"] {
+  --brand-violet: #105bff; --brand-pink: #fe85d0;
+  --bg-0: #08080b; --bg-1: #050507;
+  --surface: rgba(17, 17, 21, 0.86); --surface-top: rgba(24, 24, 29, 0.92); --surface-strong: rgba(22, 22, 27, 0.97); --surface-inset: rgba(255, 255, 255, 0.04);
+  --border: rgba(255, 255, 255, 0.075); --border-strong: rgba(255, 255, 255, 0.14);
+  --accent: #5b8cff; --accent-2: #fe85d0; --accent-ice: #9db6ff;
+  --accent-soft: rgba(91, 140, 255, 0.15); --accent-glow: rgba(70, 120, 255, 0.45);
+  --accent-grad: linear-gradient(120deg, #105bff 0%, #6a4cf6 48%, #b45fe0 78%, #fe85d0 100%);
+  --grad-a: #7c5cff; --grad-b: #fe85d0;
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 18px 40px -24px rgba(0, 0, 0, 0.9);
+}
+[data-theme="dark"] .dcard { box-shadow: var(--shadow); }
+[data-theme="dark"] .side-panel { background: rgba(12, 12, 15, 0.82); }
+.side-link[data-active="true"] svg { color: var(--accent); }

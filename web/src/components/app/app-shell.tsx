@@ -320,11 +320,11 @@ function MobileTopBar({ user, plan, unread, onMenu }: { user: ShellUser; plan: S
   }, []);
   return (
     <header className="m-topbar lg:hidden" data-scrolled={scrolled}>
-      <div className="flex h-[56px] items-center gap-1 px-2.5">
+      <div className="relative flex h-[56px] items-center gap-1 px-2.5">
         <button onClick={onMenu} aria-label="Open menu" className="hdr-btn hdr-btn-plain press"><Menu className="h-[22px] w-[22px]" /></button>
-        <Link href="/app" className="press ml-1 flex items-center gap-2 text-[19px] font-bold tracking-[-0.035em] text-ink">
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"><Link href="/app" className="press flex items-center gap-2 text-[19px] font-bold tracking-[-0.035em] text-ink">
           <LogoMark size={30} priority />Treidify<sup className="-ml-1.5 text-[9px] font-semibold">™</sup>
-        </Link>
+        </Link></div>
         <div className="ml-auto flex items-center gap-1.5">
           <NotificationBell unread={unread} plain />
           <UserMenu user={user} plan={plan} size={36} />
@@ -397,15 +397,15 @@ function ShellInner({ user, plan, account, greeting, unread, children }: { user:
   const showPeriod = path === "/app/performance" || path === "/app/journal";
 
   return (
-    <div className="min-h-dvh lg:pl-[264px]">
+    <div className="min-h-dvh lg:pl-[224px]">
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-accent focus:px-4 focus:py-2 focus:text-white">Skip to content</a>
 
       <aside className="side-panel hidden lg:flex" aria-label="Main">
         <Link href="/app" className="flex items-center gap-2.5 px-2 pb-6 pt-1">
-          <LogoMark size={44} priority />
+          <LogoMark size={38} priority />
           <span className="leading-none">
-            <span className="block text-[27px] font-bold tracking-[-0.045em] text-ink">Treidify<sup className="ml-0.5 align-super text-[10px] font-semibold tracking-normal">™</sup></span>
-            <span className="mt-1 block text-[12.5px] font-medium text-ink-2">Your Trading Intelligence</span>
+            <span className="block text-[24px] font-bold tracking-[-0.045em] text-ink">Treidify<sup className="ml-0.5 align-super text-[10px] font-semibold tracking-normal">™</sup></span>
+            <span className="mt-1 block text-[11.5px] font-medium text-ink-2">Your Trading Intelligence</span>
           </span>
         </Link>
         <nav className="grid gap-1" aria-label="Sections">
@@ -424,12 +424,12 @@ function ShellInner({ user, plan, account, greeting, unread, children }: { user:
 
       <MobileTopBar user={user} plan={plan} unread={unread} onMenu={() => setMenu(true)} />
 
-      <header className="relative z-30 hidden px-7 pt-6 lg:block">
-        <div className="mx-auto flex max-w-[1560px] items-center gap-4">
+      <header className="relative z-30 hidden px-6 pt-5 lg:block">
+        <div className="mx-auto flex max-w-[1760px] items-center gap-4">
           <div className="min-w-0 flex-1">
             {dashboard ? (
               <>
-                <h1 className="t-title truncate text-ink">{greeting}, {first} <span aria-hidden>👋</span></h1>
+                <h1 className="truncate text-[26px] font-semibold leading-[32px] tracking-[-0.025em] text-ink">{greeting}, {first} <span aria-hidden>👋</span></h1>
                 <p className="mt-1 truncate text-[15px] text-ink-2" suppressHydrationWarning>{now ? marketLine(now) : " "}</p>
               </>
             ) : null}
@@ -447,7 +447,7 @@ function ShellInner({ user, plan, account, greeting, unread, children }: { user:
         </div>
       </header>
 
-      <main id="main" className="m-main mx-auto w-full max-w-[1560px] px-3.5 pt-2 sm:px-5 lg:px-7 lg:pb-12 lg:pt-5">
+      <main id="main" className="m-main mx-auto w-full max-w-[1760px] px-3.5 pt-2 sm:px-5 lg:px-6 lg:pb-10 lg:pt-4">
         {children}
       </main>
 

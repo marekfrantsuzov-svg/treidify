@@ -94,7 +94,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     <>
       <MobileGreeting greeting={greetingFor(tz)} name={s.user.name.split(" ")[0] ?? ""} />
       {(sp.welcome || intel.message || (accounts.length > 1 && overview)) && (
-        <div className="mb-4 grid gap-3">
+        <div className="mb-3 grid gap-2">
           {sp.welcome && (
             <Alert tone="accent">
               {sp.welcome === "trial" && plan.source === "trial"
@@ -102,7 +102,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                 : "Welcome to Treidify. Your account is ready."}
             </Alert>
           )}
-          {intel.message && <p className="rounded-2xl bg-warn-soft px-4 py-2.5 text-[13px] leading-snug text-ink-2">{intel.message}</p>}
+          {intel.message && <p className="rounded-xl bg-warn-soft px-3 py-1.5 text-[11.5px] leading-snug text-ink-2 sm:px-3.5 sm:text-[12px]">{intel.message}</p>}
           {accounts.length > 1 && overview && <div className="flex justify-end"><AccountPicker accounts={accounts.map((a) => ({ id: a.id, label: a.label }))} selected={overview.account.id} /></div>}
         </div>
       )}
