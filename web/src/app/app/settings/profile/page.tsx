@@ -10,7 +10,7 @@ export default async function ProfileSettings() {
   const [pr] = await db.select().from(schema.privacySettings).where(eq(schema.privacySettings.userId, s.user.id));
   const { userId: _u, updatedAt: _t, ...privacy } = pr ?? { userId: "", updatedAt: new Date(), profilePublic: false, showMonthlyPnl: false, showWinRate: false, showHistory: false, showOpenPositions: false, showEntryPrices: false, showPositionSizes: false, showBalance: false, positionDelayMinutes: 60 };
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
       <ProfileForm initial={{ name: s.user.name, username: s.user.displayUsername ?? s.user.username ?? "", bio: s.profile.bio ?? "", country: s.profile.country ?? "", avatar: s.profile.avatar }} />
       <PrivacyForm initial={privacy} />
     </div>

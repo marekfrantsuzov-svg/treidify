@@ -119,20 +119,6 @@ test("sign up, verify, onboard, dashboard, profile, two-step sign-in", async ({ 
   await expect(page.getByText(/returns to Free automatically/)).toBeVisible();
 
   await page.goto("/app/settings/security");
-  // TEMP diagnostics for a CI-only mobile failure; removed with the fix.
-  await page.waitForTimeout(1500);
-  console.log("DIAG", JSON.stringify(await page.evaluate(() => {
-    const b = [...document.querySelectorAll("button")].find((x) => x.textContent?.includes("Set up"))!;
-    const r = b.getBoundingClientRect();
-    const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
-    const tf = [] as string[];
-    for (let e: Element | null = b; e; e = e.parentElement) { const cs = getComputedStyle(e); if (cs.transform !== "none" || cs.filter !== "none" || cs.zoom !== "1" || cs.willChange !== "auto") tf.push(`${e.tagName}.${String(e.className).slice(0, 40)} t=${cs.transform} f=${cs.filter} z=${cs.zoom} wc=${cs.willChange}`); }
-    const depth = (e: Element) => { let d = 0; for (let x: Element | null = e; x; x = x.parentElement) d++; return d; };
-    const wide = [...document.querySelectorAll("body *")].filter((e) => { const q = e.getBoundingClientRect(); return q.width > 0 && q.right > 413 && getComputedStyle(e).display !== "none"; })
-      .sort((a, b) => depth(b) - depth(a)).slice(0, 12).map((e) => { const q = e.getBoundingClientRect(); return `${e.tagName}.${String(e.getAttribute("class")).slice(0, 80)} [${Math.round(q.left)}-${Math.round(q.right)}] pos=${getComputedStyle(e).position} txt=${(e.textContent ?? "").slice(0, 40)}`; });
-    const meta = document.querySelector('meta[name="viewport"]')?.getAttribute("content");
-    return { meta, wide, r: [r.x, r.y, r.width, r.height], vw: innerWidth, vh: innerHeight, sw: document.documentElement.scrollWidth, sh: document.documentElement.scrollHeight, sy: scrollY, vv: [visualViewport?.scale, visualViewport?.offsetTop, visualViewport?.pageTop, visualViewport?.height], dpr: devicePixelRatio, hit: hit?.outerHTML.slice(0, 120), tf };
-  })));
   await page.getByRole("button", { name: "Set up" }).click();
   await page.getByLabel("Confirm your password").fill(password);
   await page.getByRole("button", { name: "Continue" }).click();
