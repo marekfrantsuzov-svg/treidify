@@ -72,6 +72,8 @@ export async function accountOverview(userId: string, accountId: string | undefi
     commission: r.commission,
     swap: r.swap,
     fees: r.fee,
+    openPrice: r.openPrice,
+    closePrice: r.closePrice,
   }));
   const net = trades.reduce((a, t) => a + t.profit + t.commission + t.swap + t.fees, 0);
   const deposits = flows.reduce((a, f) => a + f.amount, 0);
