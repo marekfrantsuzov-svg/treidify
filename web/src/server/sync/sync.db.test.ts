@@ -46,6 +46,7 @@ function fakeMetaApi() {
     },
     async account(id) { calls.push("account"); get(id); return { _id: id, state: "DEPLOYED", connectionStatus: "CONNECTED", region: "london" }; },
     async deploy() { calls.push("deploy"); },
+    async probe() { calls.push("probe"); return []; },
     async remove(id) { calls.push("remove"); removed.push(id); accounts.delete(id); },
     async info(_r, id) { calls.push("info"); return get(id).info; },
     async positions(_r, id) { calls.push("positions"); return get(id).positions; },

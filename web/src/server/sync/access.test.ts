@@ -3,7 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { canonicalEmail, isOwnerEmail, OWNER_EMAIL, ownerConfig, ownerDecision } from "../owner";
 import { connectErrorMessage, credentialAllowed, decideAccess, freshness, redact } from "./access";
-import { errorDetails, metaApi, MetaApiError, metaApiToken } from "./metaapi";
+import { errorDetails, metaApi, MetaApiError, metaApiToken, tokenShape } from "./metaapi";
 
 describe("owner identity (verified owner email, bound to one immutable user ID)", () => {
   const marek = { id: "usr_marek", email: "marekfrantsuzov@gmail.com", emailVerified: true };
@@ -67,6 +67,8 @@ describe("connection errors", () => {
     expect(connectErrorMessage({ status: 400, code: "E_SRV_NOT_FOUND", serverNames: ["ICMarketsSC-Live07", "ICMarketsSC-Live08"] })).toMatch(/not found.*ICMarketsSC-Live07, ICMarketsSC-Live08/);
     expect(connectErrorMessage({ status: 429 })).toMatch(/busy/);
     expect(connectErrorMessage({ status: 401 })).toMatch(/configuration/);
+    expect(connectErrorMessage({ status: 403, message: "MetaApi: ForbiddenError: Not enough funds https://x.y/billing." })).toBe("MetaApi refused to create the connection: Not enough funds. Nothing was saved.");
+    expect(connectErrorMessage({ status: 403 })).toBe("MetaApi refused to create the connection. Nothing was saved.");
   });
   it("reads error codes from MetaApi error bodies", () => {
     expect(errorDetails({ error: "ValidationError", details: { code: "E_AUTH" } })).toEqual({ code: "E_AUTH", serverNames: undefined });
@@ -112,7 +114,7 @@ describe("freshness labels", () => {
 describe("Treidify never trades", () => {
   it("the MetaApi client exposes only read and account-management methods", () => {
     const keys = Object.keys(metaApi("t")).sort();
-    expect(keys).toEqual(["account", "createAccount", "deals", "deploy", "info", "orders", "positions", "remove", "vendor"]);
+    expect(keys).toEqual(["account", "createAccount", "deals", "deploy", "info", "orders", "positions", "probe", "remove", "vendor"]);
   });
   it("no source file calls a MetaApi trade endpoint", () => {
     const root = path.resolve(import.meta.dirname, "../..");
@@ -121,5 +123,18 @@ describe("Treidify never trades", () => {
     walk(root);
     const offenders = files.filter((f) => { const s = readFileSync(f, "utf8"); return /accounts\/[^\n]*\/trade\b/.test(s) || /createMarket(Buy|Sell)Order|closePosition\(|modifyPosition\(/.test(s); });
     expect(offenders).toEqual([]);
+  });
+});
+
+describe("token diagnostics never reveal the token", () => {
+  const b64 = (o: object) => Buffer.from(JSON.stringify(o)).toString("base64url");
+  it("reports JWT shape, expiry and API names only", () => {
+    const t = `${b64({ alg: "RS512" })}.${b64({ exp: 1_700_000_000, accessRules: [{ id: "trading-account-management-api" }, { id: "metaapi-rest-api" }] })}.c2lnbmF0dXJl`;
+    const s = tokenShape(t, Date.parse("2026-11-02T00:00:00Z"));
+    expect(s).toEqual({ length: t.length, jwt: true, expiresAt: "2023-11-14T22:13:20.000Z", expired: true, apis: ["trading-account-management-api", "metaapi-rest-api"] });
+    expect(JSON.stringify(s)).not.toContain("c2lnbmF0dXJl");
+  });
+  it("handles a non-JWT value", () => {
+    expect(tokenShape("abc")).toMatchObject({ length: 3, jwt: false, apis: null });
   });
 });

@@ -21,6 +21,24 @@ export function metaApiToken(env: Record<string, string | undefined> = process.e
   return null;
 }
 
+/**
+ * Non-secret facts about the configured token, for diagnosing a refused token without ever revealing it: its length,
+ * whether it is a JWT (MetaApi tokens are), its expiry and the API names its access rules cover. The signature and
+ * the token itself are never returned.
+ */
+export function tokenShape(token: string, now = Date.now()) {
+  const parts = token.split(".");
+  const out: { length: number; jwt: boolean; expiresAt: string | null; expired: boolean | null; apis: string[] | null } = { length: token.length, jwt: false, expiresAt: null, expired: null, apis: null };
+  if (parts.length !== 3) return out;
+  try {
+    const p = JSON.parse(Buffer.from(parts[1]!.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8")) as { exp?: number; accessRules?: { id?: unknown }[] };
+    out.jwt = true;
+    if (typeof p.exp === "number") { out.expiresAt = new Date(p.exp * 1000).toISOString(); out.expired = p.exp * 1000 < now; }
+    if (Array.isArray(p.accessRules)) out.apis = p.accessRules.map((r) => (typeof r?.id === "string" ? r.id : "?")).slice(0, 20);
+  } catch { /* not a JWT payload */ }
+  return out;
+}
+
 export class MetaApiError extends Error {
   constructor(message: string, readonly status?: number, readonly retryAfter?: number, readonly code?: string, readonly serverNames?: string[]) { super(`MetaApi: ${message}`); }
 }
@@ -57,6 +75,7 @@ export function metaApi(token: string, fetchImpl: Fetch = fetch) {
       try {
         const b = (await res.json()) as { message?: string; error?: string; metadata?: { recommendedRetryTime?: string } };
         if (b.message) msg = b.message.slice(0, 240);
+        if (b.error) msg = `${b.error.slice(0, 40)}: ${msg}`;
         det = errorDetails(b);
         if (b.metadata?.recommendedRetryTime) retry = Math.max(1, Math.ceil((Date.parse(b.metadata.recommendedRetryTime) - Date.now()) / 1000));
       } catch { /* body not JSON */ }
@@ -78,6 +97,8 @@ export function metaApi(token: string, fetchImpl: Fetch = fetch) {
         headers: { "transaction-id": a.transactionId },
         body: JSON.stringify({ name: a.name, login: a.login, password: a.password, server: a.server, platform: a.platform, magic: 0, type: "cloud-g2", reliability: a.reliability ?? "regular", manualTrades: false, ...(a.region ? { region: a.region } : {}) }),
       }),
+    /** Read-only check that the token works for account management: lists at most one account. */
+    probe: () => call<unknown[]>(`${PROVISIONING}/users/current/accounts?limit=1`),
     account: (id: string) => call<MetaAccount>(`${PROVISIONING}/users/current/accounts/${encodeURIComponent(id)}`),
     deploy: (id: string) => call<void>(`${PROVISIONING}/users/current/accounts/${encodeURIComponent(id)}/deploy`, { method: "POST" }),
     /** Removes the account from MetaApi entirely, which also deletes the stored investor password there. */

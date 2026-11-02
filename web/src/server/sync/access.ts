@@ -31,17 +31,28 @@ export function credentialAllowed(credential: Credential, owner: boolean) {
 }
 
 /** Friendly text for MetaApi create-account failures; never echoes the password or raw provider text with secrets. */
-export function connectErrorMessage(e: { status?: number; code?: string; serverNames?: string[] }) {
+export function connectErrorMessage(e: { status?: number; code?: string; serverNames?: string[]; message?: string }) {
   if (e.code === "E_AUTH") return "The broker rejected the login. Check the account number, the password and the server name, then try again.";
   if (e.code === "E_SRV_NOT_FOUND") {
     const s = e.serverNames?.length ? ` Did you mean: ${e.serverNames.slice(0, 5).join(", ")}?` : "";
     return `That broker server was not found. Copy the exact server name from MetaTrader (File → Login to Trade Account).${s}`;
   }
   if (e.code === "E_SERVER_TIMEZONE") return "MetaApi could not read this broker's settings right now. Try again in a few minutes.";
-  if (e.status === 401 || e.status === 403) return "Treidify's MetaApi token was refused. This is a configuration problem on our side; nothing was saved.";
+  if (e.status === 401) return "Treidify's MetaApi token was not accepted (invalid or expired). This is a configuration problem on our side; nothing was saved.";
+  if (e.status === 403) {
+    const why = providerReason(e.message);
+    return `MetaApi refused to create the connection${why ? `: ${why}` : ""}. Nothing was saved.`;
+  }
   if (e.status === 429) return "MetaApi is busy right now. Wait a minute and try again; nothing was saved.";
   if (e.status === 400 || e.status === 404) return "The broker server or login was not recognised. Check them and try again.";
   return "MetaApi could not create the connection. Nothing was saved; try again shortly.";
+}
+
+/** MetaApi's own short reason, cleaned for display (no URLs, ids or long text). */
+export function providerReason(message?: string) {
+  if (!message) return null;
+  const m = message.replace(/^MetaApi:\s*/, "").replace(/^[A-Za-z]+Error:\s*/, "").replace(/https?:\/\/\S+/g, "").replace(/\s+/g, " ").trim();
+  return m ? m.slice(0, 160).replace(/[.\s]+$/, "") : null;
 }
 
 /** Removes every occurrence of a secret from a string before it can reach logs or the database. */

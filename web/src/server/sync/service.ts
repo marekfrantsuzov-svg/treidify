@@ -6,7 +6,7 @@ import { audit } from "../audit";
 import { db, schema } from "../db";
 import { resolveOwner } from "../owner-binding";
 import { credentialAllowed, decideAccess, redact, type Credential } from "./access";
-import { metaApi, MetaApiError, metaApiToken, type MetaAccountInfo, type MetaApiClient, type MetaPosition } from "./metaapi";
+import { metaApi, MetaApiError, metaApiToken, tokenShape, type MetaAccountInfo, type MetaApiClient, type MetaPosition } from "./metaapi";
 import { cashFlows, closedPositions, normaliseDeal } from "./reconstruct";
 
 /**
@@ -41,6 +41,31 @@ export function connectionLimits() {
   return { perUser: n("METAAPI_MAX_ACCOUNTS_PER_USER", 3), perOwner: n("METAAPI_MAX_ACCOUNTS_OWNER", 10), total: n("METAAPI_MAX_ACCOUNTS", 5) };
 }
 const reliability = () => (env("METAAPI_RELIABILITY") === "high" ? "high" : "regular") as "regular" | "high";
+
+/**
+ * Read-only health of the MetaApi token, cached for 5 minutes: can it manage accounts? Reports MetaApi's status and
+ * short reason plus non-secret token facts (length, expiry, API names); never the token.
+ */
+let probeCache: { at: number; value: Awaited<ReturnType<typeof runProbe>> } | null = null;
+async function runProbe() {
+  const t = metaApiToken();
+  if (!t) return { configured: false as const };
+  const shape = tokenShape(t.token);
+  try {
+    await client().probe();
+    return { configured: true as const, ok: true, status: 200, reason: null, token: shape };
+  } catch (e) {
+    const status = e instanceof MetaApiError ? e.status ?? null : null;
+    const reason = e instanceof Error ? redact(e.message, t.token).replace(/^MetaApi:\s*/, "").slice(0, 200) : "request failed";
+    return { configured: true as const, ok: false, status, reason, token: shape };
+  }
+}
+export async function metaApiProbe(now = Date.now()) {
+  if (probeCache && now - probeCache.at < 5 * 60_000) return probeCache.value;
+  const value = await runProbe();
+  probeCache = { at: now, value };
+  return value;
+}
 
 /** Active = holds a MetaApi account (externalId set). Disconnected rows hold none and cost nothing. */
 async function activeCount(userId?: string) {
