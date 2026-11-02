@@ -52,7 +52,14 @@ export const coverageMap = cache(async (): Promise<Record<string, Coverage>> => 
     const cur = rows.get(symbol);
     if (!cur || !cur.checkedAt || Date.parse(cur.checkedAt) < v.at) rows.set(symbol, { symbol, state: v.state, vendorSymbol: v.vendorSymbol, reason: v.reason, checkedAt: new Date(v.at).toISOString() });
   }
-  return Object.fromEntries(INSTRUMENT_LIST.map((i) => [i.symbol, i.providers.twelvedata.computed ? computedCoverage(i, rows) : rows.get(i.symbol) ?? { symbol: i.symbol, state: "unchecked" as const, vendorSymbol: null, reason: null, checkedAt: null }]));
+  const unchecked = (symbol: string): Coverage => ({ symbol, state: "unchecked", vendorSymbol: null, reason: null, checkedAt: null });
+  return Object.fromEntries(INSTRUMENT_LIST.map((i) => {
+    if (i.providers.twelvedata.computed) return [i.symbol, computedCoverage(i, rows)];
+    const r = rows.get(i.symbol);
+    // A verification through a symbol that is no longer a candidate (e.g. a removed ETF ticker) no longer counts.
+    if (!r || (r.state === "verified" && (!r.vendorSymbol || !i.providers.twelvedata.candidates.includes(r.vendorSymbol)))) return [i.symbol, unchecked(i.symbol)];
+    return [i.symbol, r];
+  }));
 });
 
 /** DXY is computed from six FX pairs, so it is available exactly when EURUSD (a component) is. */
@@ -68,10 +75,12 @@ export async function vendorCandidates(symbol: string): Promise<string[]> {
   const def = INSTRUMENTS[symbol];
   if (!def) return [];
   const local = seen.get(key(symbol));
-  if (local?.state === "verified" && local.vendorSymbol) return [local.vendorSymbol];
+  const listed = def.providers.twelvedata.candidates;
+  // A verified symbol counts only while it is still a listed candidate (a delisted candidate, e.g. an ETF ticker, is dropped).
+  if (local?.state === "verified" && local.vendorSymbol && listed.includes(local.vendorSymbol)) return [local.vendorSymbol];
   const map = await coverageMap();
   const c = map[symbol];
-  if (c?.state === "verified" && c.vendorSymbol) return [c.vendorSymbol];
+  if (c?.state === "verified" && c.vendorSymbol && listed.includes(c.vendorSymbol)) return [c.vendorSymbol];
   // Refused within the last day: the daily probe re-checks it, so bar requests do not spend credits on it.
   if (c?.state === "unavailable" && c.checkedAt && Date.now() - Date.parse(c.checkedAt) < REFRESH_MS) return [];
   return def.providers.twelvedata.candidates;

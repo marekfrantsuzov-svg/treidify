@@ -172,7 +172,7 @@ export const INSTRUMENT_LIST: InstrumentDef[] = [
   {
     symbol: "DAX40", name: "DAX 40", short: "DAX40", category: "indices", digits: 2, tickSize: 0.01, move: { unit: "point", size: 1 }, maxStop: null,
     quote: "EUR", contract: { size: 1, unit: "index" }, session: "de-cash", volume: "none", dxyLink: null,
-    providers: { twelvedata: { candidates: ["GDAXI", "DAX"] } }, feedNote: IDX_NOTE, aliases: ["GER40", "DE40", "GER30", "DE30", "DAX", "DAX40"],
+    providers: { twelvedata: { candidates: ["GDAXI"] } }, feedNote: IDX_NOTE, aliases: ["GER40", "DE40", "GER30", "DE30", "DAX", "DAX40"],
     keywords: /\bdax\b|german stocks|germany|european stocks|\becb\b/i, calendar: ["DE", "EU"], sample: { ref: 24100, vol: 0.004 },
   },
   {
