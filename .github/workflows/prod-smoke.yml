@@ -1,0 +1,25 @@
+name: Production smoke check
+
+# Checks the live deployment from outside (GitHub runners can reach treidify.com; the Claude sandbox cannot).
+# Prints only the public /api/health JSON (booleans and commit, never secret values) and HTTP status codes.
+on:
+  push:
+    branches: [main, "claude/**"]
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Health and pages
+        run: |
+          set +e
+          for u in https://app.treidify.com/api/health https://treidify.com/ https://www.treidify.com/ https://app.treidify.com/login https://app.treidify.com/api/market/candles?symbol=XAUUSD\&tf=1H; do
+            code=$(curl -s -o /tmp/body -w '%{http_code}' -m 30 -L "$u")
+            echo "== $u -> $code"
+            case "$u" in *api/health*) cat /tmp/body; echo;; esac
+          done
+          curl -fsS -m 30 https://app.treidify.com/api/health | python3 -c 'import json,sys; d=json.load(sys.stdin); print("providers:", d.get("providers")); sys.exit(0 if d.get("ok") else 1)'
