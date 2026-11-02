@@ -611,3 +611,17 @@ export const instrumentCoverage = pgTable("instrument_coverage", {
   reason: text("reason"),
   checkedAt: ts("checked_at").notNull().defaultNow(),
 }, (t) => [primaryKey({ columns: [t.symbol, t.provider] })]);
+
+/**
+ * Last good bars per instrument and timeframe, exactly as the provider returned them. Shared by every server
+ * instance so a request-limited data plan is spent once per refresh window, and a chart can keep showing the last
+ * real bars (with their true timestamps) while the provider is rate limiting. Never holds sample data.
+ */
+export const marketSeriesCache = pgTable("market_series_cache", {
+  symbol: text("symbol").notNull(),
+  timeframe: text("timeframe").notNull(),
+  vendor: text("vendor").notNull(),
+  method: text("method").notNull(),
+  candles: jsonb("candles").$type<{ t: number; o: number; h: number; l: number; c: number; v?: number }[]>().notNull(),
+  fetchedAt: ts("fetched_at").notNull().defaultNow(),
+}, (t) => [primaryKey({ columns: [t.symbol, t.timeframe] })]);

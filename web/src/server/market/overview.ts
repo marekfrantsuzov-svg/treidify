@@ -4,8 +4,7 @@ import { analyzeStructure, type InstrumentIntel, type Trend } from "@/lib/intell
 import type { Candle } from "@/lib/analytics/types";
 import { reportError } from "@/lib/monitoring";
 import { loadIntel } from "./load";
-import { marketDataStatus, marketPlan, planCache } from "./service";
-import { twelveData } from "./twelvedata";
+import { getSeries, marketDataStatus } from "./service";
 
 export type OverviewCategory = "Forex" | "Metals" | "Indices" | "Crypto";
 export interface OverviewRow {
@@ -61,11 +60,13 @@ export const marketOverview = cache(async (): Promise<OverviewRow[]> => {
   ];
   const st = marketDataStatus();
   const unavailable = (e: (typeof EXTRA)[number]): OverviewRow => ({ symbol: e.symbol, name: e.name, category: e.category, digits: e.digits, price: null, changePct: null, trend: null, trendTf: null, status: "unavailable" });
-  const client = st.configured ? twelveData(process.env.MARKET_DATA_API_KEY!.trim(), fetch, planCache(await marketPlan())) : null;
   const extra = await Promise.all(EXTRA.map(async (e): Promise<OverviewRow> => {
-    if (!client) return unavailable(e);
+    if (!st.configured) return unavailable(e);
     try {
-      const [h1, h4] = await Promise.all([client.candles(e.vendor, "1H", 150), client.candles(e.vendor, "4H", 150)]);
+      // Same loader and shared saved copy as the charts, so the overview spends no extra requests.
+      const [r1, r4] = await Promise.all([getSeries(e.symbol, "1H", 150), getSeries(e.symbol, "4H", 150)]);
+      if (!r1.ok) return unavailable(e);
+      const h1 = r1.candles, h4 = r4.ok ? r4.candles : [];
       const t = structureTrend(h4.length >= 60 ? analyzeStructure(h4).trend : null, h1.length >= 60 ? analyzeStructure(h1).trend : null);
       return { symbol: e.symbol, name: e.name, category: e.category, digits: e.digits, ...change(h1), trend: t.trend, trendTf: t.tf, status: "live" };
     } catch (err) {

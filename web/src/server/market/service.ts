@@ -6,6 +6,8 @@ import { INSTRUMENTS, isMarketSymbol, type MarketSymbol, type Timeframe } from "
 import { CACHE_SECONDS, FREE_PLAN_CACHE_SECONDS, isCoverageError, twelveData, VendorError } from "./twelvedata";
 import { coverageMap, recordUnavailable, recordVerified, vendorCandidates } from "./coverage";
 import { reportError } from "@/lib/monitoring";
+import { and, eq } from "drizzle-orm";
+import { db, dbConfigured, schema } from "../db";
 
 /**
  * The only way the app reads market prices. Returns real vendor bars or an explicit failure; it never substitutes
@@ -27,6 +29,8 @@ export interface SeriesOk {
   /** How often a chart should re-read this series: the server cache lifetime for the connected plan. */
   refreshSeconds: number;
   plan: PlanTier;
+  /** True when the provider could not be asked just now and these are the last bars it returned (see fetchedAt). */
+  savedCopy: boolean;
 }
 export interface SeriesFail { ok: false; symbol: MarketSymbol; timeframe: Timeframe; reason: "not-configured" | "vendor-error" | "rate-limited" | "empty" | "not-covered" | "unknown-symbol"; message: string; needs?: string[]; detail?: string }
 export type SeriesResult = SeriesOk | SeriesFail;
@@ -62,60 +66,119 @@ export async function marketPlan(): Promise<PlanTier> {
 }
 export const planCache = (tier: PlanTier) => (tier === "free" ? FREE_PLAN_CACHE_SECONDS : CACHE_SECONDS);
 
+/** Bars requested from the provider per series. A request costs one credit whatever its size, so take the most once. */
+const FETCH_BARS = 500;
+
+// Requests this instance has sent in the last minute. On the free plan (8 per minute) it stops sending before the
+// provider refuses, and the saved copy is served instead. Other instances share the saved copy through the database.
+const sent: number[] = [];
+function takeBudget(n: number, plan: PlanTier, nowMs = Date.now()): boolean {
+  if (plan !== "free") return true;
+  while (sent.length && nowMs - sent[0]! > 60_000) sent.shift();
+  if (sent.length + n > FREE_PER_MINUTE) return false;
+  for (let i = 0; i < n; i++) sent.push(nowMs);
+  return true;
+}
+const FREE_PER_MINUTE = 8;
+export const _resetMarketBudget = () => { sent.length = 0; };
+
+type Saved = { candles: Candle[]; vendor: string; method: SeriesOk["method"]; fetchedAt: Date };
+async function readSaved(symbol: string, tf: Timeframe): Promise<Saved | null> {
+  if (!dbConfigured) return null;
+  try {
+    const [r] = await db.select().from(schema.marketSeriesCache).where(and(eq(schema.marketSeriesCache.symbol, symbol), eq(schema.marketSeriesCache.timeframe, tf))).limit(1);
+    return r ? { candles: r.candles, vendor: r.vendor, method: r.method as SeriesOk["method"], fetchedAt: r.fetchedAt } : null;
+  } catch (e) { reportError(e, { where: "market.readSaved" }); return null; }
+}
+async function writeSaved(symbol: string, tf: Timeframe, v: Omit<Saved, "fetchedAt">, at: Date) {
+  if (!dbConfigured) return;
+  try {
+    await db.insert(schema.marketSeriesCache).values({ symbol, timeframe: tf, vendor: v.vendor, method: v.method, candles: v.candles, fetchedAt: at })
+      .onConflictDoUpdate({ target: [schema.marketSeriesCache.symbol, schema.marketSeriesCache.timeframe], set: { vendor: v.vendor, method: v.method, candles: v.candles, fetchedAt: at } });
+  } catch (e) { reportError(e, { where: "market.writeSaved" }); }
+}
+
+type Fetched = { ok: true; candles: Candle[]; method: SeriesOk["method"] } | SeriesFail;
+
+/** One provider read for a series, with no caching of its own beyond the HTTP data cache. */
+async function fetchSeries(symbol: MarketSymbol, timeframe: Timeframe, plan: PlanTier, cacheSeconds: Record<Timeframe, number>): Promise<Fetched> {
+  const client = twelveData(env("MARKET_DATA_API_KEY")!, fetch, cacheSeconds);
+  const def = INSTRUMENTS[symbol]!;
+  const limited = (detail: string): SeriesFail => ({ ok: false, symbol, timeframe, reason: "rate-limited", message: "The market-data plan's request limit was reached, so this chart is waiting for the next minute's allowance. Nothing is shown rather than a guess.", detail });
+  const budgetMsg = `Free data plan: holding back to stay within ${FREE_PER_MINUTE} requests per minute.`;
+  try {
+    if (def.providers.twelvedata.computed === "ice-dxy") {
+      const vendorDxy = env("MARKET_DATA_DXY_SYMBOL");
+      if (vendorDxy) {
+        if (!takeBudget(1, plan)) return limited(budgetMsg);
+        return { ok: true, candles: await client.candles(vendorDxy, timeframe, FETCH_BARS), method: "vendor" };
+      }
+      if (!takeBudget(DXY_WEIGHTS.length, plan)) return limited(budgetMsg);
+      const parts = await Promise.all(DXY_WEIGHTS.map((w) => client.candles(DXY_VENDOR[w.pair], timeframe, FETCH_BARS)));
+      return { ok: true, candles: computeDxyCandles(Object.fromEntries(DXY_WEIGHTS.map((w, i) => [w.pair, parts[i]!])) as Record<DxyPair, Candle[]>), method: "computed-ice" };
+    }
+    // Try each candidate the provider has not refused. Never substitute a different instrument (an ETF for an index).
+    const cands = await vendorCandidates(symbol);
+    const notCovered = (detail?: string): SeriesFail => ({ ok: false, symbol, timeframe, reason: "not-covered", message: `${def.short} is not available on the connected market-data plan, so nothing is shown for it.`, detail });
+    if (!cands.length) {
+      // Refused by the provider within the last day: do not spend a request asking again.
+      return notCovered((await coverageMap())[symbol]?.reason ?? undefined);
+    }
+    const refused: string[] = [];
+    for (const cand of cands) {
+      if (!takeBudget(1, plan)) return limited(budgetMsg);
+      try {
+        const candles = await client.candles(cand, timeframe, FETCH_BARS);
+        void recordVerified(symbol, cand);
+        return { ok: true, candles, method: "vendor" };
+      } catch (e) { if (isCoverageError(e)) { refused.push(`${cand}: ${(e as Error).message}`); continue; } throw e; }
+    }
+    void recordUnavailable(symbol, refused.join(" · ") || "No candidate symbol.");
+    return notCovered(refused.join(" · ") || undefined);
+  } catch (e) {
+    if (e instanceof VendorError && e.status === 429) return limited(e.message);
+    reportError(e, { where: "market.getSeries", extra: { symbol, timeframe } });
+    return { ok: false, symbol, timeframe, reason: "vendor-error", message: e instanceof VendorError ? "The market-data provider did not answer correctly. Showing nothing rather than a guess." : "Market data could not be loaded.", detail: e instanceof VendorError ? e.message : undefined };
+  }
+}
+
+/**
+ * Bars for one instrument and timeframe. Order: the saved copy while it is younger than the plan's refresh window;
+ * otherwise the provider; if the provider is rate limiting or failing, the last saved real bars (labelled with their
+ * true age through `freshness` and `savedCopy`). Never sample or synthetic bars.
+ */
 export async function getSeries(symbol: MarketSymbol, timeframe: Timeframe, count = 300, now = new Date()): Promise<SeriesResult> {
   if (!isMarketSymbol(symbol)) return { ok: false, symbol, timeframe, reason: "unknown-symbol", message: "Treidify does not list this instrument." };
   const st = marketDataStatus();
   if (!st.configured) return { ok: false, symbol, timeframe, reason: "not-configured", message: "Market data is not connected.", needs: st.needs };
   const plan = await marketPlan();
   const cacheSeconds = planCache(plan);
-  const client = twelveData(env("MARKET_DATA_API_KEY")!, fetch, cacheSeconds);
   const def = INSTRUMENTS[symbol]!;
-  try {
-    let candles: Candle[] = [];
-    let method: SeriesOk["method"] = "vendor";
-    if (def.providers.twelvedata.computed === "ice-dxy") {
-      const vendorDxy = env("MARKET_DATA_DXY_SYMBOL");
-      if (vendorDxy) candles = await client.candles(vendorDxy, timeframe, count);
-      else {
-        const parts = await Promise.all(DXY_WEIGHTS.map((w) => client.candles(DXY_VENDOR[w.pair], timeframe, count)));
-        candles = computeDxyCandles(Object.fromEntries(DXY_WEIGHTS.map((w, i) => [w.pair, parts[i]!])) as Record<DxyPair, Candle[]>);
-        method = "computed-ice";
-      }
-    } else {
-      // Try each candidate the provider has not refused. Never substitute a different instrument (an ETF for an index).
-      const cands = await vendorCandidates(symbol);
-      let served: string | null = null;
-      const refused: string[] = [];
-      for (const cand of cands) {
-        try { candles = await client.candles(cand, timeframe, count); served = cand; break; }
-        catch (e) { if (isCoverageError(e)) { refused.push(`${cand}: ${(e as Error).message}`); continue; } throw e; }
-      }
-      if (!served && !refused.length && !cands.length) {
-        // Refused by the provider within the last day: do not spend a request asking again.
-        const known = (await coverageMap())[symbol];
-        return { ok: false, symbol, timeframe, reason: "not-covered", message: `${def.short} is not available on the connected market-data plan, so nothing is shown for it.`, detail: known?.reason ?? undefined };
-      }
-      if (!served) {
-        void recordUnavailable(symbol, refused.join(" · ") || "No candidate symbol.");
-        return { ok: false, symbol, timeframe, reason: "not-covered", message: `${def.short} is not available on the connected market-data plan, so nothing is shown for it.`, detail: refused.join(" · ") || undefined };
-      }
-      void recordVerified(symbol, served);
-    }
+  const result = (s: Saved, savedCopy: boolean): SeriesResult => {
+    const candles = s.candles.slice(-count);
     const last = candles.at(-1);
     if (!last) return { ok: false, symbol, timeframe, reason: "empty", message: "The provider returned no bars." };
     return {
-      ok: true, symbol, timeframe, candles, vendor: client.vendor, method,
-      fetchedAt: now.toISOString(), lastBarAt: new Date(last.t * 1000).toISOString(),
+      ok: true, symbol, timeframe, candles, vendor: s.vendor, method: s.method,
+      fetchedAt: s.fetchedAt.toISOString(), lastBarAt: new Date(last.t * 1000).toISOString(),
       freshness: classifyFreshness(last.t, timeframe, now, symbol), digits: def.digits,
-      refreshSeconds: cacheSeconds[timeframe], plan,
+      refreshSeconds: cacheSeconds[timeframe], plan, savedCopy,
     };
-  } catch (e) {
-    if (e instanceof VendorError && e.status === 429) {
-      return { ok: false, symbol, timeframe, reason: "rate-limited", message: "The market-data plan's request limit was reached, so this chart is waiting for the next minute's allowance. Nothing is shown rather than a guess.", detail: e.message };
-    }
-    reportError(e, { where: "market.getSeries", extra: { symbol, timeframe } });
-    return { ok: false, symbol, timeframe, reason: "vendor-error", message: e instanceof VendorError ? "The market-data provider did not answer correctly. Showing nothing rather than a guess." : "Market data could not be loaded.", detail: e instanceof VendorError ? e.message : undefined };
+  };
+
+  const saved = await readSaved(symbol, timeframe);
+  if (saved && now.getTime() - saved.fetchedAt.getTime() < cacheSeconds[timeframe] * 1000 && saved.candles.length) return result(saved, false);
+
+  const got = await fetchSeries(symbol, timeframe, plan, cacheSeconds);
+  if (got.ok) {
+    if (!got.candles.length) return { ok: false, symbol, timeframe, reason: "empty", message: "The provider returned no bars." };
+    const fresh: Saved = { candles: got.candles, vendor: "twelvedata", method: got.method, fetchedAt: now };
+    await writeSaved(symbol, timeframe, fresh, now);
+    return result(fresh, false);
   }
+  // Rate limited or the provider failed: the last real bars we hold are better than nothing, and say how old they are.
+  if ((got.reason === "rate-limited" || got.reason === "vendor-error") && saved?.candles.length) return result(saved, true);
+  return got;
 }
 
 /** All timeframes the intelligence engine needs for one symbol, fetched in parallel. */
