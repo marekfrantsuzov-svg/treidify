@@ -1,0 +1,23 @@
+name: Service verification
+
+# Manual check of one production integration from outside (GitHub runners can reach app.treidify.com).
+# Prints the status JSON: counts, timestamps and provider errors, never keys or stories.
+on:
+  workflow_dispatch:
+    inputs:
+      set:
+        description: "Which check: news, coverage, gold, core, dxy"
+        default: news
+        required: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Status
+        env:
+          SET: ${{ inputs.set }}
+        run: |
+          curl -fsS -m 20 https://app.treidify.com/api/health; echo
+          curl -sS -m 60 "https://app.treidify.com/api/market/status?set=$SET" | python3 -m json.tool
