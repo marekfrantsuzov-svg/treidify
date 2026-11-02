@@ -126,3 +126,10 @@ export async function upcomingEvents(now = new Date()): Promise<UpcomingEvent[]>
   return r.data.filter((e) => e.importance !== "low" && Date.parse(e.at) >= now.getTime() && Date.parse(e.at) <= now.getTime() + 24 * 3600_000)
     .map((e) => ({ title: `${e.country} ${e.title}`, at: new Date(e.at), importance: e.importance, country: e.country }));
 }
+
+/** One story from the current feed by its provider id (the feed is cached, so this costs no extra request). */
+export async function headlineById(id: string): Promise<{ ok: true; item: Headline | null; vendor: string; fetchedAt: string } | { ok: false; message: string; needs?: string[] }> {
+  const r = await latestHeadlines(120);
+  if (!r.ok) return { ok: false, message: r.message, needs: r.needs };
+  return { ok: true, item: r.data.find((h) => h.id === id) ?? null, vendor: r.vendor, fetchedAt: r.fetchedAt };
+}

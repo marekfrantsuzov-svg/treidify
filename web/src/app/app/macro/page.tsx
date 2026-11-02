@@ -1,4 +1,4 @@
-import { Activity, CalendarClock, Crosshair, Map as MapIcon, Radar, Waves } from "lucide-react";
+import { Activity, CalendarClock, Landmark, Crosshair, Map as MapIcon, Radar, Waves } from "lucide-react";
 import { PageHeader } from "@/components/app/status";
 import Link from "next/link";
 import { MarketCard, ScenarioCard, SentimentGrid, ZoneCard } from "@/components/macro/desk";
@@ -16,6 +16,8 @@ import { marketPrefs } from "@/server/market/prefs";
 import { INSTRUMENTS } from "@/lib/markets/registry";
 import { economicCalendar, latestHeadlines, type EconEvent } from "@/server/news/service";
 import { requireOnboarded } from "@/server/session";
+import { macroEvidence, macroIndicators } from "@/server/macro/service";
+import { IndicatorCards } from "@/components/macro/indicator-cards";
 
 export const metadata = { title: "Macro Desk" };
 
@@ -32,7 +34,7 @@ export default async function Macro({ searchParams }: { searchParams: Promise<{ 
   const tz = s.profile.timezone;
   const [prefs, sp] = await Promise.all([marketPrefs(s.user.id), searchParams]);
   const desk = prefs.desk;
-  const [snap, news, cal, catalog] = await Promise.all([loadDesk([...desk, "XAUUSD"]), latestHeadlines(40), economicCalendar(new Date(nowMs - 45 * DAY), new Date(nowMs + 7 * DAY)), instrumentCatalog()]);
+  const [snap, news, cal, catalog, macro] = await Promise.all([loadDesk([...desk, "XAUUSD"]), latestHeadlines(40), economicCalendar(new Date(nowMs - 3 * DAY), new Date(nowMs + 7 * DAY)), instrumentCatalog(), macroIndicators()]);
   const live = snap.mode === "live", sample = snap.mode === "sample";
   const upcoming: EconEvent[] = cal.ok ? cal.data.filter((e) => Date.parse(e.at) >= nowMs && e.importance === "high").sort((a, b) => Date.parse(a.at) - Date.parse(b.at)) : [];
   const cards = desk.map((sym) => snap.items.find((i) => i.symbol === sym)!);
@@ -56,7 +58,11 @@ export default async function Macro({ searchParams }: { searchParams: Promise<{ 
   const buyZ = f.zones.find((z) => z.side === "buy"), sellZ = f.zones.find((z) => z.side === "sell");
   const g = snap.items.find((i) => i.symbol === "XAUUSD")!.intel;
   const dxy = snap.dxy ?? snap.items.find((i) => i.symbol === "DXY")?.intel ?? null;
-  const impact = goldImpact(g, dxy ?? g, heads, cal.ok ? cal.data.filter((e) => Date.parse(e.at) >= nowMs - 3600_000 && e.importance !== "low") : [], now);
+  const gItem = snap.items.find((i) => i.symbol === "XAUUSD");
+  const impact = goldImpact(g, dxy ?? g, heads, cal.ok ? cal.data.filter((e) => Date.parse(e.at) >= nowMs - 2 * DAY && e.importance !== "low") : [], now, {
+    market: { mode: snap.mode === "live" && gItem?.status === "live" ? "live" : snap.mode === "sample" ? "sample" : "error", freshness: gItem?.freshness ?? null, vendor: snap.vendor, asOf: snap.asOf },
+    macro: macroEvidence(macro), macroOk: macro.rates.ok && macro.inflation.ok, newsOk: news.ok, calendarOk: cal.ok,
+  });
   const asOf = new Date(snap.asOf).toLocaleTimeString("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit" });
   const zoneSub = fDef.maxStop !== null
     ? "1H zones with their stop measured at structural invalidation. 1 pip = $0.10 (10 pips = $1.00); a stop over 50 pips ($5.00) means WAIT, and it is never tightened."
@@ -76,6 +82,9 @@ export default async function Macro({ searchParams }: { searchParams: Promise<{ 
         </div>
       </PageHeader>
       {snap.message && <p className="mb-4 rounded-2xl bg-warn-soft px-4 py-2.5 text-[13px] leading-snug text-ink">{snap.message}</p>}
+
+      <SectionHead id="us-macro" icon={<Landmark />} title="US economy" sub="The Fed's policy rate, CPI inflation and real GDP from official sources (Federal Reserve, BLS, BEA via FRED). Tap a card for history and what it can mean for the dollar and gold." />
+      <IndicatorCards m={macro} tz={tz} />
 
       <SectionHead id="pulse" icon={<Activity />} title="At a glance" sub="1H charts with their nearest buy and sell zones, timeframe direction, momentum and the dollar link. Tap a market to open its chart." />
       <DeskPulse key={desk.join(",")} items={cards.map((c) => ({ intel: c.intel, quote: c.quote, status: c.status }))} dxy={dxy} />
@@ -113,7 +122,7 @@ export default async function Macro({ searchParams }: { searchParams: Promise<{ 
         relevant={heads.filter((h) => desk.some((d) => h.instruments.includes(d)))} relevantTitle={`Relevant news for ${desk.map(nameOf).join(", ")}`}
         rates={releases(cal.ok ? cal.data.filter((e) => e.country === "US") : [], ["FOMC", "Rate decision"], nowMs)}
         inflation={releases(cal.ok ? cal.data.filter((e) => e.country === "US") : [], ["CPI", "PCE", "PPI"], nowMs)}
-        dxy={dxy ?? g} sample={sample} impact={impact} tz={tz} now={nowMs}
+        dxy={dxy ?? g} sample={sample} impact={impact} tz={tz} now={nowMs} yields={macro.yields.items} macro={macro}
       />
 
       <SectionHead id="drivers" icon={<CalendarClock />} title="This week's drivers" sub="High-impact scheduled events in the next 7 days." />

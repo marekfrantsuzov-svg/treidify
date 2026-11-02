@@ -8,6 +8,8 @@ import { SlotTrigger } from "@/components/markets/instrument-picker";
 import { INSTRUMENTS } from "@/lib/markets/registry";
 import { formatPips } from "@/lib/trading/pips";
 import { cn } from "@/lib/cn";
+import type { MacroBundle, YieldReading } from "@/server/macro/service";
+import Link from "next/link";
 import { BiasBadge, More, PriceLadder, SourceChip, StopMeter, TfRow, fmtP } from "./parts";
 
 const NAME: Record<string, { name: string; sub: string }> = { XAUUSD: { name: "Gold", sub: "XAUUSD" }, DXY: { name: "US Dollar Index", sub: "DXY" }, XAGUSD: { name: "Silver", sub: "XAGUSD" } };
@@ -246,6 +248,7 @@ export interface SentimentInput {
   risk: SentHeadline[]; geo: SentHeadline[]; cb: SentHeadline[]; yld: SentHeadline[]; relevant: SentHeadline[];
   rates: { last: SentEvent | null; next: SentEvent | null }; inflation: { last: SentEvent | null; next: SentEvent | null };
   dxy: InstrumentIntel; sample: boolean; impact: GoldImpact; tz: string; now: number; relevantTitle?: string;
+  yields?: YieldReading[]; macro?: MacroBundle;
 }
 
 export function SentimentGrid(p: SentimentInput) {
@@ -263,6 +266,16 @@ export function SentimentGrid(p: SentimentInput) {
             <p className="mt-3 text-[11.5px] leading-snug text-ink-3">A qualitative read from DXY and Gold structure plus scheduled US events. It is not a probability or a forecast.</p>
           </>
         )}
+        {impact.evidence.length > 0 && (
+          <div className="mt-3 border-t border-line pt-3">
+            <p className="text-[10.5px] font-semibold uppercase tracking-wide text-ink-3">Evidence checked</p>
+            <ul className="mt-1.5 grid gap-1.5">{impact.evidence.map((e) => (
+              <li key={e.label} className="text-[12px] leading-snug"><span className="font-medium text-ink">{e.label}.</span> <span className="text-ink-2">{e.detail}</span> <span className="text-ink-3">{e.source}{e.at ? ` · ${/^\d{4}-\d{2}-\d{2}$/.test(e.at) ? new Date(`${e.at}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }) : new Date(e.at).toLocaleString("en-GB", { timeZone: p.tz, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}` : ""}</span></li>
+            ))}</ul>
+          </div>
+        )}
+        {impact.missing.length > 0 && <p className="mt-2 text-[11.5px] leading-snug text-warn">Unavailable for this read: {impact.missing.join(", ")}.</p>}
+        <p className="mt-2 text-[11px] text-ink-3">Calculated {new Date(impact.calculatedAt).toLocaleString("en-GB", { timeZone: p.tz, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} ({p.tz}).</p>
       </SentCard>
       <SentCard icon={<Gauge />} title="Market risk sentiment" kind={p.newsOk && p.risk.length ? "fact" : "na"} kindLabel={p.newsOk && p.risk.length ? "Headlines only" : undefined}>
         {!p.newsOk ? newsMissing : p.risk.length ? <><HeadlineMini h={p.risk} now={p.now} /><p className="mt-2 text-[11.5px] text-ink-3">No risk-sentiment score is shown: it needs an equities or volatility feed.</p></> : <Unavailable>No risk-related headlines in the current feed. A sentiment score needs an equities or volatility feed, which is not connected.</Unavailable>}
@@ -271,7 +284,13 @@ export function SentimentGrid(p: SentimentInput) {
         {!p.newsOk ? newsMissing : p.geo.length ? <HeadlineMini h={p.geo} now={p.now} /> : <Unavailable>No geopolitical headlines in the current feed.</Unavailable>}
       </SentCard>
       <SentCard icon={<Landmark />} title="Central banks and rates" kind={p.calOk || (p.newsOk && p.cb.length) ? "fact" : "na"}>
-        {!p.calOk ? calMissing : (
+        {p.macro?.rates.ok ? (
+          <Link href="/app/macro/rates" className="stat-tile block hover:border-[var(--border-strong)]">
+            <div className="flex items-center justify-between gap-2 text-[11.5px] text-ink-3"><span className="font-medium">Fed funds target range</span><span>{p.macro.rates.facts[0]?.value}</span></div>
+            <div className="num mt-0.5 text-[15px] font-semibold text-ink">{p.macro.rates.value}</div>
+            {p.macro.rates.next && <div className="mt-0.5 text-[12px] text-ink-2">Next decision {new Date(p.macro.rates.next.at).toLocaleString("en-GB", { timeZone: p.tz, weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</div>}
+          </Link>
+        ) : !p.calOk ? calMissing : (
           <div className="grid gap-2">
             {p.rates.last ? <Release e={p.rates.last} tz={p.tz} label="Last decision" /> : <Unavailable>No recent rate decision in the calendar window.</Unavailable>}
             {p.rates.next && <Release e={p.rates.next} tz={p.tz} label="Next decision" />}
@@ -279,18 +298,29 @@ export function SentimentGrid(p: SentimentInput) {
         )}
         {p.newsOk && p.cb.length > 0 && <div className="mt-2.5"><HeadlineMini h={p.cb.slice(0, 2)} now={p.now} /></div>}
       </SentCard>
-      <SentCard icon={<Percent />} title="Inflation and releases" kind={p.calOk ? "fact" : "na"}>
-        {!p.calOk ? calMissing : (
+      <SentCard icon={<Percent />} title="Inflation and releases" kind={p.calOk || p.macro?.inflation.ok ? "fact" : "na"}>
+        {p.macro?.inflation.ok && (
+          <Link href="/app/macro/inflation" className="stat-tile mb-2 block hover:border-[var(--border-strong)]">
+            <div className="flex items-center justify-between gap-2 text-[11.5px] text-ink-3"><span className="font-medium">CPI y/y · {p.macro.inflation.period}</span><span>{p.macro.inflation.previous ? `prev ${p.macro.inflation.previous}` : ""}</span></div>
+            <div className="num mt-0.5 text-[15px] font-semibold text-ink">{p.macro.inflation.value}</div>
+          </Link>
+        )}
+        {!p.calOk ? (p.macro?.inflation.ok ? null : calMissing) : (
           <div className="grid gap-2">
             {p.inflation.last ? <Release e={p.inflation.last} tz={p.tz} label="Latest release" /> : <Unavailable>No CPI, PCE or PPI release in the calendar window.</Unavailable>}
             {p.inflation.next && <Release e={p.inflation.next} tz={p.tz} label="Next release" />}
           </div>
         )}
       </SentCard>
-      <SentCard icon={<LineChart />} title="Treasury yields and USD" kind={p.sample ? "sample" : "fact"} kindLabel={p.sample ? "USD on sample bars" : "USD from market data"}>
+      <SentCard icon={<LineChart />} title="Treasury yields and USD" kind={p.sample ? "sample" : "fact"} kindLabel={p.sample ? "USD on sample bars" : "Market data + Fed H.15"}>
         <div className="grid gap-2">
           <div className="stat-tile"><div className="text-[11.5px] font-medium text-ink-3">US Dollar Index structure</div><div className="mt-1 flex flex-wrap items-center gap-2"><BiasBadge bias={p.dxy.bias} size="sm" /><TfRow states={tfStates(p.dxy).slice(0, 2)} /></div></div>
-          <Unavailable>US 10-year and real yields need a yields source (for example FRED). They are not estimated.</Unavailable>
+          {p.yields?.length ? p.yields.map((y) => (
+            <a key={y.id} href={y.url} target="_blank" rel="noopener noreferrer" className="stat-tile block hover:border-[var(--border-strong)]">
+              <div className="flex items-center justify-between gap-2 text-[11.5px] text-ink-3"><span className="font-medium">{y.label}</span><span>{new Date(`${y.date}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" })}</span></div>
+              <div className="num mt-0.5 flex items-baseline gap-2"><span className="text-[15px] font-semibold text-ink">{y.value.toFixed(2)}%</span>{y.prev !== null && <span className="text-[12px] text-ink-2">{y.value - y.prev >= 0 ? "+" : "−"}{Math.abs((y.value - y.prev) * 100).toFixed(0)} bp on the day</span>}</div>
+            </a>
+          )) : <Unavailable>US 10-year and real yields could not be loaded from FRED just now. They are not estimated.</Unavailable>}
           {p.newsOk && p.yld.length > 0 && <HeadlineMini h={p.yld.slice(0, 2)} now={p.now} />}
         </div>
       </SentCard>

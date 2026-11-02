@@ -28,7 +28,8 @@ export const SOURCE = {
  * Source: https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm
  */
 export const FOMC_STATEMENT_DAYS = ["2025-01-29", "2025-03-19", "2025-05-07", "2025-06-18", "2025-07-30", "2025-09-17", "2025-10-29", "2025-12-10",
-  "2026-01-28", "2026-03-18", "2026-04-29", "2026-06-17", "2026-07-29", "2026-09-16", "2026-10-28", "2026-12-09"];
+  "2026-01-28", "2026-03-18", "2026-04-29", "2026-06-17", "2026-07-29", "2026-09-16", "2026-10-28", "2026-12-09",
+  "2027-01-27", "2027-03-17", "2027-04-28", "2027-06-09", "2027-07-28", "2027-09-15", "2027-10-27", "2027-12-08"];
 
 /** Ten minutes from 30 min before to 4 hours after a scheduled release, an hour otherwise. */
 function ttl(now: Date, schedule: { at: Date }[]) {
@@ -196,12 +197,46 @@ export async function gdpIndicator(now = new Date()): Promise<MacroIndicator> {
   } catch (e) { return fail("gdp", "Real GDP, % change at an annual rate", SOURCE.gdp, e); }
 }
 
-/** All three Macro Desk indicators, once per request. */
+export interface YieldReading { id: "DFII10" | "DGS10"; label: string; value: number; date: string; prev: number | null; prevDate: string | null; url: string }
+
+/** US 10-year nominal and real (TIPS) yields, daily, from the Federal Reserve's H.15 via FRED. */
+export async function treasuryYields(now = new Date()): Promise<{ ok: boolean; items: YieldReading[]; message: string | null }> {
+  const start = addDays(isoDay(now.getTime()), -30);
+  const defs = [{ id: "DFII10" as const, label: "10-year real yield (TIPS)" }, { id: "DGS10" as const, label: "10-year Treasury yield" }];
+  try {
+    const items = await Promise.all(defs.map(async (d) => {
+      const pts = (await values(d.id, start, 3600)).obs.filter((o): o is MacroPoint => o.value !== null);
+      const last = pts.at(-1), prev = pts.at(-2);
+      if (!last) throw new Error(`no ${d.id} observations`);
+      return { ...d, value: last.value, date: last.date, prev: prev?.value ?? null, prevDate: prev?.date ?? null, url: `https://fred.stlouisfed.org/series/${d.id}` };
+    }));
+    return { ok: true, items, message: null };
+  } catch (e) {
+    reportError(e, { where: "macro.yields" });
+    return { ok: false, items: [], message: "Treasury yields could not be loaded from FRED just now." };
+  }
+}
+
+/** All three Macro Desk indicators plus yields, once per request. */
 export const macroIndicators = cache(async () => {
   const now = new Date();
-  const [rates, inflation, gdp] = await Promise.all([ratesIndicator(now), inflationIndicator(now), gdpIndicator(now)]);
-  return { rates, inflation, gdp, asOf: now.toISOString() };
+  const [rates, inflation, gdp, yields] = await Promise.all([ratesIndicator(now), inflationIndicator(now), gdpIndicator(now), treasuryYields(now)]);
+  return { rates, inflation, gdp, yields, asOf: now.toISOString() };
 });
+export type MacroBundle = Awaited<ReturnType<typeof macroIndicators>>;
+
+/** Verified macro facts for the gold read's evidence list (facts only, not scored). */
+export function macroEvidence(m: MacroBundle) {
+  const out: { label: string; detail: string; at: string | null; source: string }[] = [];
+  if (m.rates.ok && m.rates.value) out.push({ label: "Fed funds target range", detail: `${m.rates.value}${m.rates.facts[0] ? ` · ${m.rates.facts[0].value}` : ""}`, at: m.rates.releasedOn, source: "Federal Reserve via FRED" });
+  if (m.inflation.ok && m.inflation.value) out.push({ label: `US CPI y/y, ${m.inflation.period}`, detail: `${m.inflation.value}${m.inflation.previous ? ` · previous ${m.inflation.previous}` : ""}`, at: m.inflation.releasedOn, source: "BLS via FRED" });
+  const real = m.yields.items.find((y) => y.id === "DFII10");
+  if (real) {
+    const ch = real.prev !== null ? real.value - real.prev : null;
+    out.push({ label: "US 10-year real yield", detail: `${real.value.toFixed(2)}%${ch !== null ? ` (${ch >= 0 ? "+" : "−"}${Math.abs(ch * 100).toFixed(0)} bp on the day)` : ""}. Lower real yields usually support gold; higher ones weigh on it.`, at: real.date, source: "Federal Reserve H.15 via FRED" });
+  }
+  return out;
+}
 
 /* ── Economic calendar from the official US release schedule ── */
 
@@ -212,7 +247,7 @@ export interface OfficialEvent {
   period: string | null; actual: string | null; forecast: null; previous: string | null; revisedFrom: string | null;
 }
 
-const periodLabel = (r: ReleaseDef, d: string | null) => (!d ? null : r.kind === "GDP" ? quarterLabel(d) : r.kind === "Jobless claims" ? `week of ${d}` : monthName(d));
+const periodLabel = (r: ReleaseDef, d: string | null) => (!d ? null : r.kind === "GDP" ? quarterLabel(d) : r.kind === "Jobless claims" ? `week ending ${new Date(`${d}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" })}` : monthName(d));
 
 /**
  * Every tracked US release scheduled between `from` and `to`, with actual and previous values computed from the

@@ -8,8 +8,9 @@ import type { OverviewCategory, OverviewRow } from "@/server/market/overview";
 import { cn } from "@/lib/cn";
 import { AssetMark, CURRENCY, Flag } from "@/components/ui/flags";
 import { SlidingPill } from "@/components/ui/sliding-pill";
+import { NewsThumb } from "@/components/news/news-thumb";
 
-export interface NewsItem { id: string; title: string; summary: string; source: string; url: string; publishedAt: string; instruments: string[]; importance: "high" | "medium" | "low" }
+export interface NewsItem { id: string; title: string; summary: string; source: string; url: string; publishedAt: string; instruments: string[]; importance: "high" | "medium" | "low"; image?: string | null; categories?: string[] }
 export interface CalItem { id: string; title: string; country: string; at: string; importance: "high" | "medium" | "low"; actual: string | null; forecast: string | null; previous: string | null }
 export type Feed<T> = { ok: true; data: T[]; vendor: string } | { ok: false; message: string; needs?: string[] };
 
@@ -53,7 +54,7 @@ export function NewsCard({ feed, nowMs }: { feed: Feed<NewsItem>; nowMs: number 
           {feed.data.slice(0, 3).map((n) => (
             <li key={n.id}>
               <button onClick={() => setOpen(n)} className="flex w-full items-start gap-3 rounded-2xl px-1.5 py-2.5 text-left transition-colors duration-150 hover:bg-[var(--surface-inset)]">
-                <span className="mt-0.5">{newsMark(n)}</span>
+                <span className="mt-0.5">{n.image ? <NewsThumb src={n.image} category={n.categories?.[0]} className="h-11 w-11" /> : newsMark(n)}</span>
                 <span className="min-w-0 flex-1">
                   <span className="line-clamp-2 text-[13.5px] font-semibold leading-snug text-ink">{n.title}</span>
                   <span className="mt-0.5 block text-[12px] text-ink-3">{n.source} · {ago(n.publishedAt, nowMs)}</span>
@@ -73,7 +74,7 @@ function NewsModal({ n, nowMs, onClose }: { n: NewsItem; nowMs: number; onClose:
   useEffect(() => { const k = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); }; window.addEventListener("keydown", k); return () => window.removeEventListener("keydown", k); }, [onClose]);
   return (
     <div className="scrim-in fixed inset-0 z-[60] grid place-items-center bg-[rgba(20,12,40,0.3)] p-4 backdrop-blur-sm" onMouseDown={onClose}>
-      <div role="dialog" aria-modal="true" aria-labelledby="news-detail" className="dcard sheet-in w-full max-w-lg p-5 shadow-[var(--shadow-lg)]" onMouseDown={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-labelledby="news-detail" className="dcard sheet-in max-h-[92vh] w-full max-w-lg overflow-y-auto p-5 shadow-[var(--shadow-lg)]" onMouseDown={(e) => e.stopPropagation()}>
         <div className="flex items-start gap-3">
           {newsMark(n)}
           <h3 id="news-detail" className="min-w-0 flex-1 text-[17px] font-semibold leading-snug text-ink">{n.title}</h3>
@@ -84,9 +85,13 @@ function NewsModal({ n, nowMs, onClose }: { n: NewsItem; nowMs: number; onClose:
           <span className={IMPACT[n.importance]}>{cap(n.importance)} impact</span>
           {n.instruments.map((i) => <span key={i} className="rounded-md bg-accent-soft px-1.5 py-px font-semibold text-accent">{i}</span>)}
         </div>
-        {n.summary && <p className="mt-3 text-[14px] leading-relaxed text-ink-2">{n.summary}</p>}
-        <p className="mt-3 text-[11.5px] text-ink-3">Impact and instrument tags are automatic keyword rules, not an AI judgement.</p>
-        <a href={n.url} target="_blank" rel="noopener noreferrer nofollow" className="press bg-brand mt-4 inline-flex h-10 items-center gap-2 rounded-full px-4 text-[13.5px] font-semibold text-white">Read at {n.source}<ExternalLink className="h-4 w-4" /></a>
+        <NewsThumb src={n.image ?? null} category={n.categories?.[0]} className="mt-3 aspect-[16/9] w-full rounded-2xl" />
+        {n.summary && <div className="mt-3 grid max-h-[40vh] gap-2 overflow-y-auto text-[14px] leading-relaxed text-ink-2">{n.summary.split(/\n\n+/).map((p, k) => <p key={k}>{p}</p>)}</div>}
+        <p className="mt-3 text-[11.5px] text-ink-3">Summary as published by {n.source}; not independently verified. Impact and instrument tags are automatic keyword rules.</p>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <a href={n.url} target="_blank" rel="noopener noreferrer nofollow" className="press bg-brand inline-flex h-10 items-center gap-2 rounded-full px-4 text-[13.5px] font-semibold text-white">Read original article<ExternalLink className="h-4 w-4" /></a>
+          <Link href={`/app/news/${encodeURIComponent(n.id)}`} className="inline-flex h-10 items-center rounded-full px-3 text-[13.5px] font-semibold text-accent hover:bg-accent-soft">Open article view</Link>
+        </div>
       </div>
     </div>
   );
@@ -106,7 +111,10 @@ export function ImpactCard({ impact, nowMs }: { impact: GoldImpact; nowMs: numbe
       </div>
       <p className="mt-1 line-clamp-3 text-[12px] leading-snug text-ink-2">{impact.reasons[0]}{impact.reasons[1] ? ` ${impact.reasons[1]}` : ""}</p>
       {impact.reasons.length > 2 && <ul className="mt-1.5 grid gap-0.5 text-[11.5px] leading-snug text-ink-3">{impact.reasons.slice(2, 3).map((r) => <li key={r} className="line-clamp-2">• {r}</li>)}</ul>}
-      <p className="mt-auto pt-2 text-[10.5px] text-ink-3" suppressHydrationWarning>DXY + gold structure + US events · {ago(impact.asOf, nowMs)} · not a probability</p>
+      {impact.missing.length > 0 && <p className="mt-1.5 line-clamp-2 text-[11px] leading-snug text-warn">Unavailable: {impact.missing.join(", ")}</p>}
+      <p className="mt-auto pt-2 text-[10.5px] text-ink-3" suppressHydrationWarning>
+        Calculated {new Date(impact.calculatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · bars {ago(impact.asOf, nowMs)} · {impact.evidence.length} evidence items · <Link href="/app/macro#sentiment" className="font-medium text-accent hover:underline">Evidence</Link>
+      </p>
     </section>
   );
 }
@@ -125,7 +133,7 @@ export function MacroCard({ tiles }: { tiles: MacroTile[] }) {
         {tiles.map((t) => {
           const I = ICON[t.id];
           return (
-            <Link key={t.id} href="/app/macro" className="grid justify-items-center gap-0.5 rounded-2xl border border-line bg-[var(--surface-top)] px-1 py-2 text-center transition-[border-color,transform] duration-150 hover:border-[var(--border-strong)] active:scale-[0.97]">
+            <Link key={t.id} href={`/app/macro/${t.id}`} title={t.note ?? undefined} aria-label={`${t.label}: ${t.value ?? "unavailable"}${t.note ? `, ${t.note}` : ""}. Open details`} className="grid justify-items-center gap-0.5 rounded-2xl border border-line bg-[var(--surface-top)] px-1 py-2 text-center transition-[border-color,transform] duration-150 hover:border-[var(--border-strong)] active:scale-[0.97]">
               <I className="h-5 w-5 text-ink-2" strokeWidth={1.7} aria-hidden />
               <span className="text-[12.5px] font-medium text-ink">{t.label}</span>
               <span className={cn("num text-[12px] font-semibold", t.value ? "text-ink" : "text-ink-3")}>{t.value ?? "—"}</span>
@@ -133,7 +141,7 @@ export function MacroCard({ tiles }: { tiles: MacroTile[] }) {
           );
         })}
       </div>
-      <p className="sr-only">{tiles.some((t) => t.value) ? "Latest US release from the economic calendar." : "Latest US releases appear here once the calendar feed is connected."}</p>
+      <p className="mt-auto pt-2 text-[10.5px] leading-snug text-ink-3">{tiles.some((t) => t.value) ? "Official US data: Fed, BLS, BEA via FRED. Tap for history." : "Official data could not be loaded just now. No estimate is shown."}</p>
     </section>
   );
 }
