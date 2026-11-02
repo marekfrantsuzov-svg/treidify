@@ -152,9 +152,9 @@ export function PnlCalendar({ trades: real, notes = {}, currency = "USD", tz, co
 function Kpi({ label, value, sub, tone, icon, big }: { label: string; value: string; sub?: string; tone?: "up" | "down"; icon?: React.ReactNode; big?: boolean }) {
   return (
     <div className={cn("cal-kpi", big && "col-span-2 sm:col-span-1")}>
-      <div className="flex items-center gap-1 text-[11.5px] font-medium text-ink-3 [&_svg]:h-3.5 [&_svg]:w-3.5">{icon}{label}</div>
-      <div className={cn("num mt-0.5 text-[19px] font-semibold tracking-[-0.02em]", tone === "up" ? "text-up" : tone === "down" ? "text-down" : "text-ink")}>{value}</div>
-      {sub && <div className="text-[11.5px] text-ink-3">{sub}</div>}
+      <div className="flex items-center gap-1 text-[12.5px] font-medium text-ink-3 [&_svg]:hidden">{icon}{label}</div>
+      <div className={cn("num mt-1 font-medium leading-none tracking-[-0.03em]", big ? "text-[clamp(24px,2vw,32px)]" : "text-[clamp(20px,1.5vw,24px)]", tone === "up" ? "text-up-ink" : tone === "down" ? "text-down-ink" : "text-ink")}>{value}</div>
+      {sub && <div className="mt-1 text-[12px] text-ink-3">{sub}</div>}
     </div>
   );
 }

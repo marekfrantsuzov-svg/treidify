@@ -443,7 +443,7 @@ function ShellInner({ user, plan, account, greeting, unread, children }: { user:
           <div className="min-w-0 flex-1">
             {dashboard ? (
               <>
-                <h1 className="truncate text-[26px] font-semibold leading-[32px] tracking-[-0.025em] text-ink">{greeting}, {first} <span aria-hidden>👋</span></h1>
+                <h1 className="truncate text-[26px] font-semibold leading-[32px] tracking-[-0.025em] text-ink">{greeting}, {first}</h1>
                 <p className="mt-1 truncate text-[15px] text-ink-2" suppressHydrationWarning>{now ? marketLine(now) : " "}</p>
               </>
             ) : null}

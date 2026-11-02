@@ -313,7 +313,7 @@ export function TerminalChart({
                 <button type="button" onClick={() => pick(active ? null : z)} aria-label={`${buy ? "Buy" : "Sell"} zone ${fmtPrice(z.lower, digits)} to ${fmtPrice(z.upper, digits)}, ${z.tf}, ${statusText[z.status]}. Open explanation.`}
                   className={cn("tz-zone-label", buy ? "is-buy" : "is-sell", `is-${z.status}`, active && "is-selected")}
                   style={atEdge ? { top: lt, right: 12 } : { top: lt, left: Math.max(4, b.right - 4), transform: "translateX(-100%)" }}>
-                  <span className="tz-zone-title">{buy ? "BUY ZONE" : "SELL ZONE"}<span className="tz-zone-tf">{z.tf}{z.status !== "active" ? ` · ${statusText[z.status]}` : ""}</span></span>
+                  <span className="tz-zone-title">{buy ? "Buy zone" : "Sell zone"}<span className="tz-zone-tf">{z.tf}{z.status !== "active" ? ` · ${statusText[z.status]}` : ""}</span></span>
                   <span className="num tz-zone-range">{fmtPrice(z.upper, digits)}<span className="opacity-50"> – </span>{fmtPrice(z.lower, digits)}</span>
                 </button>
               </div>

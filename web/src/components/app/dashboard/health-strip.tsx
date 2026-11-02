@@ -1,6 +1,6 @@
 "use client";
 
-import { Gauge, Layers, Link2, TrendingDown, TrendingUp, Wallet } from "lucide-react";
+import { Link2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { healthScore, inRange, performanceMetrics, periodRange } from "@/lib/analytics";
@@ -44,15 +44,12 @@ function ScoreBars({ score }: { score: number | null }) {
   );
 }
 
-function Metric({ icon, label, value, tone, sub }: { icon: React.ReactNode; label: string; value: React.ReactNode; tone?: "up" | "down" | "muted"; sub?: React.ReactNode }) {
+/** One figure in the metrics panel: a quiet label over a tabular number. The first figure (balance) leads. */
+function Metric({ label, value, tone, primary }: { label: string; value: React.ReactNode; tone?: "up" | "down" | "muted"; primary?: boolean }) {
   return (
-    <div className="dcard flex min-w-0 items-center gap-2.5 px-3 py-2.5 sm:flex-col sm:items-start sm:justify-center sm:gap-0.5 sm:px-3.5 sm:py-3 xl:px-4">
-      <span className="shrink-0 text-ink-2 [&>svg]:h-5 [&>svg]:w-5 sm:[&>svg]:h-[22px] sm:[&>svg]:w-[22px]" aria-hidden>{icon}</span>
-      <span className="flex min-w-0 flex-col sm:mt-1">
-        <span className="t-label truncate text-[12px] text-ink-2 sm:text-[13px]">{label}</span>
-        <span className={cn("t-metric num truncate !text-[clamp(17px,1.4vw,25px)] max-sm:!leading-[22px]", tone === "up" ? "text-up" : tone === "down" ? "text-down" : tone === "muted" ? "text-ink-3" : "text-ink")}>{value}</span>
-      </span>
-      {sub}
+    <div className={cn("d-metric", primary && "is-primary")}>
+      <span className="d-metric-label truncate">{label}</span>
+      <span className={cn("d-metric-value num truncate", tone === "up" ? "text-up-ink" : tone === "down" ? "text-down-ink" : tone === "muted" ? "text-ink-3" : "text-ink")}>{value}</span>
     </div>
   );
 }
@@ -95,12 +92,12 @@ export function HealthStrip(p: AccountOverviewProps) {
         <span className="block max-[379px]:hidden lg:hidden min-[1600px]:block"><ScoreBars score={none ? null : health.score} /></span>
       </section>
 
-      <div className="d-metrics">
-        <Metric icon={<Wallet />} label="Balance" tone={none ? "muted" : undefined} value={none || p.balance === null ? dash : <CountUp value={p.balance} format={money} />} />
-        <Metric icon={m.netProfit < 0 ? <TrendingDown className="text-down" /> : <TrendingUp className={none ? "" : "text-up"} />} label={`P&L (${periodLabel})`} tone={none ? "muted" : m.netProfit < 0 ? "down" : "up"}
+      <div className="d-metrics dcard" role="group" aria-label="Account metrics">
+        <Metric primary label="Balance" tone={none ? "muted" : undefined} value={none || p.balance === null ? dash : <CountUp value={p.balance} format={money} />} />
+        <Metric label={`P&L (${periodLabel})`} tone={none ? "muted" : m.netProfit < 0 ? "down" : "up"}
           value={none ? dash : <CountUp value={m.netProfit} format={(v) => fmtSignedMoney(v, p.currency)} />} />
-        <Metric icon={<Gauge />} label="Win Rate" tone={none ? "muted" : undefined} value={none || m.winRate === null ? dash : <CountUp value={m.winRate * 100} format={(v) => `${v.toFixed(1)}%`} />} />
-        <Metric icon={<Layers />} label="Profit Factor" tone={none ? "muted" : undefined} value={none || m.profitFactor === null ? dash : fmtNumber(m.profitFactor)} />
+        <Metric label="Win rate" tone={none ? "muted" : undefined} value={none || m.winRate === null ? dash : <CountUp value={m.winRate * 100} format={(v) => `${v.toFixed(1)}%`} />} />
+        <Metric label="Profit factor" tone={none ? "muted" : undefined} value={none || m.profitFactor === null ? dash : fmtNumber(m.profitFactor)} />
       </div>
     </>
   );

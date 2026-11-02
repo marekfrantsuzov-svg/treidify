@@ -1,14 +1,18 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import "./system.css";
 import { site } from "@/config/site";
 import { Providers } from "@/components/providers/providers";
 import { GlassIconDefs } from "@/components/icons/glass-icon";
 import { Waves } from "@/components/brand/waves";
 
-/** Inter (variable, latin), self-hosted and preloaded by Next with a metric-matched fallback: no layout shift. */
+/**
+ * Inter 4 (variable, latin) with the optical-size axis: text sizes get the Text cut, headings and large figures get the
+ * tighter Display cut automatically. Self-hosted and preloaded by Next with a metric-matched fallback: no layout shift.
+ */
 const inter = localFont({
-  src: "../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2",
+  src: "../../node_modules/@fontsource-variable/inter/files/inter-latin-opsz-normal.woff2",
   weight: "100 900",
   variable: "--font-inter",
   display: "swap",

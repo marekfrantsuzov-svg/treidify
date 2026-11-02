@@ -5,17 +5,16 @@ type Variant = "primary" | "secondary" | "ghost";
 type Size = "sm" | "md" | "lg";
 
 const base =
-  "press inline-flex items-center justify-center gap-2 rounded-full font-medium tracking-[-0.01em] disabled:pointer-events-none disabled:opacity-45 disabled:shadow-none aria-disabled:pointer-events-none aria-disabled:opacity-45 select-none";
+  "press inline-flex items-center justify-center gap-2 rounded-full font-medium tracking-[-0.012em] transition-colors disabled:pointer-events-none disabled:opacity-45 disabled:shadow-none aria-disabled:pointer-events-none aria-disabled:opacity-45 select-none";
 const variants: Record<Variant, string> = {
-  primary:
-    "bg-brand text-white shadow-[0_1px_0_rgba(255,255,255,0.28)_inset,0_10px_26px_-10px_var(--accent-glow)] hover:brightness-[1.08] hover:shadow-[0_1px_0_rgba(255,255,255,0.32)_inset,0_16px_34px_-10px_var(--accent-glow)] active:brightness-95",
-  secondary: "glass text-ink hover:bg-surface-strong hover:border-[color-mix(in_oklab,var(--accent)_24%,var(--border))] hover:shadow-[var(--shadow),0_10px_26px_-16px_var(--accent-glow)]",
-  ghost: "text-ink-2 hover:text-accent hover:bg-accent-soft active:bg-[color-mix(in_oklab,var(--accent)_16%,transparent)]",
+  primary: "bg-brand text-white hover:bg-[color-mix(in_oklab,var(--accent)_88%,black)]",
+  secondary: "border border-line-strong bg-surface text-ink hover:border-[color-mix(in_oklab,var(--text)_28%,transparent)]",
+  ghost: "text-ink-2 hover:text-ink hover:bg-[color-mix(in_oklab,var(--text)_6%,transparent)]",
 };
 const sizes: Record<Size, string> = {
   sm: "h-9 px-4 text-sm",
   md: "h-11 px-5 text-[15px]",
-  lg: "h-13 px-7 text-base",
+  lg: "h-12 px-6 text-[15px] sm:h-[52px] sm:px-7 sm:text-base",
 };
 
 export const buttonClass = (variant: Variant = "primary", size: Size = "md", className?: string) =>

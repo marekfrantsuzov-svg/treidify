@@ -1,0 +1,189 @@
+/* ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   Homepage, editorial composition (ed-*). Loaded only by the homepage, after lx/landing.css, whose mockup and chart
+   styles it reuses. Everything decorative from the previous landing (blurred colour fields, animated gradient text,
+   sheen on buttons, glass tiles, pulsing dots, orbit spokes) is switched off here; type and spacing do the work.
+   ───────────────────────────────────────────────────────────────────────────────────────────────────────────── */
+
+.ed-root { --ed-section: 64px; }
+@media (min-width: 640px) { .ed-root { --ed-section: 96px; } }
+@media (min-width: 1024px) { .ed-root { --ed-section: 136px; } }
+
+/* ── Shared pieces ── */
+.ed-kicker { font-size: var(--fs-label); line-height: 1.4; font-weight: 500; letter-spacing: -0.005em; color: var(--text-3); }
+.ed-quiet { color: var(--text-3); }
+.ed-head { max-width: 46rem; }
+.ed-head-title { margin-top: 14px; color: var(--text); }
+.ed-head-lead { margin-top: 18px; max-width: 38rem; }
+.ed-fine { margin-top: 14px; font-size: 13px; line-height: 1.5; color: var(--text-3); }
+.ed-section { position: relative; padding: var(--ed-section) 0 0; scroll-margin-top: 80px; }
+.ed-root .lx-section { padding: var(--ed-section) 0 0; }
+.ed-textlink { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 4px; font-size: 15px; font-weight: 500; color: var(--text); text-underline-offset: 4px; }
+.ed-textlink:hover { text-decoration: underline; text-decoration-thickness: 1px; }
+.ed-textlink svg { color: var(--text-3); transition: transform var(--dur-std) var(--ease-std); }
+.ed-textlink:hover svg { transform: translateY(1px); }
+/* The one brand gradient on the page: the primary action. Static, no sheen. */
+.ed-cta { background: var(--accent-grad) !important; }
+.ed-cta:hover { filter: brightness(1.06); }
+.ed-cta::after { display: none !important; }
+
+/* ── Hero ── */
+.ed-hero { padding-top: 40px; }
+@media (min-width: 640px) { .ed-hero { padding-top: 72px; } }
+@media (min-width: 1024px) { .ed-hero { padding-top: 96px; } }
+.ed-hero-grid { display: grid; gap: 24px; margin-top: 20px; }
+@media (min-width: 1024px) { .ed-hero-grid { grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 64px; align-items: end; margin-top: 28px; } }
+.ed-hero-title { color: var(--text); max-width: 12ch; }
+.ed-hero-side { max-width: 32rem; }
+@media (min-width: 1024px) { .ed-hero-side { padding-bottom: 10px; } }
+.ed-hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-top: 28px; }
+@media (max-width: 479.98px) { .ed-hero-actions .ed-cta { width: 100%; } }
+.ed-hero-stage { max-width: 1312px; margin: 56px auto 0; padding: 0 var(--gutter); }
+@media (min-width: 1024px) { .ed-hero-stage { margin-top: 80px; } }
+.ed-caption { margin-top: 20px; font-size: 12.5px; color: var(--text-3); }
+
+/* ── Figures ── */
+.ed-figure-grid { display: grid; margin-top: 40px; border-top: 1px solid var(--border-strong); }
+@media (min-width: 640px) { .ed-figure-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 56px; } }
+@media (min-width: 1100px) { .ed-figure-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.ed-figure { display: flex; flex-direction: column; padding: 24px 0 28px; border-bottom: 1px solid var(--border); }
+@media (min-width: 640px) { .ed-figure { padding: 28px 28px 32px 0; } .ed-figure:nth-child(2n) { padding-left: 28px; border-left: 1px solid var(--border); } }
+@media (min-width: 1100px) { .ed-figure { border-bottom: 0; } .ed-figure + .ed-figure { padding-left: 28px; border-left: 1px solid var(--border); } }
+.ed-figure-label { order: 1; font-size: var(--fs-label); font-weight: 500; color: var(--text-2); }
+.ed-figure-value { order: 2; margin-top: 18px; font-size: var(--fs-metric-xl); line-height: 0.95; letter-spacing: -0.045em; font-weight: 500; color: var(--text); white-space: nowrap; }
+.ed-figure-unit { margin-left: 0.18em; font-size: 0.34em; letter-spacing: -0.01em; font-weight: 500; color: var(--text-3); }
+.ed-figure-body { order: 3; margin-top: 16px; max-width: 30ch; font-size: 15px; line-height: 1.55; color: var(--text-2); }
+
+/* ── Split scenes ── */
+.ed-split { display: grid; gap: 40px; }
+@media (min-width: 1024px) { .ed-split { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 80px; align-items: center; } }
+.ed-points { display: grid; gap: 0; margin-top: 32px; border-top: 1px solid var(--border); }
+.ed-points li { display: grid; gap: 4px; padding: 18px 0; border-bottom: 1px solid var(--border); }
+.ed-points b { font-size: 16px; font-weight: 600; letter-spacing: -0.015em; color: var(--text); }
+.ed-points span { font-size: 15px; line-height: 1.55; color: var(--text-2); }
+
+.ed-panel { border-radius: var(--r-xl); padding: 24px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-lg); }
+@media (min-width: 640px) { .ed-panel { padding: 32px; } }
+.ed-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px; font-weight: 500; color: var(--text-2); }
+.ed-health-main { margin-top: 20px; }
+.ed-health-score { font-size: clamp(4.5rem, 3rem + 6vw, 8rem); line-height: 0.9; letter-spacing: -0.055em; font-weight: 500; color: var(--text); }
+.ed-health-score span { margin-left: 0.12em; font-size: 0.24em; letter-spacing: -0.01em; color: var(--text-3); }
+.ed-health-grade { margin-top: 14px; font-size: 15px; color: var(--text-2); }
+.ed-health-grade b { font-weight: 600; color: var(--up-ink, var(--up)); }
+.ed-meter { position: relative; display: block; height: 6px; margin-top: 18px; border-radius: 99px; background: var(--surface-inset); overflow: hidden; }
+.ed-meter i { position: absolute; inset: 0; border-radius: inherit; transform-origin: 0 50%; background: linear-gradient(90deg, var(--grad-a, #6a3df5), var(--grad-b, #fe85d0)); }
+.ed-factors { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 24px; margin-top: 24px; }
+.ed-factors li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border); font-size: 14px; color: var(--text-2); }
+.ed-factors b { font-weight: 600; color: var(--text); }
+@media (max-width: 479.98px) { .ed-factors { grid-template-columns: minmax(0, 1fr); } }
+.ed-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 24px; margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-strong); }
+@media (min-width: 768px) { .ed-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.ed-stats dt { font-size: 13px; color: var(--text-3); }
+.ed-stats dd { margin-top: 4px; font-size: clamp(1.25rem, 1.1rem + 0.5vw, 1.5rem); font-weight: 500; letter-spacing: -0.03em; color: var(--text); white-space: nowrap; }
+.ed-stats dd.is-up { color: var(--up-ink, var(--up)); }
+.ed-equity { position: relative; margin-top: 24px; height: 120px; }
+.ed-equity-label { position: absolute; left: 0; top: 0; font-size: 12.5px; color: var(--text-3); }
+.ed-equity .lx-equity { width: 100%; height: 100%; }
+
+/* ── Tools index ── */
+.ed-index { display: grid; gap: 40px; }
+@media (min-width: 1024px) { .ed-index { grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: 80px; align-items: start; } .ed-index-head { position: sticky; top: 112px; } }
+.ed-index-list { border-top: 1px solid var(--border-strong); }
+.ed-index-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; padding: 20px 0; border-bottom: 1px solid var(--border); transition: background-color var(--dur-std) var(--ease-std); }
+@media (min-width: 768px) { .ed-index-row { grid-template-columns: minmax(0, 13rem) minmax(0, 1fr) auto; align-items: baseline; padding: 22px 4px; } }
+.ed-index-row:hover .ed-index-title { color: var(--accent); }
+.ed-index-title { font-size: 17px; font-weight: 600; letter-spacing: -0.02em; color: var(--text); transition: color var(--dur-std) var(--ease-std); }
+.ed-index-body { grid-column: 1 / -1; grid-row: 2; font-size: 15px; line-height: 1.5; color: var(--text-2); }
+@media (min-width: 768px) { .ed-index-body { grid-column: auto; grid-row: auto; } }
+.ed-index-meta { display: inline-flex; align-items: center; gap: 10px; justify-self: end; color: var(--text-3); }
+.ed-index-meta em { font-style: normal; font-size: 12.5px; font-weight: 500; color: var(--text-3); white-space: nowrap; }
+
+/* ── Steps ── */
+.ed-steps { display: grid; margin-top: 40px; }
+@media (min-width: 900px) { .ed-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; margin-top: 56px; } }
+.ed-step { padding: 24px 0 28px; border-top: 1px solid var(--border-strong); }
+.ed-step-n { display: block; margin-bottom: 28px; font-size: 15px; font-weight: 500; color: var(--text-3); }
+.ed-step h3 { color: var(--text); }
+.ed-step .ts-body { margin-top: 10px; }
+
+/* ── Final ── */
+.ed-final { padding-bottom: var(--ed-section); }
+.ed-final-inner { padding-top: 48px; border-top: 1px solid var(--border-strong); }
+.ed-final-title { max-width: 14ch; color: var(--text); font-size: clamp(2.5rem, 1.5rem + 4vw, 5rem); }
+.ed-final-row { display: grid; gap: 8px; margin-top: 32px; }
+@media (min-width: 1024px) { .ed-final-row { grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 64px; } .ed-final-row .ed-hero-actions { margin-top: 0; } .ed-final-row .ts-lead { max-width: 30rem; } }
+
+/* ── Reused landing sections, brought into the same system ── */
+.ed-root .lx-eyebrow { gap: 0; font-size: var(--fs-label); font-weight: 500; letter-spacing: -0.005em; text-transform: none; color: var(--text-3); }
+.ed-root .lx-eyebrow::before, .ed-root .lx-eyebrow::after { display: none; }
+.ed-root .lx-h2 { font-size: var(--fs-h2); line-height: var(--lh-heading); letter-spacing: var(--tr-heading); font-weight: 600; }
+.ed-root .lx-sub { font-size: var(--fs-body); line-height: var(--lh-body); color: var(--text-2); }
+@media (min-width: 640px) { .ed-root .lx-sub { font-size: 17px; } }
+.ed-root .lx-grad-text { background: none; -webkit-background-clip: border-box; background-clip: border-box; color: var(--text-3); animation: none; }
+.ed-root .lx-hero-bg, .ed-root .lx-coach-glow { display: none; }
+.ed-root .lx-tile, .ed-root .lx-stat, .ed-root .lx-node {
+  border-radius: var(--r-xl); background: var(--surface); box-shadow: var(--shadow); backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+.ed-root .lx-tile-glow::before { display: none; }
+.ed-root .lx-tile-head { font-weight: 500; color: var(--text-2); }
+.ed-root .lx-stat b, .ed-root .lx-v { font-weight: 500; }
+.ed-root .lx-illus { font-weight: 500; }
+.ed-root .lx-dot::after { animation: none; display: none; }
+.ed-root .lx-typing i { animation-duration: 1.4s; }
+
+/* Mockups: flat frames, no reflections or coloured shadows. */
+.ed-root .lx-desk { box-shadow: var(--shadow-lg); border-color: var(--border-strong); border-radius: 14px; }
+.ed-root .lx-desk::before { display: none; }
+.ed-root .lx-desk-body { background: var(--bg-0); }
+.ed-root .lx-phone { box-shadow: 0 30px 60px -30px rgba(10, 10, 20, 0.45); }
+.ed-root .lx-phone-screen::before { display: none; }
+.ed-root .lx-card { box-shadow: none; }
+:root[data-theme="dark"] .ed-root .lx-desk { box-shadow: var(--shadow-lg); }
+
+/* Timeframe story: quiet inactive steps, the active timeframe marked in ink, not a gradient. */
+.ed-root .lx-step-btn { border-radius: var(--r-l); background: transparent; border-color: transparent; border-top: 1px solid var(--border); border-radius: 0; padding-left: 0; padding-right: 0; }
+.ed-root .lx-step.is-active .lx-step-btn { background: transparent; box-shadow: none; border-color: transparent; border-top-color: var(--text); }
+.ed-root .lx-step-tf { width: 44px; height: 44px; border-radius: var(--r-m); font-weight: 600; }
+.ed-root .lx-step.is-active .lx-step-tf { color: var(--bg-0); background: var(--text); box-shadow: none; }
+.ed-root .lx-step-title { font-weight: 600; }
+.ed-root .lx-step-read { border-radius: var(--r-m); }
+@media (min-width: 1024px) { .ed-root .lx-step-btn { padding: 28px 0; } }
+
+/* Coach: one dark scene in a neutral charcoal, no coloured light. */
+.ed-root .lx-coach { border-radius: 24px; background: #0f0f12; box-shadow: none; }
+.ed-root .lx-coach .lx-grad-text { color: #8b8b96; }
+.ed-root .lx-chat { border-radius: var(--r-xl); background: rgba(255, 255, 255, 0.04); box-shadow: none; backdrop-filter: none; }
+.ed-root .lx-msg { border-radius: 4px var(--r-l) var(--r-l) var(--r-l); }
+.ed-root .lx-coach-ico { background: rgba(255, 255, 255, 0.08); box-shadow: none; color: #fff; }
+.ed-root .lx-coach .lx-tile { background: rgba(255, 255, 255, 0.04); }
+.ed-root .lx-stops i { background: #5b8cff; }
+.ed-root .lx-bars em.is-good { background: var(--up); }
+.ed-root .lx-bars em.is-bad { background: var(--down); }
+:root[data-theme="dark"] .ed-root .lx-coach { background: #141417; border: 1px solid var(--border); }
+
+/* Macro and journal: the left-aligned heading rhythm of the rest of the page. */
+.ed-root #macro .max-w-3xl { margin-left: 0; text-align: left; }
+.ed-root .lx-mk.is-on, .ed-root .lx-ev.is-on { box-shadow: none; }
+.ed-root .lx-day { border-radius: 8px; }
+.ed-root .lx-day:hover { transform: none; }
+
+/* Pricing and app cards. */
+.ed-root .appstore { border-radius: 24px; }
+.ed-root .appstore .text-gradient { color: var(--text); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ed-textlink svg { transition: none; }
+}
+
+/* Journal summary: figures on a hairline, not four more cards. */
+.ed-root .lx-journal-stats { gap: 0 24px; border-top: 1px solid var(--border-strong); }
+.ed-root .lx-stat { padding: 16px 0 4px; border: 0; border-radius: 0; background: none; box-shadow: none; }
+.ed-root .lx-stat small { font-size: 13px; }
+.ed-root .lx-stat b { margin-top: 6px; font-size: clamp(1.75rem, 1.4rem + 1.2vw, 2.5rem); line-height: 1; letter-spacing: -0.035em; }
+.ed-root .lx-stat b.is-up { color: var(--up-ink, var(--up)); }
+.ed-root .lx-stat b.is-down { color: var(--down-ink, var(--down)); }
+
+/* Sessions: open sessions in the accent, closed ones in a quiet tint. */
+.ed-root .lx-sess-track i { background: color-mix(in oklab, var(--text) 10%, transparent); }
+.ed-root .lx-sess-row.is-open .lx-sess-track i { background: var(--accent); }
+.ed-root .lx-sess-now { box-shadow: none; }
+.ed-root .app-icon { box-shadow: 0 0 0 1px var(--border); }

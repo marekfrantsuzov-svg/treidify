@@ -117,7 +117,7 @@ export function AnalysisBoard({ initial, details }: { initial: IntelSnapshot; de
             {ov.flatMap((o) => o.zones.filter((z) => z.status === "active" || z.status === "tested").slice(0, 4).map((z) => ({ z, o }))).sort((a, b) => Math.abs((a.z.lower + a.z.upper) / 2 - (g.lastPrice ?? 0)) - Math.abs((b.z.lower + b.z.upper) / 2 - (g.lastPrice ?? 0))).slice(0, 6).map(({ z, o }) => (
               <button key={z.id} type="button" onClick={() => setOpen({ z, o })} className={cn("sd-card", z.side === "buy" ? "is-buy" : "is-sell")}>
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] font-extrabold tracking-[0.1em]">{z.side === "buy" ? "BUY ZONE" : "SELL ZONE"}</span>
+                  <span className="text-[12px] font-semibold">{z.side === "buy" ? "Buy zone" : "Sell zone"}</span>
                   <span className="text-[11px] font-semibold text-ink-3">{z.tf} · {statusText[z.status]} · {z.strength}</span>
                 </div>
                 <div className="num mt-1 text-[19px] font-semibold tracking-[-0.01em] text-ink">{fmtPrice(z.lower, g.digits)} – {fmtPrice(z.upper, g.digits)}</div>
