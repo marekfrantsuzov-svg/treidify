@@ -4,7 +4,7 @@ import { analyzeStructure, type InstrumentIntel, type Trend } from "@/lib/intell
 import type { Candle } from "@/lib/analytics/types";
 import { reportError } from "@/lib/monitoring";
 import { loadIntel } from "./load";
-import { marketDataStatus } from "./service";
+import { marketDataStatus, marketPlan, planCache } from "./service";
 import { twelveData } from "./twelvedata";
 
 export type OverviewCategory = "Forex" | "Metals" | "Indices" | "Crypto";
@@ -61,7 +61,7 @@ export const marketOverview = cache(async (): Promise<OverviewRow[]> => {
   ];
   const st = marketDataStatus();
   const unavailable = (e: (typeof EXTRA)[number]): OverviewRow => ({ symbol: e.symbol, name: e.name, category: e.category, digits: e.digits, price: null, changePct: null, trend: null, trendTf: null, status: "unavailable" });
-  const client = st.configured ? twelveData(process.env.MARKET_DATA_API_KEY!.trim()) : null;
+  const client = st.configured ? twelveData(process.env.MARKET_DATA_API_KEY!.trim(), fetch, planCache(await marketPlan())) : null;
   const extra = await Promise.all(EXTRA.map(async (e): Promise<OverviewRow> => {
     if (!client) return unavailable(e);
     try {

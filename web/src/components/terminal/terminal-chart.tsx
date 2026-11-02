@@ -20,7 +20,7 @@ export const LAYERS: { id: Layer; label: string }[] = [
   { id: "zones", label: "Zones" }, { id: "fib", label: "Fibonacci" }, { id: "liquidity", label: "Liquidity" }, { id: "structure", label: "Structure" }, { id: "volume", label: "Volume" },
 ];
 export type Layers = Record<Layer, boolean>;
-export interface ChartMeta { sample: boolean; freshness: string | null; method: string | null; lastBarAt: string | null; vendor?: string | null; fetchedAt?: string | null }
+export interface ChartMeta { sample: boolean; freshness: string | null; method: string | null; lastBarAt: string | null; vendor?: string | null; fetchedAt?: string | null; plan?: string | null; refreshSeconds?: number | null }
 const VENDOR_NAME: Record<string, string> = { twelvedata: "Twelve Data" };
 const FRESH_TEXT: Record<string, string> = { live: "Up to date", delayed: "Delayed", stale: "Stale", closed: "Market closed" };
 const hhmm = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -129,12 +129,13 @@ export function TerminalChart({
             if (first) { setErr(body.message ?? "Market data unavailable."); setState("error"); setCandles([]); } else setRefreshErr(true);
           } else {
             setCandles(body.candles); setRefreshErr(false);
-            setMeta({ sample: !!body.sample, freshness: body.freshness ?? null, method: body.method ?? null, lastBarAt: body.lastBarAt ?? null, vendor: body.vendor ?? null, fetchedAt: body.fetchedAt ?? null });
+            setMeta({ sample: !!body.sample, freshness: body.freshness ?? null, method: body.method ?? null, lastBarAt: body.lastBarAt ?? null, vendor: body.vendor ?? null, fetchedAt: body.fetchedAt ?? null, plan: body.plan ?? null, refreshSeconds: body.refreshSeconds ?? null });
             setState("ready");
           }
           if (body.sample) return; // sample bars never refresh: there is nothing live to follow
           first = false;
-          timer = setTimeout(tick, REFRESH_MS[tf]);
+          // The server says how long its copy stays current for the connected data plan; never poll faster than that.
+          timer = setTimeout(tick, Math.max(REFRESH_MS[tf], (Number(body.refreshSeconds) || 0) * 1000));
         })
         .catch(() => { if (!live) return; if (first) { setErr("Market data unavailable."); setState("error"); } else setRefreshErr(true); timer = setTimeout(tick, REFRESH_MS[tf] * 2); });
     };
@@ -364,7 +365,7 @@ export function TerminalChart({
 
       {state === "ready" && !sample && meta.lastBarAt && (
         <p className="mt-1.5 px-1 text-[11.5px] leading-snug text-ink-3" aria-live="polite">
-          {VENDOR_NAME[meta.vendor ?? ""] ?? meta.vendor ?? "Provider"}{meta.method === "computed-ice" ? " · computed from the six ICE pairs" : ""} · last bar {hhmm(meta.lastBarAt)} · {FRESH_TEXT[meta.freshness ?? ""] ?? "Unknown"}{meta.fetchedAt ? ` · checked ${hhmm(meta.fetchedAt)}` : ""}
+          {VENDOR_NAME[meta.vendor ?? ""] ?? meta.vendor ?? "Provider"}{meta.method === "computed-ice" ? " · computed from the six ICE pairs" : ""} · last bar {hhmm(meta.lastBarAt)} · {FRESH_TEXT[meta.freshness ?? ""] ?? "Unknown"}{meta.plan === "free" && meta.refreshSeconds ? ` · free data plan, updates every ${Math.round(meta.refreshSeconds / 60)} min` : meta.fetchedAt ? ` · checked ${hhmm(meta.fetchedAt)}` : ""}
           {refreshErr && <span className="text-down"> · Refresh failed, showing the last bars received</span>}
         </p>
       )}

@@ -10,6 +10,9 @@ export const TD_INTERVAL: Record<Timeframe, string> = { "1M": "1min", "5M": "5mi
 /** Data-cache lifetime per timeframe, in seconds. Shorter than a bar so the in-progress bar keeps moving. */
 export const CACHE_SECONDS: Record<Timeframe, number> = { "1M": 15, "5M": 20, "15M": 30, "30M": 45, "1H": 60, "4H": 120, "1D": 300, "1W": 900 };
 
+/** Cache lifetimes on the free plan (8 requests/minute, 800/day): long enough that one person can use the app all day. */
+export const FREE_PLAN_CACHE_SECONDS: Record<Timeframe, number> = { "1M": 900, "5M": 900, "15M": 900, "30M": 900, "1H": 900, "4H": 3600, "1D": 21_600, "1W": 21_600 };
+
 export class VendorError extends Error {
   constructor(readonly vendor: string, message: string, readonly status?: number) { super(`${vendor}: ${message}`); }
 }
@@ -44,7 +47,7 @@ export function parseSeries(body: TdSeries): Candle[] {
     .sort((a, b) => a.t - b.t);
 }
 
-export function twelveData(apiKey: string, fetchImpl: Fetch = fetch) {
+export function twelveData(apiKey: string, fetchImpl: Fetch = fetch, cacheSeconds: Record<Timeframe, number> = CACHE_SECONDS) {
   async function get<T>(path: string, params: Record<string, string>, revalidate: number): Promise<T> {
     const url = new URL(path, BASE);
     for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
@@ -56,8 +59,14 @@ export function twelveData(apiKey: string, fetchImpl: Fetch = fetch) {
   return {
     vendor: "twelvedata" as const,
     async candles(vendorSymbol: string, tf: Timeframe, count: number): Promise<Candle[]> {
-      const body = await get<TdSeries>("/time_series", { symbol: vendorSymbol, interval: TD_INTERVAL[tf], outputsize: String(Math.min(count, 5000)), timezone: "UTC", order: "asc" }, CACHE_SECONDS[tf]);
+      const body = await get<TdSeries>("/time_series", { symbol: vendorSymbol, interval: TD_INTERVAL[tf], outputsize: String(Math.min(count, 5000)), timezone: "UTC", order: "asc" }, cacheSeconds[tf]);
       return parseSeries(body);
+    },
+    /** The key's plan: requests per minute and category. Twelve Data does not charge credits for this call. */
+    async usage(): Promise<{ perMinute: number | null; category: string | null }> {
+      const b = await get<{ plan_limit?: number; plan_category?: string; status?: string; message?: string }>("/api_usage", {}, 600);
+      if (b.status === "error") throw new VendorError("twelvedata", b.message ?? "usage unavailable");
+      return { perMinute: typeof b.plan_limit === "number" ? b.plan_limit : null, category: b.plan_category ?? null };
     },
   };
 }

@@ -28,7 +28,7 @@ jobs:
           cat > /tmp/show.py <<'PY'
           import json, sys
           d = json.load(sys.stdin)
-          print("configured:", d.get("configured"), "| vendor:", d.get("vendor"), "| needs:", d.get("needs"), "| dxy:", d.get("dxyMethod"), "| commit:", d.get("commit"))
+          print("configured:", d.get("configured"), "| vendor:", d.get("vendor"), "| needs:", d.get("needs"), "| plan:", d.get("plan"), "| dxy:", d.get("dxyMethod"), "| commit:", d.get("commit"))
           for r in d.get("results", []):
               if r["ok"]:
                   print("  OK   %-7s %-4s bars=%-4s last=%s close=%s %-8s %sms method=%s" % (r["symbol"], r["tf"], r["bars"], r["lastBarAt"], r["lastClose"], r["freshness"], r["ms"], r["method"]))

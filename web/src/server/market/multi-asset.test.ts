@@ -18,7 +18,7 @@ function mockVendor(table: Record<string, unknown>) {
 }
 
 describe("provider coverage is verified, never assumed", () => {
-  beforeEach(() => { vi.stubEnv("MARKET_DATA_PROVIDER", "twelvedata"); vi.stubEnv("MARKET_DATA_API_KEY", "test"); vi.stubEnv("DATABASE_URL", ""); _resetCoverageMemory(); });
+  beforeEach(() => { vi.stubEnv("MARKET_DATA_PROVIDER", "twelvedata"); vi.stubEnv("MARKET_DATA_API_KEY", "test"); vi.stubEnv("MARKET_DATA_PLAN", "paid"); vi.stubEnv("DATABASE_URL", ""); _resetCoverageMemory(); });
   afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
   it("falls through refused candidates and remembers the one that served bars", async () => {
@@ -37,6 +37,31 @@ describe("provider coverage is verified, never assumed", () => {
     const r = await getSeries("UKOIL", "1H", 50);
     expect(r).toMatchObject({ ok: false, reason: "not-covered" });
     expect(r.ok ? "" : r.detail).toContain("XBR/USD: twelvedata: symbol XBR/USD not found");
+  });
+
+  it("a symbol the provider refused is not requested again within a day", async () => {
+    const calls = mockVendor({});
+    await getSeries("UKOIL", "1H", 50);
+    const n = calls.length;
+    const again = await getSeries("UKOIL", "4H", 50);
+    expect(again).toMatchObject({ ok: false, reason: "not-covered" });
+    expect(again.ok ? "" : again.detail).toContain("not found");
+    expect(calls.length).toBe(n);
+  });
+
+  it("the free plan stretches cache and refresh times; a paid plan keeps them short", async () => {
+    mockVendor({ "EUR/USD": bars(50, 1.1) });
+    const paid = await getSeries("EURUSD", "1M", 50);
+    expect(paid).toMatchObject({ ok: true, plan: "paid", refreshSeconds: 15 });
+    vi.stubEnv("MARKET_DATA_PLAN", "free");
+    const free = await getSeries("EURUSD", "1M", 50);
+    expect(free).toMatchObject({ ok: true, plan: "free", refreshSeconds: 900 });
+  });
+
+  it("reads the key's plan from the provider when MARKET_DATA_PLAN is not set", async () => {
+    vi.stubEnv("MARKET_DATA_PLAN", "");
+    vi.stubGlobal("fetch", vi.fn(async (url: URL) => new Response(JSON.stringify(url.pathname === "/api_usage" ? { plan_limit: 8, plan_category: "basic" } : bars(50, 1.1)), { status: 200 })));
+    expect(await getSeries("EURUSD", "1H", 50)).toMatchObject({ ok: true, plan: "free", refreshSeconds: 900 });
   });
 
   it("rate limits and outages are errors, not coverage verdicts", async () => {
