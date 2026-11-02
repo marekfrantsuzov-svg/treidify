@@ -127,7 +127,7 @@ export function JournalTable({ rows, readOnly = false }: { rows: JournalRow[]; r
   if (!rows.length) return <p className="p-5 text-sm text-ink-3">No trades match these filters.</p>;
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[720px] text-sm">
+      <table aria-label="Closed trades" className="w-full min-w-[720px] text-sm">
         <thead>
           <tr className="text-left text-[11px] uppercase tracking-[0.08em] text-ink-3">
             {["Closed", "Instrument", "Side", "Lots", "Held", "Session", "Net", "Journal"].map((h, i) => <th key={h} className={cn("px-3 py-2.5 font-medium", (i === 3 || i === 6) && "text-right")}>{h}</th>)}
