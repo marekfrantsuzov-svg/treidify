@@ -4,7 +4,7 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="auth-shell flex min-h-dvh flex-col">
       <header className="flex items-center justify-between px-5 py-5 sm:px-8">
         <Wordmark />
         <ThemeToggle />

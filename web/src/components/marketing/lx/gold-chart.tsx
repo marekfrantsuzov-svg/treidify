@@ -78,7 +78,7 @@ export function GoldChart({ scene, layers = { zones: true, fib: false, liquidity
             className={cn("lx-bubble", z.kind === "demand" ? "is-demand" : "is-supply")}
             style={{ top: pct((z.lo + z.hi) / 2), animationDelay: `${0.45 + i * 0.12}s` }}
           >
-            <b>{z.kind === "demand" ? "BUY ZONE" : "SELL ZONE"} <em>{scene.tf}</em></b>
+            <b>{z.kind === "demand" ? "Buy zone" : "Sell zone"} <em>{scene.tf}</em></b>
             <span className="num">{fmt(z.lo)} – {fmt(z.hi)}</span>
           </div>
         ))}

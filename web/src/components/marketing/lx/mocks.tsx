@@ -82,12 +82,14 @@ export function DesktopMock({ className }: { className?: string }) {
                 <small>Consistent risk, steady growth</small>
               </div>
             </div>
-            {METRICS.map((m) => (
-              <div key={m.k} className="lx-card lx-metric">
-                <small>{m.k}</small>
-                <b className={cn("num", m.up && "is-up")}>{m.v}</b>
-              </div>
-            ))}
+            <div className="lx-card lx-metrics">
+              {METRICS.map((m, i) => (
+                <div key={m.k} className={cn("lx-metric", i === 0 && "is-primary")}>
+                  <small>{m.k}</small>
+                  <b className={cn("num", m.up && "is-up")}>{m.v}</b>
+                </div>
+              ))}
+            </div>
           </div>
           <div className="lx-row2">
             <div className="lx-card lx-chart-card">
@@ -143,9 +145,9 @@ export function PhoneMock({ className }: { className?: string }) {
             <Ring value={82} />
             <div><b>Account Health</b><span className="lx-chip is-up">Strong</span> <Illustrative /></div>
           </div>
-          <div className="lx-phone-metrics">
+          <div className="lx-card lx-phone-metrics">
             {METRICS.map((m) => (
-              <div key={m.k} className="lx-card lx-metric"><small>{m.k}</small><b className={cn("num", m.up && "is-up")}>{m.v}</b></div>
+              <div key={m.k} className="lx-metric"><small>{m.k}</small><b className={cn("num", m.up && "is-up")}>{m.v}</b></div>
             ))}
           </div>
           <div className="lx-card lx-chart-card is-phone">

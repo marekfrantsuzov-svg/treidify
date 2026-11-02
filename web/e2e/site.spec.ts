@@ -1,13 +1,13 @@
 import { expect, test } from "@playwright/test";
 
-/** The public homepage: hero with both actions, illustrative product mockups, six showcase sections, app store teaser and pricing. */
+/** The public homepage: hero, illustrative product preview, the editorial scenes, tool index, app store teaser and pricing. */
 test("homepage hero, product showcase sections, app store teaser and pricing", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/Know where gold reacts before you trade\./);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/Know where gold reacts\. Before you trade\./);
   await expect(page.getByRole("link", { name: /Create free account/ }).first()).toHaveAttribute("href", "/signup");
   await expect(page.getByText(/Illustrative product preview/)).toBeVisible();
 
-  for (const h of ["Your whole trading picture, on one screen.", "Analysis that changes with the timeframe.", "Every trading day, accounted for.", "A coach that has read every trade you took.", "The forces behind gold, in one desk.", "All your trading tools, one platform.", "From sign-up to a clearer view in three steps.", "Treidify for iPhone", "Simple pricing.", "Trade with more clarity."]) {
+  for (const h of ["Numbers you can hold the product to.", "Your account, read the way a risk manager would.", "Analysis that changes with the timeframe.", "Every trading day, accounted for.", "A coach that has read every trade you took.", "The forces behind gold, in one desk.", "Nine tools. One account, one set of risk rules.", "Three steps to a clearer view.", "Treidify for iPhone", "Simple pricing.", "Trade with more clarity. Start today."]) {
     await expect(page.getByRole("heading", { name: h })).toBeVisible();
   }
   for (const f of ["Account Health", "MT5 sync", "Zone engine", "Fibonacci and liquidity", "Macro Desk", "Economic calendar", "Trading journal", "AI coach", "Community"]) {

@@ -478,3 +478,13 @@
   .lx-root *, .lx-root *::before, .lx-root *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; animation-delay: 0s !important; transition-duration: 0.001ms !important; }
   .lx-hero-bg i, .lx-glass-card, .lx-grad-text, .lx-cta::after, .lx-strip-track, .lx-coach-glow, .lx-orbit-spoke { animation: none !important; }
 }
+
+/* Metrics panel, as in the app: one card, four figures divided by hairlines, the balance leads. */
+.lx-row1 { grid-template-columns: 1.9fr 4fr; }
+.lx-metrics { display: grid; grid-template-columns: 1.3fr repeat(3, 1fr); overflow: hidden; }
+.lx-metrics .lx-metric + .lx-metric { border-left: 1px solid var(--border); }
+.lx-metric b { font-weight: 500; letter-spacing: -0.03em; }
+.lx-metrics .lx-metric.is-primary b { font-size: 1.45em; }
+.lx-phone-metrics { gap: 0; overflow: hidden; }
+.lx-phone-metrics .lx-metric:nth-child(2n) { border-left: 1px solid var(--border); }
+.lx-phone-metrics .lx-metric:nth-child(n + 3) { border-top: 1px solid var(--border); }

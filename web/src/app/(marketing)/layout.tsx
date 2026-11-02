@@ -6,7 +6,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
   return (
     <>
       <Header />
-      <main id="main">{children}</main>
+      <main id="main" className="mk-root">{children}</main>
       <Footer />
       <CookieBanner />
       <Analytics />

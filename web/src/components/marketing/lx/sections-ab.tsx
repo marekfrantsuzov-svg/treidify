@@ -1,14 +1,14 @@
 "use client";
 
 import { motion } from "motion/react";
-import { Activity, ArrowUpRight, Droplets, Hourglass, Layers, Sparkles, Waypoints } from "lucide-react";
+import { Activity, ArrowUpRight, Droplets, Hourglass, Layers, Waypoints } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Container } from "@/components/ui/container";
 import { Reveal } from "@/components/ui/reveal";
 import { cn } from "@/lib/cn";
-import { EQUITY, SCENES, TFS, type Tf } from "./data";
+import { SCENES, TFS, type Tf } from "./data";
 import { GoldChart, type Layers as ChartLayers } from "./gold-chart";
-import { CountUp, EquityLine, Illustrative, Ring } from "./primitives";
+import { Illustrative } from "./primitives";
 
 export function LxHead({ eyebrow, title, lead, align = "left", id }: { eyebrow: string; title: React.ReactNode; lead?: React.ReactNode; align?: "left" | "center"; id?: string }) {
   return (
@@ -17,112 +17,6 @@ export function LxHead({ eyebrow, title, lead, align = "left", id }: { eyebrow: 
       <h2 id={id} className="lx-h2 mt-4">{title}</h2>
       {lead && <p className="lx-sub mt-5 sm:text-lg">{lead}</p>}
     </Reveal>
-  );
-}
-
-const FACTORS = [
-  { k: "Risk discipline", v: 88 },
-  { k: "Consistency", v: 79 },
-  { k: "Drawdown control", v: 84 },
-  { k: "Win / loss balance", v: 71 },
-];
-
-const OVERVIEW = [
-  { sym: "XAUUSD", name: "Gold", price: "4,118.40", trend: "BULLISH (4H)", up: true },
-  { sym: "XAGUSD", name: "Silver", price: "48.62", trend: "BULLISH (1H)", up: true },
-  { sym: "DXY", name: "US Dollar Index", price: "98.74", trend: "BEARISH (4H)", up: false },
-  { sym: "EURUSD", name: "Euro / Dollar", price: "1.1642", trend: "BULLISH (4H)", up: true },
-];
-
-/** Section A: the dashboard as a bento of live-feeling, clearly illustrative widgets. */
-export function IntelligenceSection() {
-  return (
-    <section id="intelligence" className="lx-section" aria-labelledby="intel-title">
-      <Container>
-        <LxHead
-          id="intel-title"
-          eyebrow="Your trading intelligence"
-          title={<>Your whole trading picture, <span className="lx-grad-text">on one screen.</span></>}
-          lead="Account health, MT5 performance, the gold chart, the wider market and AI insights. Everything you check before a trade, in the order you check it."
-        />
-        <div className="lx-bento mt-12 sm:mt-16">
-          <Reveal className="lx-b lx-b-health">
-            <div className="lx-tile lx-health-tile h-full">
-              <div className="lx-tile-head"><span>Account Health</span><Illustrative /></div>
-              <div className="lx-health-big">
-                <Ring value={82} className="lx-ring-xl" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-[15px] font-semibold text-ink">Strong <span className="font-normal text-ink-3">· up 6 points this month</span></p>
-                  <ul className="lx-factors mt-4">
-                    {FACTORS.map((f, i) => (
-                      <li key={f.k}>
-                        <span>{f.k}</span><b className="num">{f.v}</b>
-                        <i><motion.em initial={{ scaleX: 0 }} whileInView={{ scaleX: f.v / 100 }} viewport={{ once: true }} transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.2 + i * 0.1 }} /></i>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-              <div className="lx-trendbars">
-                <small className="lx-k">Health score, last 8 weeks</small>
-                <div>
-                  {[64, 68, 66, 71, 74, 73, 78, 82].map((v, i) => (
-                    <motion.i key={i} style={{ height: `${v}%` }} initial={{ scaleY: 0 }} whileInView={{ scaleY: 1 }} viewport={{ once: true }} transition={{ duration: 0.7, delay: 0.3 + i * 0.06, ease: [0.22, 1, 0.36, 1] }}><span className="num">{v}</span></motion.i>
-                  ))}
-                </div>
-              </div>
-              <p className="lx-tile-foot">Scored from your synced trades: risk per trade, stop discipline, drawdown and consistency.</p>
-            </div>
-          </Reveal>
-
-          <Reveal className="lx-b lx-b-perf" delay={0.06}>
-            <div className="lx-tile h-full">
-              <div className="lx-tile-head"><span>MT5 performance · 30 days</span><Illustrative /></div>
-              <div className="mt-3 flex flex-wrap items-end gap-x-6 gap-y-2">
-                <div><small className="lx-k">Net P&amp;L</small><CountUp to={1284.6} decimals={2} prefix="+$" className="lx-v is-up" /></div>
-                <div><small className="lx-k">Max drawdown</small><span className="lx-v num">3.1%</span></div>
-                <div><small className="lx-k">Trades</small><span className="lx-v num">42</span></div>
-              </div>
-              <div className="lx-perf-chart"><EquityLine values={EQUITY} stroke="var(--up)" /></div>
-            </div>
-          </Reveal>
-
-          <Reveal className="lx-b lx-b-ai" delay={0.1}>
-            <div className="lx-tile lx-tile-glow h-full">
-              <div className="lx-tile-head"><span className="inline-flex items-center gap-2"><Sparkles className="h-4 w-4 text-accent" />AI insight</span><Illustrative /></div>
-              <p className="mt-3 text-[17px] font-medium leading-snug tracking-[-0.01em] text-ink">Gold is in a 1H buy zone, but there is no 5M change of character yet.</p>
-              <p className="mt-2 text-[14px] leading-relaxed text-ink-2">A touch is not a setup. Treidify waits for confirmation, and only then shows BUY with a structural stop of 38 pips ($3.80).</p>
-            </div>
-          </Reveal>
-
-          <Reveal className="lx-b lx-b-chart" delay={0.04}>
-            <div className="lx-tile h-full">
-              <div className="lx-tile-head"><span className="inline-flex items-center gap-2"><span className="lx-gold" />XAUUSD · 1H</span><Illustrative /></div>
-              <GoldChart scene={SCENES["1H"]} className="mt-3" />
-            </div>
-          </Reveal>
-
-          <Reveal className="lx-b lx-b-over" delay={0.08}>
-            <div className="lx-tile h-full">
-              <div className="lx-tile-head"><span>Market overview</span><Illustrative /></div>
-              <table className="lx-table mt-2">
-                <thead><tr><th>Asset</th><th className="text-right">Price</th><th className="text-right">Trend</th></tr></thead>
-                <tbody>
-                  {OVERVIEW.map((r) => (
-                    <tr key={r.sym}>
-                      <td><b>{r.sym}</b><small>{r.name}</small></td>
-                      <td className="num text-right">{r.price}</td>
-                      <td className="text-right"><span className={cn("lx-trend", r.up ? "is-up" : "is-down")}>{r.trend}</span></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <p className="lx-tile-foot">Trend is read from market structure on the named timeframe, never from a 24-hour change.</p>
-            </div>
-          </Reveal>
-        </div>
-      </Container>
-    </section>
   );
 }
 
