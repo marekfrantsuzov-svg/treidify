@@ -2,7 +2,7 @@ import "server-only";
 import type { UpcomingEvent } from "@/lib/intelligence";
 import { reportError } from "@/lib/monitoring";
 import { finnhub, type RawEvent } from "./finnhub";
-import { macroKeyState, officialCalendar } from "../macro/service";
+import { officialCalendar } from "../macro/service";
 import { cleanLine, cleanText } from "@/lib/news/sanitize";
 import { newsConfig } from "./config";
 import { categoriesOf, eventImportance, headlineImportance, tagInstruments, trackedKind, type Instrument, type NewsCategory } from "./classify";
@@ -81,23 +81,15 @@ const OFFICIAL_KIND: Record<string, EconEvent["kind"]> = { FOMC: "FOMC", CPI: "C
 /** Finnhub refused the calendar (plan): don't ask again for six hours on this instance. */
 let calendarRefusedUntil = 0;
 export const OFFICIAL_VENDOR = "Official US releases (BLS, BEA, Federal Reserve) via FRED";
+export const OFFICIAL_VENDOR_KEYLESS = "Official US release schedules (BLS, BEA, Census, Department of Labor, Federal Reserve) with values from FRED's public data; actual values are current and may include later revisions";
 
-/** The official US release calendar from FRED. Needs FRED_API_KEY (free). Forecasts are never available here. */
+/** The official US release calendar. Exact first prints with FRED_API_KEY; the published schedules and current values without it. Never forecasts. */
 async function officialFallback(from: Date, to: Date, why: string): Promise<Result<EconEvent[]>> {
-  const key = macroKeyState();
-  if (key.state === "missing") {
-    return { ok: false, reason: "not-configured", message: `${why} The official US release calendar needs a free FRED API key.`.trim(), needs: ["FRED_API_KEY"] };
-  }
-  if (key.state === "placeholder") {
-    return { ok: false, reason: "not-configured", message: `${why} FRED_API_KEY holds the example key from FRED's documentation, not a real key.`.trim(), needs: ["FRED_API_KEY (your own 32-character key)"] };
-  }
-  if (key.state === "malformed") {
-    return { ok: false, reason: "not-configured", message: `${why} FRED_API_KEY is set but is not a valid FRED key (it must be exactly 32 lower-case letters and digits).`.trim(), needs: ["FRED_API_KEY (valid 32-character key)"] };
-  }
   try {
     const ev = await officialCalendar(from, to);
     const data: EconEvent[] = ev.map((e) => ({ id: e.id, title: e.title, country: e.country, at: e.at, importance: e.importance, kind: OFFICIAL_KIND[e.kind] ?? null, actual: e.actual, forecast: null, previous: e.previous, status: e.status, revisedFrom: e.revisedFrom, period: e.period, currency: e.currency, agency: e.agency, sourceUrl: e.sourceUrl }));
-    return { ok: true, data, vendor: OFFICIAL_VENDOR, fetchedAt: new Date().toISOString() };
+    // Without a working FRED key the schedule is the agencies' published one and values are FRED's current data.
+    return { ok: true, data, vendor: ev.exact ? OFFICIAL_VENDOR : OFFICIAL_VENDOR_KEYLESS, fetchedAt: new Date().toISOString() };
   } catch (e) {
     reportError(e, { where: "news.officialCalendar" });
     return { ok: false, reason: "error", message: "The official release calendar (FRED) did not answer, so no events are shown.", detail: detailOf(e) };

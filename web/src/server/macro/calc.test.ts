@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compute, fmtLine, fomcOutcome, gdpEstimate, lineAt, quarterEnd, US_RELEASES } from "./calc";
+import { compute, expectedPeriod, fmtLine, fomcOutcome, gdpEstimate, lineAt, lineFromCurrent, quarterEnd, US_RELEASES } from "./calc";
 import { parseFredCsv, type VObs } from "./fred";
 
 const line = (key: string) => US_RELEASES.flatMap((r) => r.lines).find((l) => l.key === key)!;
@@ -52,5 +52,25 @@ describe("GDP estimate and FOMC outcome", () => {
     expect(fomcOutcome(4.0, 3.75)).toBe("Cut 25 bp");
     expect(fomcOutcome(4.0, 4.0)).toBe("Held");
     expect(fomcOutcome(4.0, 4.25)).toBe("Raised 25 bp");
+  });
+});
+
+describe("keyless release values", () => {
+  it("knows which period each release reports", () => {
+    expect(expectedPeriod("CPI", "2026-11-10")).toBe("2026-10-01");
+    expect(expectedPeriod("JOLTS", "2026-11-03")).toBe("2026-09-01");
+    expect(expectedPeriod("GDP", "2026-11-25")).toBe("2026-07-01");
+    expect(expectedPeriod("GDP", "2026-10-29")).toBe("2026-07-01");
+    expect(expectedPeriod("Jobless claims", "2026-11-05")).toBe("2026-10-31");
+    expect(expectedPeriod("Jobless claims", "2026-11-25")).toBe("2026-11-21");
+  });
+  it("gives actual only once released and previous from the period before", () => {
+    const nfp = US_RELEASES.find((r) => r.id === "nfp")!.lines[0]!;
+    const m = new Map<string, number | null>([["2026-08-01", 1000], ["2026-09-01", 1150], ["2026-10-01", 1300]]);
+    expect(lineFromCurrent(m, nfp, "NFP", "2026-11-06", true)).toEqual({ period: "2026-10-01", actual: "+150K", previous: "+150K", revisedFrom: null });
+    const up = lineFromCurrent(new Map([["2026-08-01", 1000], ["2026-09-01", 1150]]), nfp, "NFP", "2026-11-06", false);
+    expect(up).toEqual({ period: "2026-10-01", actual: null, previous: "+150K", revisedFrom: null });
+    // Released but not in the data yet: no actual.
+    expect(lineFromCurrent(new Map([["2026-08-01", 1000], ["2026-09-01", 1150]]), nfp, "NFP", "2026-11-06", true).actual).toBeNull();
   });
 });
