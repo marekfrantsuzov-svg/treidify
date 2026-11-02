@@ -59,6 +59,15 @@ jobs:
       # Database tests (MetaApi sync with a scripted MetaApi: owner/investor rules, isolation, P&L; shared market cache).
       - run: npx vitest run src/server/sync/sync.db.test.ts src/server/market/saved-copy.db.test.ts
       - run: npx playwright install --with-deps chromium
+      # The journeys run against `next dev`, which compiles each route on its first visit. Compile the routes the
+      # journeys use up front so a test's 5-second navigation waits measure the app, not the compiler.
+      - name: Start the app and pre-compile routes
+        run: |
+          nohup npm run dev > /tmp/next-dev.log 2>&1 &
+          for i in $(seq 1 60); do curl -s -o /dev/null http://localhost:3000/ && break; sleep 2; done
+          for p in / /login /login/two-factor /signup /onboarding /app /app/journal /app/performance /app/accounts /app/coach /app/news /app/markets /app/ai-analysis /app/settings/profile /app/settings/plan /app/settings/security /api/auth/get-session /api/health; do
+            curl -s -o /dev/null -m 120 -w "%{http_code} $p\n" "http://localhost:3000$p" || true
+          done
       - run: npm run test:e2e
       - name: Print failure context (page snapshot at the moment a test failed)
         if: failure()
