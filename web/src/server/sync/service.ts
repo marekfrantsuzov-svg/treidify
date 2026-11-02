@@ -4,7 +4,7 @@ import { and, count, desc, eq, inArray, isNotNull, isNull, lt, ne, or, sql } fro
 import { reportError } from "@/lib/monitoring";
 import { audit } from "../audit";
 import { db, schema } from "../db";
-import { isOwner } from "../owner";
+import { resolveOwner } from "../owner-binding";
 import { credentialAllowed, decideAccess, redact, type Credential } from "./access";
 import { metaApi, MetaApiError, metaApiToken, type MetaAccountInfo, type MetaApiClient, type MetaPosition } from "./metaapi";
 import { cashFlows, closedPositions, normaliseDeal } from "./reconstruct";
@@ -52,11 +52,11 @@ async function activeCount(userId?: string) {
   return r?.n ?? 0;
 }
 
-export interface ConnectUser { id: string; email: string; emailVerified: boolean }
+export interface ConnectUser { id: string; email: string; emailVerified: boolean; impersonated?: boolean }
 export type ConnectResult = { ok: true; accountId: string; reconnected: boolean } | { ok: false; error: string; code?: string };
 
 export async function createConnection(user: ConnectUser, a: { platform: "mt4" | "mt5"; server: string; login: string; password: string; credential: Credential }): Promise<ConnectResult> {
-  const owner = isOwner(user);
+  const owner = await resolveOwner(user);
   if (!credentialAllowed(a.credential, owner)) return { ok: false, code: "credential", error: "Only the investor (read-only) password can be used. Nothing was sent." };
   const existing = await reconnectTarget(user.id, a);
   if (!existing?.externalId) {
@@ -108,7 +108,7 @@ type Conn = typeof schema.providerConnection.$inferSelect;
 async function connectionOwner(tradingAccountId: string) {
   const [u] = await db.select({ id: schema.user.id, email: schema.user.email, emailVerified: schema.user.emailVerified }).from(schema.user)
     .innerJoin(schema.tradingAccount, eq(schema.tradingAccount.userId, schema.user.id)).where(eq(schema.tradingAccount.id, tradingAccountId));
-  return isOwner(u ?? null);
+  return resolveOwner(u ?? null);
 }
 
 /**

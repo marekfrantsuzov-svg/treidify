@@ -19,8 +19,8 @@ Treidify connects MetaTrader 4 and 5 accounts through [MetaApi](https://metaapi.
 | Variable | Value | Required |
 |---|---|---|
 | `METAAPI_TOKEN` | The MetaApi token. `METAAPI_API_KEY`, `METAAPI_API_TOKEN`, `METAAPI_KEY` are also accepted. | Yes |
-| `TREIDIFY_OWNER_USER_ID` | Your permanent Treidify account ID, from **Settings → Security → Account ID** while signed in as the owner. | For owner rights |
-| `TREIDIFY_OWNER_EMAIL` | The email of that same account. It must be verified. | For owner rights |
+| `TREIDIFY_OWNER_USER_ID` | Not needed. Only to pin the owner to a specific account ID by hand. | No |
+| `TREIDIFY_OWNER_EMAIL` | Not needed. The owner email is built in (`marekfrantsuzov@gmail.com`); set this only to change it. | No |
 | `CRON_SECRET` | Any long random string. Also add it as a GitHub repository secret `CRON_SECRET`, and add a repository variable `APP_URL` = `https://app.treidify.com`, so the 10-minute background sync runs. | For background sync |
 | `METAAPI_MAX_ACCOUNTS` | Total MetaApi accounts Treidify may hold (cost cap). Default 5. | Optional |
 | `METAAPI_MAX_ACCOUNTS_PER_USER` | Per normal user. Default 3. | Optional |
@@ -29,12 +29,23 @@ Treidify connects MetaTrader 4 and 5 accounts through [MetaApi](https://metaapi.
 
 After changing variables, **redeploy** (Deployments → ⋯ → Redeploy). `https://app.treidify.com/api/health` then shows
 `providers.sync: true`, `accountSync.tokenVar` (the variable name it found, never the value) and
-`accountSync.ownerConfigured`.
+`accountSync.ownerBound` (true once the owner has signed in with the verified owner email).
+
+### Owner and users: nothing to configure per person
+
+- **Owner.** Sign up or sign in at app.treidify.com as `marekfrantsuzov@gmail.com` (Google sign-in, or email and the
+  verification link). On that verified account's first visit, Treidify binds the owner role to its permanent account ID
+  in the database. **Settings → Security** then says "Owner access is active". No Vercel or GitHub change is involved.
+- **Everyone else** signs up with Google or email and connects their own MetaTrader account from **Accounts** with the
+  investor password. Each user sees only their own accounts.
 
 ## Security model
 
-- **Owner rights** need the signed-in user's immutable ID **and** verified email to match the two server variables.
-  Both come from the database session, never from the browser. Nobody can grant the role to themselves.
+- **Owner rights** belong to exactly one account: the first account whose **verified** email is the owner email
+  (Gmail dots and +tags count as the same inbox). It is bound by its immutable user ID in a single-row database slot,
+  so no later account, even one on the same inbox, can take or share it, and an admin "impersonate user" session never
+  gets owner rights. The bound owner also loses the rights if their email stops matching. Identity and verification
+  always come from the database, never from the browser, and the role is separate from the admin role tools.
 - **Normal users can only submit an investor password.** The server refuses the "master" option for anyone but the
   owner before anything is sent to MetaApi.
 - **Proof, not labels.** After MetaApi connects, Treidify reads `investorMode` from the account information. A normal
