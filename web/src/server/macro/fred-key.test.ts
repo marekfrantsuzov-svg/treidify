@@ -18,7 +18,18 @@ describe("normalizeFredKey", () => {
   });
   it("reports state without the value", () => {
     expect(fredKeyState(undefined)).toEqual({ state: "missing", length: 0 });
-    expect(fredKeyState("nope")).toEqual({ state: "malformed", length: 4 });
-    expect(fredKeyState(` ${K} `)).toEqual({ state: "ok", length: 34 });
+    expect(fredKeyState("nope")).toMatchObject({ state: "malformed", length: 4 });
+    expect(fredKeyState(` ${K} `)).toMatchObject({ state: "ok", length: 34 });
+  });
+});
+
+describe("pasted request URLs", () => {
+  it("takes the api_key parameter", () => {
+    expect(normalizeFredKey(`https://api.stlouisfed.org/fred/series?series_id=GNPCA&api_key=${K}&file_type=json`)).toBe(K);
+  });
+  it("flags FRED's documentation placeholder", () => {
+    const st = fredKeyState("https://api.stlouisfed.org/fred/series?series_id=GNPCA&api_key=abcdefghijklmnopqrstuvwxyz123456&file_type=json");
+    expect(st.state).toBe("placeholder");
+    expect(st.shape).toMatchObject({ url: true, apiKeyParam: true });
   });
 });

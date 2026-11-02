@@ -3,7 +3,7 @@ import { cache } from "react";
 import { reportError } from "@/lib/monitoring";
 import { addDays, isoDay, zonedToUtc } from "@/lib/time/zoned";
 import { compute, fmtLine, fmtRange, fomcOutcome, gdpEstimate, latestDate, lineAt, quarterLabel, US_RELEASES, type LineDef, type ReleaseDef } from "./calc";
-import { fred, fredKeyState, normalizeFredKey, type Obs, type VObs } from "./fred";
+import { fred, FRED_DOCS_PLACEHOLDER, fredKeyState, normalizeFredKey, type Obs, type VObs } from "./fred";
 
 /**
  * US macro data from official sources through FRED: the Fed's target range, CPI, GDP, and the official release
@@ -12,9 +12,10 @@ import { fred, fredKeyState, normalizeFredKey, type Obs, type VObs } from "./fre
  */
 const ET = "America/New_York";
 const env = (k: string) => process.env[k]?.trim() || null;
-const client = () => fred(normalizeFredKey(env("FRED_API_KEY")));
-/** True only when FRED_API_KEY holds a usable key (32 lower-case letters and digits). */
-export const macroKeyConfigured = () => Boolean(normalizeFredKey(env("FRED_API_KEY")));
+const usableKey = () => { const k = normalizeFredKey(env("FRED_API_KEY")); return k && k !== FRED_DOCS_PLACEHOLDER ? k : null; };
+const client = () => fred(usableKey());
+/** True only when FRED_API_KEY holds a usable key (32 lower-case letters and digits, not the docs example). */
+export const macroKeyConfigured = () => Boolean(usableKey());
 export const macroKeyState = () => fredKeyState(process.env.FRED_API_KEY);
 
 export const SOURCE = {

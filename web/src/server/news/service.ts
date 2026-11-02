@@ -88,6 +88,9 @@ async function officialFallback(from: Date, to: Date, why: string): Promise<Resu
   if (key.state === "missing") {
     return { ok: false, reason: "not-configured", message: `${why} The official US release calendar needs a free FRED API key.`.trim(), needs: ["FRED_API_KEY"] };
   }
+  if (key.state === "placeholder") {
+    return { ok: false, reason: "not-configured", message: `${why} FRED_API_KEY holds the example key from FRED's documentation, not a real key.`.trim(), needs: ["FRED_API_KEY (your own 32-character key)"] };
+  }
   if (key.state === "malformed") {
     return { ok: false, reason: "not-configured", message: `${why} FRED_API_KEY is set but is not a valid FRED key (it must be exactly 32 lower-case letters and digits).`.trim(), needs: ["FRED_API_KEY (valid 32-character key)"] };
   }
