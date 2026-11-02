@@ -2,7 +2,8 @@ import "server-only";
 import { cache } from "react";
 import { reportError } from "@/lib/monitoring";
 import { addDays, isoDay, zonedToUtc } from "@/lib/time/zoned";
-import { compute, fmtLine, fmtRange, fomcOutcome, gdpEstimate, latestDate, lineAt, quarterLabel, US_RELEASES, type LineDef, type ReleaseDef } from "./calc";
+import { compute, fmtLine, fmtRange, fomcOutcome, gdpEstimate, latestDate, lineAt, lineFromCurrent, quarterLabel, US_RELEASES, type LineDef, type LineValues, type ReleaseDef } from "./calc";
+import { OFFICIAL_SCHEDULE_2026 } from "./schedule";
 import { fred, FRED_DOCS_PLACEHOLDER, fredKeyState, normalizeFredKey, type Obs, type VObs } from "./fred";
 
 /**
@@ -41,11 +42,20 @@ function ttl(now: Date, schedule: { at: Date }[]) {
 }
 
 /** Scheduled release dates for each tracked release, from FRED's official schedule. Cached 6 hours. */
-const scheduleFor = cache(async (from: string, to: string): Promise<Map<string, string[]>> => {
+const builtInSchedule = (from: string, to: string) => new Map(US_RELEASES.map((r) => [r.id, (r.id === "fomc" ? FOMC_STATEMENT_DAYS : OFFICIAL_SCHEDULE_2026[r.id] ?? []).filter((d) => d >= from && d <= to)]));
+/** Where the calendar's schedule came from on this request. */
+export type ScheduleSource = "fred-api" | "built-in";
+const scheduleFor = cache(async (from: string, to: string): Promise<Map<string, string[]> & { source?: ScheduleSource }> => {
   const c = client();
-  const out = new Map<string, string[]>();
-  await Promise.all(US_RELEASES.map(async (r) => { out.set(r.id, await c.releaseDates(r.releaseId, from, to, 21_600)); }));
-  return out;
+  if (!c.hasKey) return Object.assign(builtInSchedule(from, to), { source: "built-in" as const });
+  try {
+    const out = new Map<string, string[]>();
+    await Promise.all(US_RELEASES.map(async (r) => { out.set(r.id, await c.releaseDates(r.releaseId, from, to, 21_600)); }));
+    return Object.assign(out, { source: "fred-api" as const });
+  } catch (e) {
+    reportError(e, { where: "macro.schedule" });
+    return Object.assign(builtInSchedule(from, to), { source: "built-in" as const });
+  }
 });
 
 const at = (r: ReleaseDef, day: string) => zonedToUtc(day, r.timeEt, ET);
@@ -259,7 +269,7 @@ const periodLabel = (r: ReleaseDef, d: string | null) => (!d ? null : r.kind ===
  * Every tracked US release scheduled between `from` and `to`, with actual and previous values computed from the
  * series' official vintages. Forecasts are not available from official sources and are always null.
  */
-export async function officialCalendar(from: Date, to: Date, now = new Date()): Promise<OfficialEvent[]> {
+export async function officialCalendar(from: Date, to: Date, now = new Date()): Promise<OfficialEvent[] & { exact: boolean; scheduleSource: ScheduleSource }> {
   const c = client();
   const f = isoDay(from.getTime()), t = isoDay(to.getTime()), today = isoDay(now.getTime());
   const schedule = await scheduleFor(addDays(f, -1), addDays(t, 1));
@@ -268,11 +278,21 @@ export async function officialCalendar(from: Date, to: Date, now = new Date()): 
   const revalidate = ttl(now, slots);
   const series = [...new Set(slots.flatMap((s) => (s.r.id === "fomc" ? [] : s.r.lines.map((l) => l.series))))];
   const obsStart = addDays(f, -800);
+  // With the key: every vintage, so first prints and revisions are exact. Without it (or if the API fails): FRED's
+  // public download of current values, with the period each release reports taken from the agencies' schedules.
   const rows = new Map<string, VObs[]>();
-  await Promise.all(series.map(async (id) => { rows.set(id, await c.vintages(id, obsStart, addDays(f, -3), revalidate)); }));
+  const current = new Map<string, Map<string, number | null>>();
+  let vintaged = c.hasKey;
+  if (vintaged) {
+    try { await Promise.all(series.map(async (id) => { rows.set(id, await c.vintages(id, obsStart, addDays(f, -3), revalidate)); })); }
+    catch (e) { reportError(e, { where: "macro.calendar.vintages" }); vintaged = false; }
+  }
+  if (!vintaged) await Promise.all(series.map(async (id) => { current.set(id, new Map((await c.csv(id, obsStart, revalidate)).map((o) => [o.date, o.value]))); }));
   const needFomc = slots.some((s) => s.r.id === "fomc");
-  const [fu, fl] = needFomc ? await Promise.all([c.observations("DFEDTARU", addDays(f, -40), revalidate), c.observations("DFEDTARL", addDays(f, -40), revalidate)]) : [[], []];
+  const [fu, fl] = needFomc ? await Promise.all([values("DFEDTARU", addDays(f, -40), revalidate), values("DFEDTARL", addDays(f, -40), revalidate)]).then(([u, l]) => [u.obs, l.obs] as const) : [[], []] as const;
   const gdpDates = slots.some((s) => s.r.id === "gdp") ? (await scheduleFor(addDays(f, -200), addDays(t, 1)).catch(() => schedule)).get("gdp") ?? [] : [];
+  const lineValues = (r: ReleaseDef, l: LineDef, day: string, released: boolean): LineValues =>
+    vintaged ? lineAt(rows.get(l.series) ?? [], l, day, today) : lineFromCurrent(current.get(l.series) ?? new Map(), l, r.kind, day, released);
 
   const out: OfficialEvent[] = [];
   for (const { r, day, at: when } of slots) {
@@ -289,12 +309,12 @@ export async function officialCalendar(from: Date, to: Date, now = new Date()): 
       continue;
     }
     for (const l of r.lines) {
-      const v = lineAt(rows.get(l.series) ?? [], l, day, today);
+      const v = lineValues(r, l, day, !future);
       const released = !future && v.actual !== null;
       let title = l.title;
       if (r.id === "gdp" && released && v.period) { const est = gdpEstimate(gdpDates, v.period, day); if (est) title = `${l.title} · ${est.replace(" estimate", "").toLowerCase()}`; }
       out.push({ ...base, id: `${l.key}-${day}`, title, importance: l.importance, status: future ? "upcoming" : released ? "released" : "awaiting", period: periodLabel(r, v.period), actual: released ? v.actual : null, previous: v.previous, revisedFrom: released ? v.revisedFrom : null });
     }
   }
-  return out.sort((a, b) => a.at.localeCompare(b.at) || (a.importance === b.importance ? 0 : a.importance === "high" ? -1 : 1));
+  return Object.assign(out.sort((a, b) => a.at.localeCompare(b.at) || (a.importance === b.importance ? 0 : a.importance === "high" ? -1 : 1)), { exact: vintaged, scheduleSource: schedule.source ?? "fred-api" });
 }

@@ -130,3 +130,37 @@ export function fomcOutcome(beforeUpper: number | null, afterUpper: number | nul
 }
 
 export const fmtRange = (lower: number | null, upper: number | null) => (lower === null || upper === null ? null : `${lower.toFixed(2)}–${upper.toFixed(2)}%`);
+
+const shiftMonth = (day: string, n: number) => { const d = new Date(Date.UTC(Number(day.slice(0, 4)), Number(day.slice(5, 7)) - 1 + n, 1)); return d.toISOString().slice(0, 10); };
+
+/**
+ * The period a release on `day` reports, by the agencies' standard schedules: the previous month for CPI, PPI,
+ * payrolls, retail sales and PCE; two months back for JOLTS; the week ending the Saturday before for jobless claims;
+ * the last completed quarter for GDP. Used only without FRED vintages.
+ */
+export function expectedPeriod(kind: ReleaseDef["kind"], day: string): string | null {
+  switch (kind) {
+    case "CPI": case "PPI": case "NFP": case "Retail sales": case "PCE": return shiftMonth(day, -1);
+    case "JOLTS": return shiftMonth(day, -2);
+    case "Jobless claims": {
+      const d = new Date(Date.parse(`${day}T00:00:00Z`) - 4 * 86_400_000);
+      d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 1) % 7)); // back to Saturday
+      return d.toISOString().slice(0, 10);
+    }
+    case "GDP": { const m = Number(day.slice(5, 7)) - 1; const qStart = m - (m % 3); return shiftMonth(`${day.slice(0, 4)}-${String(qStart + 1).padStart(2, "0")}-01`, -3); }
+    default: return null;
+  }
+}
+
+/**
+ * Release values from current (latest-vintage) data, when first-print vintages are not available: the actual is the
+ * period's current value (it may include later revisions, and that is said in the UI), previous is the period before.
+ */
+export function lineFromCurrent(m: Map<string, number | null>, l: LineDef, kind: ReleaseDef["kind"], day: string, released: boolean): LineValues {
+  const period = expectedPeriod(kind, day);
+  if (!period) return { period: null, actual: null, previous: null, revisedFrom: null };
+  const p = prevDate(m, period);
+  const previous = p ? fmtLine(compute(m, p, l.t), l) : null;
+  const actual = released && m.get(period) !== undefined ? fmtLine(compute(m, period, l.t), l) : null;
+  return { period, actual, previous, revisedFrom: null };
+}

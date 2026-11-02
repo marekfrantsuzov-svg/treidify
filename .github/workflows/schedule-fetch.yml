@@ -1,0 +1,16 @@
+name: Official release schedules (fetch)
+
+# Reads the agencies' published release schedules so the keyless calendar can be checked against them.
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/project-thread-0c37bt]
+    paths: [.github/workflows/schedule-fetch.yml, web/scripts/fetch-schedules.py]
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 web/scripts/fetch-schedules.py

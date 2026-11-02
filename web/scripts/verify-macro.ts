@@ -2,7 +2,8 @@
  * Checks the official macro sources against their real responses (run by .github/workflows/macro-verify.yml on a
  * GitHub runner, which can reach FRED and federalreserve.gov). Prints values and dates only, never keys.
  */
-import { US_RELEASES, compute, fmtLine, latestDate, lineAt } from "../src/server/macro/calc";
+import { US_RELEASES, compute, fmtLine, latestDate, lineAt, lineFromCurrent } from "../src/server/macro/calc";
+import { OFFICIAL_SCHEDULE_2026 } from "../src/server/macro/schedule";
 import { fred } from "../src/server/macro/fred";
 import { addDays, isoDay, zonedToUtc } from "../src/lib/time/zoned";
 
@@ -68,4 +69,23 @@ async function main() {
   }
 }
 
-main().then(() => { console.log(`\nfailures: ${failures}`); process.exit(failures ? 1 : 0); }, (e) => { console.error(e); process.exit(1); });
+async function keyless() {
+  console.log("\n== Keyless calendar (published schedule + public CSV), -8d..+9d ==");
+  const from = addDays(today, -8), to = addDays(today, 9);
+  for (const r of US_RELEASES) {
+    if (r.id === "fomc") continue;
+    for (const day of (OFFICIAL_SCHEDULE_2026[r.id] ?? []).filter((d) => d >= from && d <= to)) {
+      const at = zonedToUtc(day, r.timeEt, "America/New_York");
+      const released = at.getTime() <= Date.now();
+      for (const l of r.lines) {
+        const m = new Map((await c.csv(l.series, "2024-01-01", 0)).map((o) => [o.date, o.value]));
+        const v = lineFromCurrent(m, l, r.kind, day, released);
+        const tallinn = at.toLocaleString("en-GB", { timeZone: "Europe/Tallinn", weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+        console.log(`  ${day} ${r.timeEt} ET = ${tallinn} Tallinn | ${l.title} | period ${v.period} | ${released ? "released" : "upcoming"} | actual ${v.actual ?? "—"} | previous ${v.previous ?? "—"} | forecast —`);
+        if (released && !v.actual) console.log(`    note: released but no value for ${v.period} in the public data yet`);
+      }
+    }
+  }
+}
+
+main().then(keyless).then(() => { console.log(`\nfailures: ${failures}`); process.exit(failures ? 1 : 0); }, (e) => { console.error(e); process.exit(1); });
