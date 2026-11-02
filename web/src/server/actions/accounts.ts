@@ -7,7 +7,7 @@ import { after } from "next/server";
 import { rateLimit } from "@/lib/rate-limit";
 import { createConnection, deleteConnectedAccount, ownedConnection, revokeConnection, syncConnection, syncStatus } from "../sync/service";
 import { connectErrorMessage, credentialAllowed, redact } from "../sync/access";
-import { isOwner } from "../owner";
+import { ownerForUserId } from "../owner-binding";
 import { reportError } from "@/lib/monitoring";
 import { MetaApiError } from "../sync/metaapi";
 import { audit } from "../audit";
@@ -46,16 +46,10 @@ const connectSchema = z.object({
   confirmReadOnly: z.literal(true, { error: "Confirm the password type." }),
 });
 
-/** The signed-in user as stored in the database (id, email, verification): the only input to the owner check. */
-async function sessionUser(userId: string) {
-  const [u] = await db.select({ id: schema.user.id, email: schema.user.email, emailVerified: schema.user.emailVerified }).from(schema.user).where(eq(schema.user.id, userId));
-  return u ?? null;
-}
-
 /** Whether the signed-in user is the verified owner (server-side check; shown so the form can offer the master option). */
 export async function connectOptions(): Promise<{ owner: boolean }> {
   const s = await requireUser();
-  return { owner: isOwner(await sessionUser(s.user.id)) };
+  return { owner: (await ownerForUserId(s.user.id, { impersonatedBy: s.session.impersonatedBy })).owner };
 }
 
 /**
@@ -69,10 +63,10 @@ export async function connectTradingAccount(input: z.input<typeof connectSchema>
   if (!p.success) return { ok: false, error: p.error.issues[0]?.message ?? "Please check the form." };
   if (!rateLimit(`connect:${s.user.id}`, 5, 3600_000).ok) return { ok: false, error: "Too many connection attempts. Try again in an hour." };
   if (!syncStatus().configured) return { ok: false, error: "Account sync is not switched on yet, so nothing was sent. Your details were not stored." };
-  const u = await sessionUser(s.user.id);
+  const { user: u, owner } = await ownerForUserId(s.user.id, { impersonatedBy: s.session.impersonatedBy });
   if (!u) return { ok: false, error: "Please sign in again." };
   const { platform, server, login, password, credential } = p.data;
-  if (!credentialAllowed(credential, isOwner(u))) {
+  if (!credentialAllowed(credential, owner)) {
     await audit("account.connect_master_refused", { actorId: u.id, targetType: "user", targetId: u.id });
     return { ok: false, error: "Only the investor (read-only) password can be used. Nothing was sent." };
   }

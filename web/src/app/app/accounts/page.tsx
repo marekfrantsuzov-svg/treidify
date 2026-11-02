@@ -11,7 +11,7 @@ import { providerStatus } from "@/server/providers";
 import { requireOnboarded } from "@/server/session";
 import { db, schema } from "@/server/db";
 import { eq } from "drizzle-orm";
-import { isOwner } from "@/server/owner";
+import { ownerForUserId } from "@/server/owner-binding";
 import { freshness } from "@/server/sync/access";
 
 export const maxDuration = 60;
@@ -24,8 +24,7 @@ export default async function Accounts() {
   const s = await requireOnboarded("/app/accounts");
   const accounts = await listAccounts(s.user.id);
   const sync = providerStatus().sync;
-  const [me] = await db.select({ id: schema.user.id, email: schema.user.email, emailVerified: schema.user.emailVerified }).from(schema.user).where(eq(schema.user.id, s.user.id));
-  const owner = isOwner(me ?? null);
+  const { owner } = await ownerForUserId(s.user.id, { impersonatedBy: s.session.impersonatedBy });
   const now = new Date();
   const hasDemo = accounts.some((a) => a.source === "sample");
   const details = new Map(await Promise.all(accounts.filter((a) => a.source === "provider").map(async (a) => [a.id, await accountOverview(s.user.id, a.id, accounts)] as const)));

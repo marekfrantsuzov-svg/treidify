@@ -60,15 +60,17 @@ run("MetaApi sync (database)", () => {
   let svc: Svc;
   let db: typeof import("../db")["db"], schema: typeof import("../db")["schema"];
   let fake: ReturnType<typeof fakeMetaApi>;
-  const OWNER = { id: "test_owner", email: "owner@test.local", emailVerified: true };
+  // The owner mailbox is a test Gmail address (server override), so the Gmail alias rules are exercised too.
+  const OWNER = { id: "test_owner", email: "treidify.owner.test@gmail.com", emailVerified: true };
+  const TWIN = { id: "test_twin", email: "treidifyownertest+2@gmail.com", emailVerified: true }; // same inbox, other account
   const ALICE = { id: "test_alice", email: "alice@test.local", emailVerified: true };
   const BOB = { id: "test_bob", email: "bob@test.local", emailVerified: true };
-  const ids = [OWNER.id, ALICE.id, BOB.id];
+  const ids = [OWNER.id, ALICE.id, BOB.id, TWIN.id];
   const conn = async (accountId: string) => (await db.select().from(schema.providerConnection).where((await import("drizzle-orm")).eq(schema.providerConnection.tradingAccountId, accountId)))[0]!;
 
   beforeAll(async () => {
     vi.stubEnv("METAAPI_TOKEN", "test-token");
-    vi.stubEnv("TREIDIFY_OWNER_USER_ID", OWNER.id);
+    vi.stubEnv("TREIDIFY_OWNER_USER_ID", "");
     vi.stubEnv("TREIDIFY_OWNER_EMAIL", OWNER.email);
     vi.stubEnv("METAAPI_MAX_ACCOUNTS_PER_USER", "2");
     vi.stubEnv("METAAPI_MAX_ACCOUNTS", "50");
@@ -76,7 +78,7 @@ run("MetaApi sync (database)", () => {
     svc = await import("./service");
     const { inArray } = await import("drizzle-orm");
     await db.delete(schema.user).where(inArray(schema.user.id, ids));
-    await db.insert(schema.user).values([OWNER, ALICE, BOB].map((u) => ({ ...u, name: u.id })));
+    await db.insert(schema.user).values([OWNER, ALICE, BOB, TWIN].map((u) => ({ ...u, name: u.id })));
   });
   afterAll(async () => {
     const { inArray } = await import("drizzle-orm");
@@ -89,6 +91,7 @@ run("MetaApi sync (database)", () => {
     svc._setMetaApiClient(fake.api);
     const { inArray } = await import("drizzle-orm");
     await db.delete(schema.tradingAccount).where(inArray(schema.tradingAccount.userId, ids));
+    await db.delete(schema.ownerBinding).where(inArray(schema.ownerBinding.userId, ids));
   });
 
   const connect = (u: typeof ALICE, login: string, password: string, credential: "investor" | "master" = "investor", server = "Demo-Server") =>
@@ -155,15 +158,40 @@ run("MetaApi sync (database)", () => {
     expect(await conn(r.accountId)).toMatchObject({ accessMode: "master", credential: "master", status: "connected" });
   });
 
-  it("an unverified owner email does not get owner rights", async () => {
+  it("an unverified owner email does not get owner rights and cannot claim the owner slot", async () => {
     const { eq } = await import("drizzle-orm");
+    const ob = await import("../owner-binding");
     await db.update(schema.user).set({ emailVerified: false }).where(eq(schema.user.id, OWNER.id));
     try {
       const r = await connect({ ...OWNER, emailVerified: false }, "1004", "Master#4", "master");
       expect(r).toMatchObject({ ok: false, code: "credential" });
+      expect((await ob.ownerForUserId(OWNER.id)).owner).toBe(false);
+      expect(await ob.boundOwnerId()).toBeNull();
     } finally {
       await db.update(schema.user).set({ emailVerified: true }).where(eq(schema.user.id, OWNER.id));
     }
+  });
+
+  it("owner role binds automatically to one immutable user ID; nobody else can take or share it", async () => {
+    const ob = await import("../owner-binding");
+    // Normal users are never the owner and never bind the slot.
+    expect((await ob.ownerForUserId(ALICE.id)).owner).toBe(false);
+    expect(await ob.boundOwnerId()).toBeNull();
+    // An admin impersonating the owner gets no owner rights and binds nothing.
+    expect((await ob.ownerForUserId(OWNER.id, { impersonatedBy: "some_admin" })).owner).toBe(false);
+    expect(await ob.boundOwnerId()).toBeNull();
+    // Two verified accounts on the same inbox race: exactly one wins, enforced by the database.
+    const [a, b] = await Promise.all([ob.ownerForUserId(OWNER.id), ob.ownerForUserId(TWIN.id)]);
+    expect([a.owner, b.owner].filter(Boolean)).toHaveLength(1);
+    const winner = a.owner ? OWNER : TWIN, loser = a.owner ? TWIN : OWNER;
+    expect(await ob.boundOwnerId()).toBe(winner.id);
+    // The loser stays a normal user: master refused before anything is sent.
+    expect(await connect(loser, "1004", "Master#4", "master")).toMatchObject({ ok: false, code: "credential" });
+    expect(fake.calls).not.toContain("createAccount");
+    // The slot is a single row: a second binding is impossible at the database level.
+    await expect(db.insert(schema.ownerBinding).values({ slot: "owner", userId: loser.id, email: loser.email })).rejects.toThrow();
+    await expect(db.insert(schema.ownerBinding).values({ slot: "owner2", userId: loser.id, email: loser.email })).rejects.toThrow();
+    expect((await ob.ownerForUserId(winner.id)).owner).toBe(true);
   });
 
   it("wrong password and wrong server are reported by code and store nothing", async () => {

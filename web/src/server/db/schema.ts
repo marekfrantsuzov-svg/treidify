@@ -7,7 +7,7 @@
  */
 import { sql } from "drizzle-orm";
 import {
-  customType,
+  check, customType,
   boolean, index, integer, jsonb, numeric, pgEnum, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid,
 } from "drizzle-orm/pg-core";
 
@@ -34,6 +34,14 @@ export const user = pgTable("user", {
   banReason: text("ban_reason"),
   banExpires: ts("ban_expires"),
 });
+
+/** The single owner slot (see server/owner.ts). Primary key fixed to "owner", so at most one user can hold it. */
+export const ownerBinding = pgTable("owner_binding", {
+  slot: text("slot").primaryKey().default("owner"),
+  userId: text("user_id").notNull().unique().references(() => user.id, { onDelete: "cascade" }),
+  email: text("email").notNull(),
+  boundAt: ts("bound_at").notNull().defaultNow(),
+}, (t) => [check("owner_binding_single_slot", sql`${t.slot} = 'owner'`)]);
 
 export const session = pgTable("session", {
   id: text("id").primaryKey(),

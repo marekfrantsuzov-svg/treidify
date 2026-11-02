@@ -4,7 +4,7 @@ import { db, dbConfigured } from "@/server/db";
 import { emailConfigured } from "@/server/email";
 import { providerStatus } from "@/server/providers";
 import { enabledProviders } from "@/server/auth";
-import { ownerConfig } from "@/server/owner";
+import { boundOwnerId } from "@/server/owner-binding";
 import { metaApiToken } from "@/server/sync/metaapi";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +27,7 @@ export async function GET() {
       providers: providerStatus(),
       signIn: { email: true, ...enabledProviders },
       // Variable NAMES only (never values): which name the MetaApi token was found under, and whether the owner is set.
-      accountSync: { tokenVar: metaApiToken()?.name ?? null, ownerConfigured: ownerConfig().configured },
+      accountSync: { tokenVar: metaApiToken()?.name ?? null, ownerBound: Boolean(await boundOwnerId().catch(() => null)) },
       cron: Boolean(process.env.CRON_SECRET),
       encryption: Boolean(process.env.DATA_ENCRYPTION_KEY),
       commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null,
