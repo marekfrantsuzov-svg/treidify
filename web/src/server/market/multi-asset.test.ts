@@ -36,13 +36,16 @@ describe("provider coverage is verified, never assumed", () => {
     mockVendor({});
     const r = await getSeries("UKOIL", "1H", 50);
     expect(r).toMatchObject({ ok: false, reason: "not-covered" });
+    expect(r.ok ? "" : r.detail).toContain("XBR/USD: twelvedata: symbol XBR/USD not found");
   });
 
   it("rate limits and outages are errors, not coverage verdicts", async () => {
     mockVendor({ "EUR/USD": refuse(429, "You have run out of API credits for the current minute") });
     const r = await getSeries("EURUSD", "1H", 50);
-    expect(r).toMatchObject({ ok: false, reason: "vendor-error" });
+    expect(r).toMatchObject({ ok: false, reason: "rate-limited", detail: "twelvedata: You have run out of API credits for the current minute" });
     expect((await coverageMap()).EURUSD!.state).toBe("unchecked");
+    mockVendor({ "EUR/USD": refuse(500, "Internal error") });
+    expect(await getSeries("EURUSD", "1H", 50)).toMatchObject({ ok: false, reason: "vendor-error" });
   });
 
   it("the probe marks verified and unavailable instruments", async () => {

@@ -25,7 +25,7 @@ export interface SeriesOk {
   freshness: Freshness;
   digits: number;
 }
-export interface SeriesFail { ok: false; symbol: MarketSymbol; timeframe: Timeframe; reason: "not-configured" | "vendor-error" | "empty" | "not-covered" | "unknown-symbol"; message: string; needs?: string[]; detail?: string }
+export interface SeriesFail { ok: false; symbol: MarketSymbol; timeframe: Timeframe; reason: "not-configured" | "vendor-error" | "rate-limited" | "empty" | "not-covered" | "unknown-symbol"; message: string; needs?: string[]; detail?: string }
 export type SeriesResult = SeriesOk | SeriesFail;
 
 const env = (k: string) => process.env[k]?.trim() || null;
@@ -67,7 +67,7 @@ export async function getSeries(symbol: MarketSymbol, timeframe: Timeframe, coun
       }
       if (!served) {
         void recordUnavailable(symbol, refused.join(" · ") || "No candidate symbol.");
-        return { ok: false, symbol, timeframe, reason: "not-covered", message: `${def.short} is not available on the connected market-data plan, so nothing is shown for it.` };
+        return { ok: false, symbol, timeframe, reason: "not-covered", message: `${def.short} is not available on the connected market-data plan, so nothing is shown for it.`, detail: refused.join(" · ") || undefined };
       }
       void recordVerified(symbol, served);
     }
@@ -79,6 +79,9 @@ export async function getSeries(symbol: MarketSymbol, timeframe: Timeframe, coun
       freshness: classifyFreshness(last.t, timeframe, now, symbol), digits: def.digits,
     };
   } catch (e) {
+    if (e instanceof VendorError && e.status === 429) {
+      return { ok: false, symbol, timeframe, reason: "rate-limited", message: "The market-data plan's request limit was reached, so this chart is waiting for the next minute's allowance. Nothing is shown rather than a guess.", detail: e.message };
+    }
     reportError(e, { where: "market.getSeries", extra: { symbol, timeframe } });
     return { ok: false, symbol, timeframe, reason: "vendor-error", message: e instanceof VendorError ? "The market-data provider did not answer correctly. Showing nothing rather than a guess." : "Market data could not be loaded.", detail: e instanceof VendorError ? e.message : undefined };
   }
