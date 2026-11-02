@@ -9,7 +9,7 @@ export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;
   if (!secret || req.headers.get("authorization") !== `Bearer ${secret}`) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!syncStatus().configured) return NextResponse.json({ skipped: "METAAPI_TOKEN not set" });
-  const due = await dueConnections(5, 20);
+  const due = await dueConnections(8, 15);
   const results = [];
   for (const c of due) results.push({ id: c.id, ...(await syncConnection(c.id)) });
   return NextResponse.json({ synced: results.filter((r) => r.ok).length, failed: results.filter((r) => !r.ok).length });

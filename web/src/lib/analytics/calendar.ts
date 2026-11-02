@@ -14,8 +14,11 @@ export interface CalMonth {
   best: CalDay | null; worst: CalDay | null;
 }
 
+const dayFmt = new Map<string, Intl.DateTimeFormat>();
 export function dayKey(unixSeconds: number, tz: string): string {
-  const p = new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(unixSeconds * 1000));
+  let f = dayFmt.get(tz);
+  if (!f) { f = new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }); dayFmt.set(tz, f); }
+  const p = f.formatToParts(new Date(unixSeconds * 1000));
   const g = (t: string) => p.find((x) => x.type === t)!.value;
   return `${g("year")}-${g("month")}-${g("day")}`;
 }

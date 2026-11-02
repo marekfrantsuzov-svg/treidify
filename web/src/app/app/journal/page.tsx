@@ -5,12 +5,14 @@ import { AccountPicker } from "@/components/app/account-picker";
 import { JournalFilters } from "@/components/app/journal/journal-filters";
 import { JournalTable, type JournalRow } from "@/components/app/journal/journal-table";
 import { PnlCalendar, type CalNote } from "@/components/app/journal/pnl-calendar";
-import { Tile } from "@/components/app/performance/parts";
+import { DrawdownChart, GroupTable, Panel, Tile } from "@/components/app/performance/parts";
+import { JournalSummary } from "@/components/app/journal/journal-summary";
+import { EquityChart } from "@/components/charts/equity-chart";
 import { PageHeader, StatusCard } from "@/components/app/status";
 import { GlassIcon } from "@/components/icons/glass-icon";
 import { Glass } from "@/components/ui/glass";
 import { SampleBadge } from "@/components/ui/pill";
-import { inRange, netOf, performanceMetrics, periodRange, sessionAt, SESSIONS } from "@/lib/analytics";
+import { bestWorstDays, buckets, bySessionOpened, bySymbol, drawdownSeries, equitySeries, inRange, netOf, performanceMetrics, periodRange, sessionAt, SESSIONS } from "@/lib/analytics";
 import { cn } from "@/lib/cn";
 import { fmtNumber, fmtSignedMoney } from "@/lib/format";
 import { PERIOD_NAMES, readPeriod } from "@/lib/period-param";
@@ -99,7 +101,7 @@ export default async function Journal({ searchParams }: { searchParams: Promise<
   for (const r of rows) {
     const t = byId.get(r.id)!;
     r.screenshots = shots.filter((x) => x.tradeId === r.id).map((x) => x.id);
-    r.detail = { opened: fmtFull.format(new Date(t.openTime * 1000)), open: px(t.openPrice), close: px(t.closePrice), gross: fmtSignedMoney(t.profit, c), commission: fmtSignedMoney(t.commission, c), swap: fmtSignedMoney(t.swap, c), fees: fmtSignedMoney(t.fees, c), net: fmtSignedMoney(netOf(t), c), position: o.account.source === "sample" ? "sample" : t.id.slice(0, 8) };
+    r.detail = { opened: fmtFull.format(new Date(t.openTime * 1000)), open: px(t.openPrice), close: px(t.closePrice), sl: px(t.stopLoss ?? undefined), tp: px(t.takeProfit ?? undefined), lots: `${t.side === "buy" ? "Buy" : "Sell"} · ${fmtNumber(t.volume, 2)}`, gross: fmtSignedMoney(t.profit, c), commission: fmtSignedMoney(t.commission, c), swap: fmtSignedMoney(t.swap, c), fees: fmtSignedMoney(t.fees, c), net: fmtSignedMoney(netOf(t), c), position: o.account.source === "sample" ? "sample" : t.positionId ?? t.id.slice(0, 8) };
   }
   const sums = filtered.reduce((a, t) => ({ gross: a.gross + t.profit, commission: a.commission + t.commission, swap: a.swap + t.swap, fees: a.fees + t.fees }), { gross: 0, commission: 0, swap: 0, fees: 0 });
   const symbols = [...new Set(o.trades.map((t) => t.symbol))].sort();
@@ -108,6 +110,11 @@ export default async function Journal({ searchParams }: { searchParams: Promise<
   const allEntries = allIds.length ? await db.select().from(schema.journalEntry).where(and(eq(schema.journalEntry.userId, s.user.id), inArray(schema.journalEntry.closedTradeId, allIds))) : [];
   const calNotes: Record<string, CalNote> = Object.fromEntries(allEntries.map((e) => [e.closedTradeId!, { notes: e.notes ?? "", lessons: e.lessons ?? "", setupTags: e.setupTags, mistakeTags: e.mistakeTags }]));
   const reviewedCount = filtered.filter((t) => reviewed(t.id)).length;
+  const days = bestWorstDays(inPeriod, tz);
+  const series = equitySeries(o.trades, o.startingEquity, range);
+  const ddPct = performanceMetrics(inPeriod, series[0]?.equity ?? null).maxDrawdownPercent;
+  const summary = { day: buckets(o.trades, tz, "day"), week: buckets(o.trades, tz, "week"), month: buckets(o.trades, tz, "month") };
+  const dayLabel = (k: string) => new Date(`${k}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
   const href = (p: number) => { const q = new URLSearchParams(Object.entries(sp).filter(([, v]) => typeof v === "string") as [string, string][]); q.set("page", String(p)); return `?${q}`; };
 
   return (
@@ -123,6 +130,23 @@ export default async function Journal({ searchParams }: { searchParams: Promise<
           <Tile label="Net" value={fmtSignedMoney(m.netProfit, c, 0)} tone={m.netProfit > 0 ? "up" : m.netProfit < 0 ? "down" : undefined} />
           <Tile label="Profit factor" value={m.profitFactor === null ? "—" : fmtNumber(m.profitFactor)} />
           <Tile label="Reviewed" value={`${reviewedCount} / ${filtered.length}`} sub="trades with notes or tags" />
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Tile label="Best day" value={days.best ? fmtSignedMoney(days.best.net, c, 0) : "—"} tone={days.best ? "up" : undefined} sub={days.best ? `${dayLabel(days.best.key)} · ${days.best.trades} trades` : "No winning day"} />
+          <Tile label="Worst day" value={days.worst ? fmtSignedMoney(days.worst.net, c, 0) : "—"} tone={days.worst ? "down" : undefined} sub={days.worst ? `${dayLabel(days.worst.key)} · ${days.worst.trades} trades` : "No losing day"} />
+          <Tile label="Green days" value={String(days.green)} sub={`${days.red} red`} />
+          <Tile label="Max drawdown" value={ddPct === null ? "—" : `${fmtNumber(ddPct, 1)}%`} sub="from peak, this period" />
+        </div>
+        <div className="grid gap-4 xl:grid-cols-[1.6fr_1fr]">
+          <Panel title="Equity curve" note="Trading results only. Deposits and withdrawals are excluded.">
+            {series.length > 1 ? <EquityChart points={series} currency={c} height={220} /> : <p className="text-sm text-ink-3">No closed trades in this period.</p>}
+          </Panel>
+          <Panel title="Drawdown from peak"><DrawdownChart points={drawdownSeries(series)} height={220} /></Panel>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Panel title="Performance" note={`By close time, ${tz}`}><JournalSummary data={summary} currency={c} /></Panel>
+          <Panel title="Win rate by symbol"><GroupTable groups={bySymbol(inPeriod)} currency={c} first="Instrument" /></Panel>
+          <Panel title="By trading session" note="Session the trade was opened in"><GroupTable groups={bySessionOpened(inPeriod)} currency={c} first="Session" /></Panel>
         </div>
         <details className="more detail-panel">
           <summary><span className="min-w-0 flex-1">How these numbers are calculated</span><ChevronDown className="more-chev" aria-hidden /></summary>

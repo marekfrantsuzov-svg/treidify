@@ -8,6 +8,7 @@ import { cn } from "@/lib/cn";
 import { fmtMoney, fmtNumber, fmtSignedMoney } from "@/lib/format";
 import { CountUp } from "@/components/ui/count-up";
 import type { AccountOverviewProps } from "./account-overview";
+import { useLiveAccount } from "@/components/app/live/live-account";
 
 const GRADE_NOTE: Record<string, string> = {
   Strong: "Consistent performance",
@@ -58,7 +59,9 @@ function Metric({ label, value, tone, primary }: { label: string; value: React.R
  * Account Health and the four headline metrics (reference 1 top row). With no account every figure is an honest
  * empty state and the card offers Connect MT5; nothing is invented.
  */
-export function HealthStrip(p: AccountOverviewProps) {
+export function HealthStrip(props: AccountOverviewProps) {
+  const live = useLiveAccount()?.live;
+  const p = live && live.balance !== null ? { ...props, balance: live.balance } : props;
   const none = p.state === "none";
   const now = useMemo(() => new Date(p.nowIso), [p.nowIso]);
   const range = useMemo(() => periodRange(p.period, now, p.timezone, p.custom), [p.period, now, p.timezone, p.custom]);
@@ -84,9 +87,9 @@ export function HealthStrip(p: AccountOverviewProps) {
             {sample && <span className="rounded-lg bg-warn-soft px-2 py-0.5 text-[12px] font-semibold text-warn">Sample</span>}
           </div>
           <p className="mt-1 text-[13px] leading-snug text-ink-2 sm:text-[14px]">
-            {none ? "Connect MetaTrader 5 to score your account." : health.grade ? GRADE_NOTE[health.grade] : health.reason}
+            {none ? "Connect MetaTrader 4 or 5 to score your account." : health.grade ? GRADE_NOTE[health.grade] : health.reason}
           </p>
-          {none && <Link href="/app/accounts" className="press bg-brand mt-3 inline-flex h-9 items-center gap-1.5 rounded-full px-4 text-[13px] font-semibold text-white shadow-[0_10px_22px_-10px_var(--accent-glow)]"><Link2 className="h-4 w-4" />Connect MT5</Link>}
+          {none && <Link href="/app/accounts" className="press bg-brand mt-3 inline-flex h-9 items-center gap-1.5 rounded-full px-4 text-[13px] font-semibold text-white shadow-[0_10px_22px_-10px_var(--accent-glow)]"><Link2 className="h-4 w-4" />Connect MT4/MT5</Link>}
           {!none && p.state !== "sample" && <p className="mt-1 truncate text-[12px] text-ink-3">{p.label}</p>}
         </div>
         <span className="block max-[379px]:hidden lg:hidden min-[1600px]:block"><ScoreBars score={none ? null : health.score} /></span>

@@ -13,7 +13,10 @@ import { goldImpact } from "@/lib/intelligence";
 import { ANALYSTS } from "@/lib/community/analysts";
 import { greetingFor } from "@/lib/greeting";
 import { readPeriod } from "@/lib/period-param";
-import { accountOverview, listAccounts, pickerOptions } from "@/server/account-data";
+import { ALL_ACCOUNTS, accountOverview, listAccounts, pickerOptions } from "@/server/account-data";
+import { liveRefresh } from "@/server/sync/service";
+import { LiveAccountProvider } from "@/components/app/live/live-account";
+import { ConnectionBar } from "@/components/app/live/connection-bar";
 import { db, schema } from "@/server/db";
 import { getPlanState } from "@/server/entitlements";
 import { loadIntel } from "@/server/market/load";
@@ -85,6 +88,8 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     market: { mode: intel.mode, freshness: intel.freshness, vendor: intel.vendor, asOf: intel.asOf },
     macro: macroEvidence(macro), macroOk: macro.rates.ok && macro.inflation.ok, newsOk: news.ok, calendarOk: cal.ok,
   });
+  const liveId = overview && overview.account.source === "provider" && overview.account.id !== ALL_ACCOUNTS ? overview.account.id : null;
+  const initialLive = liveId ? await liveRefresh(s.user.id, liveId, now, false) : null;
   const state = !overview ? "none" : sample ? "sample" : overview.account.status === "connected" ? "connected" : "pending";
   const acct = {
     state, label: overview ? `${overview.account.label}${overview.account.broker ? ` · ${overview.account.broker}` : ""}` : "Not connected",
@@ -94,8 +99,9 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   } as const;
 
   return (
-    <>
+    <LiveAccountProvider accountId={liveId} initial={initialLive}>
       <MobileGreeting greeting={greetingFor(tz)} name={s.user.name.split(" ")[0] ?? ""} />
+      {liveId && <div className="mb-3"><ConnectionBar label={overview!.account.label} /></div>}
       {(sp.welcome || intel.message || (accounts.length > 1 && overview)) && (
         <div className="mb-3 grid gap-2">
           {sp.welcome && (
@@ -139,6 +145,6 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           />
         </RevealItem>
       </Reveal>
-    </>
+    </LiveAccountProvider>
   );
 }

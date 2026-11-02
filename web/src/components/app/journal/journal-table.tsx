@@ -21,15 +21,16 @@ export interface JournalRow {
   up: boolean;
   entry: { notes: string; lessons: string; setupTags: string[]; mistakeTags: string[] } | null;
   /** Exact figures for the trade-detail view: how its net result is made up. */
-  detail?: { opened: string; open: string; close: string; gross: string; commission: string; swap: string; fees: string; net: string; position: string };
+  detail?: { opened: string; open: string; close: string; sl: string; tp: string; lots: string; gross: string; commission: string; swap: string; fees: string; net: string; position: string };
   screenshots?: string[];
 }
 
 function Detail({ d }: { d: NonNullable<JournalRow["detail"]> }) {
   const cell = (k: string, v: string) => <div><dt className="text-[11px] text-ink-3">{k}</dt><dd className="num text-[13px] font-medium text-ink">{v}</dd></div>;
   return (
-    <dl className="grid grid-cols-2 gap-x-4 gap-y-2 px-4 pt-4 sm:grid-cols-5">
-      {cell("Opened", d.opened)}{cell("Entry", d.open)}{cell("Exit", d.close)}{cell("Position ID", d.position)}{cell("Gross P&L", d.gross)}
+    <dl className="grid grid-cols-2 gap-x-4 gap-y-2 px-4 pt-4 sm:grid-cols-4">
+      {cell("Opened", d.opened)}{cell("Direction · lots", d.lots)}{cell("Entry", d.open)}{cell("Exit", d.close)}
+      {cell("Stop loss", d.sl)}{cell("Take profit", d.tp)}{cell("Position ID", d.position)}{cell("Gross P&L", d.gross)}
       {cell("Commission", d.commission)}{cell("Swap", d.swap)}{cell("Fees", d.fees)}{cell("Net = gross + costs", d.net)}
     </dl>
   );
@@ -126,7 +127,7 @@ export function JournalTable({ rows, readOnly = false }: { rows: JournalRow[]; r
   if (!rows.length) return <p className="p-5 text-sm text-ink-3">No trades match these filters.</p>;
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[720px] text-sm">
+      <table aria-label="Closed trades" className="w-full min-w-[720px] text-sm">
         <thead>
           <tr className="text-left text-[11px] uppercase tracking-[0.08em] text-ink-3">
             {["Closed", "Instrument", "Side", "Lots", "Held", "Session", "Net", "Journal"].map((h, i) => <th key={h} className={cn("px-3 py-2.5 font-medium", (i === 3 || i === 6) && "text-right")}>{h}</th>)}

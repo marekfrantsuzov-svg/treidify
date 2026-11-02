@@ -1,5 +1,6 @@
 import "server-only";
 import { newsConfig } from "../news/config";
+import { metaApiToken } from "../sync/metaapi";
 import { NotConfiguredError, type AccountSyncProvider, type AiProvider, type BillingProvider, type MarketDataProvider, type NewsProvider, type ProviderInfo } from "./types";
 
 export * from "./types";
@@ -21,7 +22,7 @@ const labels: Record<ProviderInfo["service"], string> = { sync: "Account sync", 
 const need = (...keys: string[]) => keys.filter((k) => !env(k));
 
 export function syncProvider(): AccountSyncProvider {
-  const m = missing("sync", "metaapi", need("METAAPI_TOKEN"));
+  const m = missing("sync", "metaapi", metaApiToken() ? [] : ["METAAPI_TOKEN"]);
   return { info: m.info, connect: m.fail, status: m.fail, disconnect: m.fail, deals: m.fail, snapshot: m.fail };
 }
 

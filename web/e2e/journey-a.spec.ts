@@ -112,7 +112,7 @@ test("sign up, verify, onboard, dashboard, profile, two-step sign-in", async ({ 
   await page.getByRole("combobox", { name: "Journal notes" }).selectOption("with");
   await expect(page).toHaveURL(/notes=with/);
   await expect(page.getByRole("button", { name: /retest, london open/ })).toBeVisible();
-  await expect(page.locator("tbody tr")).toHaveCount(1);
+  await expect(page.getByRole("table", { name: "Closed trades" }).locator("tbody tr")).toHaveCount(1);
 
   await page.goto("/app");
 

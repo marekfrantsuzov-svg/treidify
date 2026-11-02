@@ -18,6 +18,8 @@ export interface AccountSummary {
   lastSyncAt: string | null;
   lastError: string | null;
   lastErrorAt: string | null;
+  /** "investor" (proven read-only) or "master" (owner only); null until MetaApi has confirmed access. */
+  accessMode: string | null;
 }
 
 /** Id used by the account picker for the combined view of every real account in one currency. */
@@ -70,6 +72,7 @@ export async function listAccounts(userId: string): Promise<AccountSummary[]> {
     lastSyncAt: c?.lastSyncAt?.toISOString() ?? null,
     lastError: c?.lastError ?? null,
     lastErrorAt: c?.lastErrorAt?.toISOString() ?? null,
+    accessMode: c?.accessMode ?? null,
   }));
 }
 
@@ -104,6 +107,9 @@ async function singleOverview(account: AccountSummary): Promise<AccountOverview>
     fees: r.fee,
     openPrice: r.openPrice,
     closePrice: r.closePrice,
+    stopLoss: r.stopLoss,
+    takeProfit: r.takeProfit,
+    positionId: r.positionId,
   }));
   const net = trades.reduce((a, t) => a + t.profit + t.commission + t.swap + t.fees, 0);
   const deposits = flows.reduce((a, f) => a + f.amount, 0);
@@ -140,7 +146,7 @@ async function combinedOverview(real: AccountSummary[]): Promise<AccountOverview
   return {
     account: {
       id: ALL_ACCOUNTS, label: `All accounts (${real.length})`, platform: real[0]!.platform, login: "", server: "", broker: null, currency: real[0]!.currency, source: "provider",
-      status: okAll ? "connected" : real.some((a) => a.status === "connected") ? "synchronizing" : real[0]!.status, lastSyncAt: lastSyncs[0] ?? null, lastError: real.find((a) => a.lastError)?.lastError ?? null, lastErrorAt: null,
+      status: okAll ? "connected" : real.some((a) => a.status === "connected") ? "synchronizing" : real[0]!.status, lastSyncAt: lastSyncs[0] ?? null, lastError: real.find((a) => a.lastError)?.lastError ?? null, lastErrorAt: null, accessMode: null,
     },
     balance: sum((o) => o.balance),
     equity,

@@ -5,7 +5,10 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { after } from "next/server";
 import { rateLimit } from "@/lib/rate-limit";
-import { createConnection, revokeConnection, syncConnection, syncStatus } from "../sync/service";
+import { createConnection, deleteConnectedAccount, ownedConnection, revokeConnection, syncConnection, syncStatus } from "../sync/service";
+import { connectErrorMessage, credentialAllowed, redact } from "../sync/access";
+import { isOwner } from "../owner";
+import { reportError } from "@/lib/monitoring";
 import { MetaApiError } from "../sync/metaapi";
 import { audit } from "../audit";
 import { db, schema } from "../db";
@@ -36,57 +39,96 @@ export async function removeDemoAccount(): Promise<ActionResult> {
 
 const connectSchema = z.object({
   platform: z.enum(["mt4", "mt5"]),
-  server: z.string().trim().min(2, "Enter your broker server, for example ICMarketsSC-Live07.").max(80),
+  server: z.string().trim().min(2, "Enter your broker server, for example ICMarketsSC-Live07.").max(80).regex(/^[\w .\-()]+$/, "Use the server name exactly as MetaTrader shows it."),
   login: z.string().trim().regex(/^\d{3,20}$/, "The login is the account number, digits only."),
-  investorPassword: z.string().min(4, "Enter the investor (read-only) password.").max(64),
-  confirmReadOnly: z.literal(true, { error: "Confirm that this is the read-only investor password." }),
+  password: z.string().min(4, "Enter the password.").max(64),
+  credential: z.enum(["investor", "master"]).default("investor"),
+  confirmReadOnly: z.literal(true, { error: "Confirm the password type." }),
 });
 
+/** The signed-in user as stored in the database (id, email, verification): the only input to the owner check. */
+async function sessionUser(userId: string) {
+  const [u] = await db.select({ id: schema.user.id, email: schema.user.email, emailVerified: schema.user.emailVerified }).from(schema.user).where(eq(schema.user.id, userId));
+  return u ?? null;
+}
+
+/** Whether the signed-in user is the verified owner (server-side check; shown so the form can offer the master option). */
+export async function connectOptions(): Promise<{ owner: boolean }> {
+  const s = await requireUser();
+  return { owner: isOwner(await sessionUser(s.user.id)) };
+}
+
 /**
- * Connects a MetaTrader account read-only through MetaApi. The investor password goes straight to MetaApi over TLS
- * and is never stored by Treidify. If MetaApi reports the account is not in investor mode, the first sync removes it.
+ * Connects a MetaTrader account through MetaApi. The password goes from this server straight to MetaApi over TLS and is
+ * never stored, logged or returned by Treidify. Normal users: investor password only, proven by MetaApi before any data
+ * is stored. The verified owner may also use the master password; Treidify still never trades.
  */
-export async function connectTradingAccount(input: z.input<typeof connectSchema>): Promise<ActionResult> {
+export async function connectTradingAccount(input: z.input<typeof connectSchema>): Promise<ActionResult & { accountId?: string }> {
   const s = await requireUser();
   const p = connectSchema.safeParse(input);
   if (!p.success) return { ok: false, error: p.error.issues[0]?.message ?? "Please check the form." };
   if (!rateLimit(`connect:${s.user.id}`, 5, 3600_000).ok) return { ok: false, error: "Too many connection attempts. Try again in an hour." };
   if (!syncStatus().configured) return { ok: false, error: "Account sync is not switched on yet, so nothing was sent. Your details were not stored." };
-  const { platform, server, login, investorPassword } = p.data;
+  const u = await sessionUser(s.user.id);
+  if (!u) return { ok: false, error: "Please sign in again." };
+  const { platform, server, login, password, credential } = p.data;
+  if (!credentialAllowed(credential, isOwner(u))) {
+    await audit("account.connect_master_refused", { actorId: u.id, targetType: "user", targetId: u.id });
+    return { ok: false, error: "Only the investor (read-only) password can be used. Nothing was sent." };
+  }
   try {
-    const r = await createConnection(s.user.id, { platform, server, login, investorPassword });
+    const r = await createConnection(u, { platform, server, login, password, credential });
     if (!r.ok) return { ok: false, error: r.error };
-    await audit("account.connect_requested", { actorId: s.user.id, targetType: "trading_account", targetId: r.accountId, meta: { platform, server } });
+    await audit("account.connect_requested", { actorId: u.id, targetType: "trading_account", targetId: r.accountId, meta: { platform, server, credential } });
     after(async () => {
       const [c] = await db.select({ id: schema.providerConnection.id }).from(schema.providerConnection).where(eq(schema.providerConnection.tradingAccountId, r.accountId));
       if (c) await syncConnection(c.id);
     });
     revalidatePath("/app", "layout");
-    return { ok: true, message: r.reconnected ? "Reconnect requested. Your existing history is kept and only new deals are added; the first sync usually takes one to three minutes." : "Connection requested. MetaApi is connecting to your broker; the first sync usually takes one to three minutes." };
+    return { ok: true, accountId: r.accountId, message: r.reconnected ? "Reconnect requested. Your existing history is kept and only new deals are added." : "Connection created. MetaApi is connecting to your broker." };
   } catch (e) {
-    if (e instanceof MetaApiError) return { ok: false, error: e.status === 400 || e.status === 404 ? "The broker server or login was not recognised. Check them and try again." : "MetaApi could not create the connection. Nothing was saved; try again shortly." };
-    return { ok: false, error: "The connection could not be made. Check the server name, login and investor password, then try again." };
+    if (e instanceof MetaApiError) {
+      reportError(new Error(redact(e.message, password)), { where: "accounts.connect", extra: { status: e.status, code: e.code } });
+      return { ok: false, error: connectErrorMessage(e) };
+    }
+    reportError(new Error("connect failed"), { where: "accounts.connect" });
+    return { ok: false, error: "The connection could not be made. Check the server name, login and password, then try again." };
   }
 }
 
-async function ownConnection(userId: string, accountId: string) {
-  const [row] = await db.select({ id: schema.providerConnection.id }).from(schema.providerConnection)
-    .innerJoin(schema.tradingAccount, eq(schema.tradingAccount.id, schema.providerConnection.tradingAccountId))
-    .where(and(eq(schema.tradingAccount.id, accountId), eq(schema.tradingAccount.userId, userId)));
-  return row ?? null;
+export interface ConnectionProgress { ok: boolean; phase: "connecting" | "verifying" | "refused" | "broker_rejected" | "synced" | "error" | "inactive"; status: string | null; accessMode: string | null; message: string | null }
+
+/**
+ * Polled by the connect sheet until the account is verified and its history imported. Runs a sync at most every
+ * 8 seconds per account. Owner-scoped: another user's account id returns "not found".
+ */
+export async function connectionProgress(accountId: string): Promise<ConnectionProgress> {
+  const s = await requireUser();
+  const row = await ownedConnection(s.user.id, z.string().uuid().parse(accountId));
+  if (!row) return { ok: false, phase: "inactive", status: null, accessMode: null, message: "Account not found." };
+  let { c } = row;
+  if (c.status !== "connected" && c.externalId && rateLimit(`progress:${c.id}`, 1, 8000).ok) {
+    const r = await syncConnection(c.id);
+    const [fresh] = await db.select().from(schema.providerConnection).where(eq(schema.providerConnection.id, c.id));
+    if (fresh) c = fresh;
+    if (r.ok) revalidatePath("/app", "layout");
+    return { ok: r.ok, phase: r.phase, status: c.status, accessMode: c.accessMode, message: r.error ?? null };
+  }
+  const phase = c.status === "connected" ? "synced" : !c.externalId ? (c.lastError ? "refused" : "inactive") : c.status === "reconnection_required" ? "broker_rejected" : "connecting";
+  return { ok: c.status === "connected", phase, status: c.status, accessMode: c.accessMode, message: c.status === "connected" ? null : c.lastError };
 }
 
 export async function syncTradingAccount(accountId: string): Promise<ActionResult> {
   const s = await requireUser();
   if (!rateLimit(`sync:${s.user.id}`, 12, 3600_000).ok) return { ok: false, error: "Please wait a little before syncing again." };
-  const c = await ownConnection(s.user.id, accountId);
-  if (!c) return { ok: false, error: "Account not found." };
-  const r = await syncConnection(c.id);
+  const row = await ownedConnection(s.user.id, accountId);
+  if (!row) return { ok: false, error: "Account not found." };
+  const r = await syncConnection(row.c.id);
   revalidatePath("/app", "layout");
   return r.ok ? { ok: true, message: "Synced with your broker." } : { ok: false, error: r.error ?? "Sync failed." };
 }
 
-/** Disconnect and revoke: removes the account (and its stored investor password) from MetaApi. Synced history stays until the user deletes the account. */
+/** Disconnect and revoke: removes the account (and the password MetaApi holds) from MetaApi. Synced history stays until the user deletes it. */
 export async function disconnectTradingAccount(accountId: string): Promise<ActionResult> {
   const s = await requireUser();
   const r = await revokeConnection(s.user.id, accountId);
@@ -94,4 +136,14 @@ export async function disconnectTradingAccount(accountId: string): Promise<Actio
   await audit("account.disconnected", { actorId: s.user.id, targetType: "trading_account", targetId: accountId });
   revalidatePath("/app", "layout");
   return { ok: true, message: "Disconnected. MetaApi no longer holds access to this account." };
+}
+
+/** Disconnect (revoking MetaApi access) and permanently delete the account and all of its synced data from Treidify. */
+export async function deleteTradingAccount(accountId: string): Promise<ActionResult> {
+  const s = await requireUser();
+  const r = await deleteConnectedAccount(s.user.id, z.string().uuid().parse(accountId));
+  if (!r.ok) return { ok: false, error: r.error ?? "Could not delete." };
+  await audit("account.deleted", { actorId: s.user.id, targetType: "trading_account", targetId: accountId });
+  revalidatePath("/app", "layout");
+  return { ok: true, message: "Account and its synced data were deleted." };
 }

@@ -155,8 +155,15 @@ export const providerConnection = pgTable("provider_connection", {
   lastError: text("last_error"),
   consecutiveFailures: integer("consecutive_failures").notNull().default(0),
   historyFrom: ts("history_from"),
-  /** AES-256-GCM ciphertext of the investor password, only if the provider requires us to hold it. */
+  /** AES-256-GCM ciphertext of the investor password, only if the provider requires us to hold it. Unused with MetaApi: always null. */
   secretCiphertext: text("secret_ciphertext"),
+  /** What the user said they entered: "investor" (everyone) or "master" (only the verified owner may choose it). */
+  credential: text("credential").notNull().default("investor"),
+  /** What MetaApi proved: "investor" when investorMode was true, "master" for the owner otherwise. Null until verified. */
+  accessMode: text("access_mode"),
+  accessVerifiedAt: ts("access_verified_at"),
+  /** Last on-view refresh of balance, equity and positions (separate from the full history sync). */
+  lastLiveAt: ts("last_live_at"),
   createdAt: created(),
   updatedAt: updated(),
 }, (t) => [uniqueIndex("provider_connection_account_uq").on(t.tradingAccountId, t.provider), index("provider_connection_status_idx").on(t.status)]);
