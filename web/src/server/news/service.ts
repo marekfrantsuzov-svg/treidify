@@ -2,11 +2,24 @@ import "server-only";
 import type { UpcomingEvent } from "@/lib/intelligence";
 import { reportError } from "@/lib/monitoring";
 import { finnhub, type RawEvent } from "./finnhub";
+import { officialCalendar } from "../macro/service";
+import { cleanLine, cleanText } from "@/lib/news/sanitize";
 import { newsConfig } from "./config";
 import { categoriesOf, eventImportance, headlineImportance, tagInstruments, trackedKind, type Instrument, type NewsCategory } from "./classify";
 
 export interface Headline { id: string; title: string; summary: string; source: string; url: string; publishedAt: string; instruments: Instrument[]; importance: "high" | "medium" | "low"; categories: NewsCategory[]; breaking: boolean; image: string | null }
-export interface EconEvent { id: string; title: string; country: string; at: string; importance: "high" | "medium" | "low"; kind: ReturnType<typeof trackedKind>; actual: string | null; forecast: string | null; previous: string | null }
+export interface EconEvent {
+  id: string; title: string; country: string; at: string; importance: "high" | "medium" | "low"; kind: ReturnType<typeof trackedKind>; actual: string | null; forecast: string | null; previous: string | null;
+  /** upcoming: scheduled. released: actual is in. awaiting: release time has passed, the value is not in the source yet. */
+  status?: "upcoming" | "released" | "awaiting";
+  /** The previous value as first printed, when this release revised it. */
+  revisedFrom?: string | null;
+  /** The period the release refers to, e.g. "September 2026". */
+  period?: string | null;
+  currency?: string;
+  agency?: string;
+  sourceUrl?: string;
+}
 
 const env = (k: string) => process.env[k]?.trim() || null;
 export function newsStatus() {
@@ -40,7 +53,7 @@ export async function latestHeadlines(limit = 30): Promise<Result<Headline[]>> {
         const text = `${n.headline} ${n.summary}`;
         const importance = headlineImportance(text);
         const publishedMs = n.datetime * 1000;
-        return { id: String(n.id), title: n.headline, summary: n.summary, source: n.source, url: n.url, publishedAt: new Date(publishedMs).toISOString(), instruments: tagInstruments(text), importance, categories: categoriesOf(text), breaking: importance === "high" && now - publishedMs <= BREAKING_MS, image: n.image && /^https:\/\//.test(n.image) ? n.image : null };
+        return { id: String(n.id), title: cleanLine(n.headline), summary: cleanText(n.summary), source: cleanLine(n.source), url: n.url, publishedAt: new Date(publishedMs).toISOString(), instruments: tagInstruments(text), importance, categories: categoriesOf(text), breaking: importance === "high" && now - publishedMs <= BREAKING_MS, image: n.image && /^https:\/\//.test(n.image) ? n.image : null };
       })
       .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
     // Instrument-relevant stories first, then everything else, newest first in each group.
@@ -62,17 +75,47 @@ export function normaliseEvent(e: RawEvent, i: number): EconEvent | null {
   return { id: `${e.country}-${at}-${i}`, title: e.event, country: e.country, at: new Date(at).toISOString(), importance: eventImportance(e.event, e.impact), kind: trackedKind(e.event), actual: num(e.actual, e.unit), forecast: num(e.estimate, e.unit), previous: num(e.prev, e.unit) };
 }
 
+const CURRENCY: Record<string, string> = { US: "USD", EU: "EUR", GB: "GBP", JP: "JPY", CN: "CNY", CA: "CAD", CH: "CHF", AU: "AUD", DE: "EUR" };
+/** Official tracked-kind for the shared UI (FOMC, CPI...); other official releases keep their own label in the title. */
+const OFFICIAL_KIND: Record<string, EconEvent["kind"]> = { FOMC: "FOMC", CPI: "CPI", PPI: "PPI", NFP: "NFP", GDP: "GDP", PCE: "PCE" };
+/** Finnhub refused the calendar (plan): don't ask again for six hours on this instance. */
+let calendarRefusedUntil = 0;
+export const OFFICIAL_VENDOR = "Official US releases (BLS, BEA, Federal Reserve) via FRED";
+
+/** The official US release calendar from FRED. Needs FRED_API_KEY (free). Forecasts are never available here. */
+async function officialFallback(from: Date, to: Date, why: string): Promise<Result<EconEvent[]>> {
+  if (!process.env.FRED_API_KEY?.trim()) {
+    return { ok: false, reason: "not-configured", message: `${why} The official US release calendar needs a free FRED API key.`.trim(), needs: ["FRED_API_KEY"] };
+  }
+  try {
+    const ev = await officialCalendar(from, to);
+    const data: EconEvent[] = ev.map((e) => ({ id: e.id, title: e.title, country: e.country, at: e.at, importance: e.importance, kind: OFFICIAL_KIND[e.kind] ?? null, actual: e.actual, forecast: null, previous: e.previous, status: e.status, revisedFrom: e.revisedFrom, period: e.period, currency: e.currency, agency: e.agency, sourceUrl: e.sourceUrl }));
+    return { ok: true, data, vendor: OFFICIAL_VENDOR, fetchedAt: new Date().toISOString() };
+  } catch (e) {
+    reportError(e, { where: "news.officialCalendar" });
+    return { ok: false, reason: "error", message: "The official release calendar (FRED) did not answer, so no events are shown.", detail: detailOf(e) };
+  }
+}
+
+/**
+ * Economic calendar. Finnhub when the connected plan includes it (it adds forecasts and other countries); otherwise
+ * the official US release schedule with actual and previous values from FRED.
+ */
 export async function economicCalendar(from: Date, to: Date): Promise<Result<EconEvent[]>> {
   const st = newsStatus();
-  if (!st.configured) return { ok: false, reason: "not-configured", message: "The economic calendar is not connected.", needs: st.needs };
+  if (!st.configured || process.env.CALENDAR_PROVIDER?.trim() === "fred") return officialFallback(from, to, "");
+  if (Date.now() < calendarRefusedUntil) return officialFallback(from, to, "The news plan does not include an economic calendar.");
   try {
     const raw = await client().calendar(from.toISOString().slice(0, 10), to.toISOString().slice(0, 10));
-    const data = raw.map(normaliseEvent).filter((x): x is EconEvent => !!x).sort((a, b) => a.at.localeCompare(b.at));
+    const now = Date.now();
+    const data = raw.map(normaliseEvent).filter((x): x is EconEvent => !!x)
+      .map((e) => ({ ...e, currency: CURRENCY[e.country], status: (Date.parse(e.at) > now ? "upcoming" : e.actual ? "released" : "awaiting") as EconEvent["status"] }))
+      .sort((a, b) => a.at.localeCompare(b.at));
     return { ok: true, data, vendor: "finnhub", fetchedAt: new Date().toISOString() };
   } catch (e) {
+    if (refusedByPlan(e)) { calendarRefusedUntil = Date.now() + 6 * 3600_000; return officialFallback(from, to, "The news plan does not include an economic calendar."); }
     reportError(e, { where: "news.economicCalendar" });
-    if (refusedByPlan(e)) return { ok: false, reason: "not-in-plan", message: "The economic calendar is not included in the connected news plan, so no events are shown.", detail: detailOf(e) };
-    return { ok: false, reason: "error", message: "The calendar provider did not answer, so no events are shown.", detail: detailOf(e) };
+    return officialFallback(from, to, "The calendar provider did not answer.");
   }
 }
 
