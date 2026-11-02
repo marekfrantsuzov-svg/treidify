@@ -161,7 +161,7 @@ export async function getSeries(symbol: MarketSymbol, timeframe: Timeframe, coun
     return {
       ok: true, symbol, timeframe, candles, vendor: s.vendor, method: s.method,
       fetchedAt: s.fetchedAt.toISOString(), lastBarAt: new Date(last.t * 1000).toISOString(),
-      freshness: classifyFreshness(last.t, timeframe, now, symbol), digits: def.digits,
+      freshness: classifyFreshness(last.t, timeframe, now, symbol, cacheSeconds[timeframe]), digits: def.digits,
       refreshSeconds: cacheSeconds[timeframe], plan, savedCopy,
     };
   };

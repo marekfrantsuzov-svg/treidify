@@ -26,14 +26,23 @@ export function normalizeFredKey(raw: string | null | undefined): string | null 
   if (!raw) return null;
   const s = raw.trim().replace(/^FRED_API_KEY\s*[=:]\s*/i, "").replace(/^["'`]+|["'`]+$/g, "").trim().toLowerCase();
   if (/^[a-z0-9]{32}$/.test(s)) return s;
+  // A pasted request URL: take the api_key parameter.
+  const param = s.match(/api_key=([a-z0-9]{32})(?![a-z0-9])/);
+  if (param) return param[1]!;
   const m = s.match(/(?:^|[^a-z0-9])([a-z0-9]{32})(?:$|[^a-z0-9])/);
   return m ? m[1]! : null;
 }
 
-/** What is wrong with a FRED_API_KEY value, without revealing it. */
-export function fredKeyState(raw: string | null | undefined): { state: "ok" | "missing" | "malformed"; length: number } {
+/** The placeholder key printed in FRED's documentation examples. It is not a real key. */
+export const FRED_DOCS_PLACEHOLDER = "abcdefghijklmnopqrstuvwxyz123456";
+
+/** What is wrong with a FRED_API_KEY value, without revealing it: only its shape. */
+export function fredKeyState(raw: string | null | undefined): { state: "ok" | "missing" | "malformed" | "placeholder"; length: number; shape?: { url: boolean; apiKeyParam: boolean; whitespace: boolean; quotes: boolean; upperCase: boolean; tokens32: number } } {
   if (!raw || !raw.trim()) return { state: "missing", length: 0 };
-  return { state: normalizeFredKey(raw) ? "ok" : "malformed", length: raw.length };
+  const k = normalizeFredKey(raw);
+  const shape = { url: /https?:|stlouisfed\.org/i.test(raw), apiKeyParam: /api_key=/i.test(raw), whitespace: /\s/.test(raw.trim()) || raw !== raw.trim(), quotes: /["'`]/.test(raw), upperCase: /[A-Z]/.test(raw), tokens32: (raw.toLowerCase().match(/(?<![a-z0-9])[a-z0-9]{32}(?![a-z0-9])/g) ?? []).length };
+  if (k === FRED_DOCS_PLACEHOLDER) return { state: "placeholder", length: raw.length, shape };
+  return { state: k ? "ok" : "malformed", length: raw.length, ...(raw.trim().length === 32 ? {} : { shape }) };
 }
 
 export function fred(key: string | null, fetchImpl: Fetch = fetch) {

@@ -164,3 +164,14 @@ describe("engine", () => {
     expect(overallConditions(r, r).bias).toBe("insufficient");
   });
 });
+
+describe("freshness on a rate-limited plan", () => {
+  it("treats bars within the plan's refresh window as delayed, older as stale", async () => {
+    const { classifyFreshness } = await import("@/server/market/freshness");
+    const wed = new Date("2026-10-28T14:30:00Z");
+    // 5M bar opened 14:00 → 25 min old: stale on a paid plan, delayed on the free plan's 15-min refresh.
+    expect(classifyFreshness(Date.UTC(2026, 9, 28, 14, 5) / 1000, "5M", wed)).toBe("stale");
+    expect(classifyFreshness(Date.UTC(2026, 9, 28, 14, 5) / 1000, "5M", wed, "XAUUSD", 900)).toBe("delayed");
+    expect(classifyFreshness(Date.UTC(2026, 9, 28, 13, 30) / 1000, "5M", wed, "XAUUSD", 900)).toBe("stale");
+  });
+});

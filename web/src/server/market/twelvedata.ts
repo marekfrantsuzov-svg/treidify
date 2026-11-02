@@ -52,7 +52,10 @@ export function twelveData(apiKey: string, fetchImpl: Fetch = fetch, cacheSecond
     const url = new URL(path, BASE);
     for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
     // The key goes in a header, so it never appears in logged URLs.
-    const res = await fetchImpl(url, { headers: { Authorization: `apikey ${apiKey}` }, next: { revalidate } } as RequestInit);
+    // Never through Next's data cache: it serves the previous response while revalidating in the background, so bars
+    // came back up to a whole refresh window older than their fetch time said. The saved copy (database) is the cache.
+    void revalidate;
+    const res = await fetchImpl(url, { headers: { Authorization: `apikey ${apiKey}` }, cache: "no-store" } as RequestInit);
     if (!res.ok) throw new VendorError("twelvedata", `HTTP ${res.status}`, res.status);
     return (await res.json()) as T;
   }
