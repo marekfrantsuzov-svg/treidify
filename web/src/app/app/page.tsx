@@ -18,22 +18,20 @@ import { db, schema } from "@/server/db";
 import { getPlanState } from "@/server/entitlements";
 import { loadIntel } from "@/server/market/load";
 import { marketOverview } from "@/server/market/overview";
-import { economicCalendar, latestHeadlines, type EconEvent, type Result } from "@/server/news/service";
+import { economicCalendar, latestHeadlines } from "@/server/news/service";
+import { macroEvidence, macroIndicators } from "@/server/macro/service";
 import { requireOnboarded } from "@/server/session";
 
 export const metadata = { title: "Dashboard" };
 
 const DAY = 86_400_000;
 
-/** Latest released US value per macro tile, read from the calendar's past events. */
-function macroTiles(cal: Result<EconEvent[]>, now: number): MacroTile[] {
-  const past = cal.ok ? cal.data.filter((e) => e.country === "US" && e.actual && Date.parse(e.at) <= now).sort((a, b) => Date.parse(b.at) - Date.parse(a.at)) : [];
-  const pick = (kinds: string[]) => past.find((e) => e.kind && kinds.includes(e.kind));
-  const rate = pick(["FOMC", "Rate decision"]), cpi = pick(["CPI"]), gdp = pick(["GDP"]);
+/** Latest official US value per macro tile (FRED: Federal Reserve, BLS, BEA). */
+function macroTiles(m: Awaited<ReturnType<typeof macroIndicators>>): MacroTile[] {
   return [
-    { id: "rates", label: "Rates", value: rate?.actual ?? null, note: rate?.title ?? null },
-    { id: "inflation", label: "Inflation", value: cpi?.actual ?? null, note: cpi?.title ?? null },
-    { id: "gdp", label: "GDP", value: gdp?.actual ?? null, note: gdp?.title ?? null },
+    { id: "rates", label: "Rates", value: m.rates.value, note: m.rates.ok ? m.rates.measure : m.rates.message },
+    { id: "inflation", label: "Inflation", value: m.inflation.value, note: m.inflation.ok ? `CPI y/y · ${m.inflation.period}` : m.inflation.message },
+    { id: "gdp", label: "GDP", value: m.gdp.value, note: m.gdp.ok ? `Real GDP · ${m.gdp.period}` : m.gdp.message },
   ];
 }
 
@@ -70,18 +68,23 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const nowMs = now.getTime();
   const nowIso = now.toISOString();
   const sample = overview?.account.source === "sample";
-  const [intel, news, cal, rows, comm] = await Promise.all([
+  const [intel, news, cal, rows, comm, macro] = await Promise.all([
     loadIntel(),
     latestHeadlines(20),
-    economicCalendar(new Date(nowMs - 45 * DAY), new Date(nowMs + 4 * DAY)),
+    economicCalendar(new Date(nowMs - DAY), new Date(nowMs + 4 * DAY)),
     marketOverview(),
     community(),
+    macroIndicators(),
   ]);
 
   const newsFeed: Feed<NewsItem> = news.ok ? { ok: true, vendor: news.vendor, data: news.data } : { ok: false, message: news.message, needs: news.needs };
   const upcoming = cal.ok ? cal.data.filter((e) => Date.parse(e.at) >= nowMs - 60 * 60_000 && e.importance !== "low").sort((a, b) => Date.parse(a.at) - Date.parse(b.at)) : [];
   const calFeed: Feed<CalItem> = cal.ok ? { ok: true, vendor: cal.vendor, data: upcoming.slice(0, 6) } : { ok: false, message: cal.message, needs: cal.needs };
-  const impact = goldImpact(intel.gold, intel.dxy, news.ok ? news.data : [], upcoming, now);
+  const recentCal = cal.ok ? cal.data.filter((e) => Date.parse(e.at) >= nowMs - 2 * DAY) : [];
+  const impact = goldImpact(intel.gold, intel.dxy, news.ok ? news.data : [], recentCal, now, {
+    market: { mode: intel.mode, freshness: intel.freshness, vendor: intel.vendor, asOf: intel.asOf },
+    macro: macroEvidence(macro), macroOk: macro.rates.ok && macro.inflation.ok, newsOk: news.ok, calendarOk: cal.ok,
+  });
   const state = !overview ? "none" : sample ? "sample" : overview.account.status === "connected" ? "connected" : "pending";
   const acct = {
     state, label: overview ? `${overview.account.label}${overview.account.broker ? ` · ${overview.account.broker}` : ""}` : "Not connected",
@@ -112,7 +115,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         <GoldDesk initial={intel} />
         <NewsCard feed={newsFeed} nowMs={nowMs} />
         <ImpactCard impact={impact} nowMs={nowMs} />
-        <MacroCard tiles={macroTiles(cal, nowMs)} />
+        <MacroCard tiles={macroTiles(macro)} />
         <OverviewCard rows={rows} />
         <CalendarCard feed={calFeed} tz={tz} nowMs={nowMs} />
         <CommunityCard members={comm.members} faces={comm.faces} />

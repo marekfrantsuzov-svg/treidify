@@ -3,6 +3,7 @@ import { getSeries, marketDataStatus, marketPlan, type SeriesResult } from "@/se
 import { coverageMap, probeCoverage } from "@/server/market/coverage";
 import { TIMEFRAMES, type Timeframe } from "@/server/market/instruments";
 import { economicCalendar, latestHeadlines, newsStatus } from "@/server/news/service";
+import { macroIndicators, macroKeyConfigured } from "@/server/macro/service";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -37,6 +38,17 @@ export async function GET(req: Request) {
   const set = new URL(req.url).searchParams.get("set") ?? "";
   const base = { configured: st.configured, vendor: st.vendor, needs: st.needs, dxyMethod: st.dxyMethod, commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null };
   const headers = { "Cache-Control": "no-store" };
+  if (set === "macro") {
+    // Official macro data (FRED) and the economic calendar actually served. Values and dates only, never keys.
+    const now = new Date();
+    const [m, c] = await Promise.all([macroIndicators(), economicCalendar(new Date(now.getTime() - 8 * 86_400_000), new Date(now.getTime() + 9 * 86_400_000))]);
+    const ind = (x: typeof m.rates) => ({ ok: x.ok, value: x.value, period: x.period, releasedOn: x.releasedOn, previous: x.previous, facts: x.facts, next: x.next, via: x.via, points: x.history.length, message: x.message });
+    return NextResponse.json({ macro: {
+      fredKey: macroKeyConfigured(), commit: base.commit,
+      rates: ind(m.rates), inflation: ind(m.inflation), gdp: ind(m.gdp), yields: m.yields,
+      calendar: c.ok ? { ok: true, vendor: c.vendor, count: c.data.length, events: c.data.map((e) => ({ at: e.at, title: e.title, status: e.status, period: e.period, actual: e.actual, forecast: e.forecast, previous: e.previous, revisedFrom: e.revisedFrom })) } : c,
+    } }, { headers });
+  }
   if (set === "news") {
     // News and calendar check (Finnhub). Reports counts, newest time and sources, never the stories themselves.
     const ns = newsStatus();
@@ -45,7 +57,7 @@ export async function GET(req: Request) {
     const [h, c] = await Promise.all([latestHeadlines(40), economicCalendar(now, new Date(now.getTime() + 7 * 86_400_000))]);
     return NextResponse.json({ news: {
       configured: true, vendor: ns.vendor,
-      headlines: h.ok ? { ok: true, count: h.data.length, newest: h.data.map((x) => x.publishedAt).sort().at(-1) ?? null, sources: [...new Set(h.data.map((x) => x.source))].slice(0, 8), breaking: h.data.filter((x) => x.breaking).length, withInstruments: h.data.filter((x) => x.instruments.length).length } : h,
+      headlines: h.ok ? { ok: true, count: h.data.length, newest: h.data.map((x) => x.publishedAt).sort().at(-1) ?? null, sources: [...new Set(h.data.map((x) => x.source))].slice(0, 8), breaking: h.data.filter((x) => x.breaking).length, withImages: h.data.filter((x) => x.image).length, markupLeft: h.data.filter((x) => /<\/?[a-z][^>]*>|mso-|\{[^}]*:[^}]*\}/i.test(x.title + x.summary)).length, withInstruments: h.data.filter((x) => x.instruments.length).length } : h,
       calendar: c.ok ? { ok: true, count: c.data.length, next: c.data.find((x) => x.at >= now.toISOString())?.at ?? null, high: c.data.filter((x) => x.importance === "high").length } : c,
     } }, { headers });
   }

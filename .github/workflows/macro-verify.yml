@@ -1,0 +1,24 @@
+name: Macro sources verification
+
+# Real-response check of the official macro sources (FRED CSV/API, FOMC calendar page). Runs on pushes that touch the
+# macro code and on demand. Optional repository secret FRED_API_KEY enables the API checks (schedule, vintages).
+on:
+  workflow_dispatch:
+  push:
+    branches: ["claude/**"]
+    paths: ["web/src/server/macro/**", "web/scripts/verify-macro.ts", ".github/workflows/macro-verify.yml"]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    defaults: { run: { working-directory: web } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: web/package-lock.json }
+      - run: npm ci --no-audit --no-fund
+      - name: Verify
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+        run: npx tsx scripts/verify-macro.ts
