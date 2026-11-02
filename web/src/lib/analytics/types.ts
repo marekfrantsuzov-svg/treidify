@@ -31,6 +31,10 @@ export interface ClosedTrade {
   /** Entry and exit prices when the source provides them. */
   openPrice?: number;
   closePrice?: number;
+  /** Stop loss and take profit as last recorded on the position's deals, and the broker's position ticket. */
+  stopLoss?: number | null;
+  takeProfit?: number | null;
+  positionId?: string;
 }
 
 export function isValidCandle(c: Candle): boolean {

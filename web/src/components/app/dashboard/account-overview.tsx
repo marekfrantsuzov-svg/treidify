@@ -9,6 +9,7 @@ import { PERIOD_NAMES } from "@/lib/period-param";
 import { EquityChart } from "@/components/charts/equity-chart";
 import { Card, CardHeader } from "@/components/ui/card";
 import { RevealItem } from "@/components/motion/reveal";
+import { useLiveAccount } from "@/components/app/live/live-account";
 
 /** Where the numbers come from. "none": no MetaTrader account yet, so every metric is drawn at zero and nothing is invented. */
 export type AccountState = "none" | "sample" | "pending" | "connected";
@@ -35,7 +36,9 @@ const QUICK_PERIODS: PeriodId[] = ["7D", "30D", "90D", "ALL"];
  * YOUR ACCOUNT HEALTH, as dashboard grid items: headline metrics, equity curve, health and connection, statistics.
  * The layout never changes with the connection: before MT5 every figure reads zero, after a sync the same cards fill in.
  */
-export function AccountOverview(p: AccountOverviewProps & { aside?: React.ReactNode }) {
+export function AccountOverview(props: AccountOverviewProps & { aside?: React.ReactNode }) {
+  const live = useLiveAccount()?.live;
+  const p = live && live.equity !== null ? { ...props, balance: live.balance, equity: live.equity, floating: live.floating } : props;
   const none = p.state === "none";
   const now = useMemo(() => new Date(p.nowIso), [p.nowIso]);
   const range = useMemo(() => periodRange(p.period, now, p.timezone, p.custom), [p.period, now, p.timezone, p.custom]);
@@ -47,6 +50,9 @@ export function AccountOverview(p: AccountOverviewProps & { aside?: React.ReactN
   const money = (v: number, d = 2) => fmtMoney(v, p.currency, d);
   const zeroOr = (v: string | null, zero: string) => (v === null ? (none ? zero : "—") : v);
   const periodName = PERIOD_NAMES[p.period];
+  const volume = useMemo(() => inPeriod.reduce((a, t) => a + t.volume, 0), [inPeriod]);
+  // Growth = all-time trading result ÷ trading capital (net deposits, or balance minus results). Cash flows never count.
+  const growth = !none && p.startingEquity > 0 ? (all.netProfit / p.startingEquity) * 100 : null;
 
   const stats: [string, string][] = [
     ["Trades", String(m.tradeCount)],
@@ -59,6 +65,11 @@ export function AccountOverview(p: AccountOverviewProps & { aside?: React.ReactN
     ["Max drawdown", zeroOr(all.maxDrawdownPercent === null ? null : `${fmtNumber(all.maxDrawdownPercent, 1)}%`, "0.0%")],
     ["Best streak", `${m.maxConsecutiveWins} wins`],
     ["Costs", money(m.totalCosts, 0)],
+    ["Realized P&L (all)", none ? money(0, 0) : fmtSignedMoney(all.netProfit, p.currency, 0)],
+    ["Floating P&L", p.floating === null ? (none ? money(0, 0) : "—") : fmtSignedMoney(p.floating, p.currency, 2)],
+    ["Equity", p.equity === null ? (none ? money(0, 0) : "—") : money(p.equity, 0)],
+    ["Volume", `${fmtNumber(volume, 2)} lots`],
+    ["Account growth", growth === null ? (none ? "0.0%" : "—") : `${growth >= 0 ? "+" : ""}${fmtNumber(growth, 1)}%`],
   ];
 
   return (
