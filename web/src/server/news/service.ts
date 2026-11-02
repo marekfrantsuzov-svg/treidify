@@ -20,7 +20,9 @@ export const MAX_AGE_MS = 72 * 3600_000;
 /** A high-importance story counts as breaking for its first hour. */
 export const BREAKING_MS = 60 * 60_000;
 
-export type Result<T> = { ok: true; data: T; vendor: string; fetchedAt: string } | { ok: false; reason: "not-configured" | "error"; message: string; needs?: string[] };
+export type Result<T> = { ok: true; data: T; vendor: string; fetchedAt: string } | { ok: false; reason: "not-configured" | "error" | "not-in-plan"; message: string; needs?: string[]; detail?: string };
+const detailOf = (e: unknown) => (e instanceof Error ? e.message : undefined);
+const refusedByPlan = (e: unknown) => /HTTP (401|403)/.test(detailOf(e) ?? "");
 
 export async function latestHeadlines(limit = 30): Promise<Result<Headline[]>> {
   const st = newsStatus();
@@ -44,7 +46,7 @@ export async function latestHeadlines(limit = 30): Promise<Result<Headline[]>> {
     return { ok: true, data: [...breaking, ...relevant, ...rest].slice(0, limit), vendor: "finnhub", fetchedAt: new Date().toISOString() };
   } catch (e) {
     reportError(e, { where: "news.latestHeadlines" });
-    return { ok: false, reason: "error", message: "The news provider did not answer. No headlines are shown rather than old or invented ones." };
+    return { ok: false, reason: "error", message: "The news provider did not answer. No headlines are shown rather than old or invented ones.", detail: detailOf(e) };
   }
 }
 
@@ -67,7 +69,8 @@ export async function economicCalendar(from: Date, to: Date): Promise<Result<Eco
     return { ok: true, data, vendor: "finnhub", fetchedAt: new Date().toISOString() };
   } catch (e) {
     reportError(e, { where: "news.economicCalendar" });
-    return { ok: false, reason: "error", message: "The calendar provider did not answer, so no events are shown." };
+    if (refusedByPlan(e)) return { ok: false, reason: "not-in-plan", message: "The economic calendar is not included in the connected news plan, so no events are shown.", detail: detailOf(e) };
+    return { ok: false, reason: "error", message: "The calendar provider did not answer, so no events are shown.", detail: detailOf(e) };
   }
 }
 
