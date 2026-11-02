@@ -7,6 +7,7 @@
  */
 import { sql } from "drizzle-orm";
 import {
+  customType,
   boolean, index, integer, jsonb, numeric, pgEnum, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid,
 } from "drizzle-orm/pg-core";
 
@@ -281,6 +282,21 @@ export const journalEntry = pgTable("journal_entry", {
   createdAt: created(),
   updatedAt: updated(),
 }, (t) => [index("journal_user_idx").on(t.userId), uniqueIndex("journal_trade_uq").on(t.userId, t.closedTradeId)]);
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => "bytea" });
+
+/** Screenshots attached to a journal trade. Re-encoded to WebP on upload (metadata stripped); owner-only. */
+export const journalScreenshot = pgTable("journal_screenshot", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  closedTradeId: uuid("closed_trade_id").notNull().references(() => closedTrade.id, { onDelete: "cascade" }),
+  mime: text("mime").notNull(),
+  bytes: integer("bytes").notNull(),
+  width: integer("width"),
+  height: integer("height"),
+  data: bytea("data").notNull(),
+  createdAt: created(),
+}, (t) => [index("journal_screenshot_trade_idx").on(t.userId, t.closedTradeId)]);
 
 export const rulebook = pgTable("rulebook", {
   userId: text("user_id").primaryKey().references(() => user.id, { onDelete: "cascade" }),

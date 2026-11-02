@@ -13,3 +13,4 @@ export * from "./zone-explainer";
 export * from "./periods";
 export * from "./breakdown";
 export * from "./outlook";
+export * from "./coach-facts";

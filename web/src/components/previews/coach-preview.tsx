@@ -18,16 +18,22 @@ const sev: Record<Observation["severity"], { tone: "down" | "warn" | "accent" | 
 /** Coach observations computed by the real detectors on the sample history (with a rule set to show exceptions). */
 export function CoachPreview({ className, limit = 4 }: { className?: string; limit?: number }) {
   const obs = useMemo(() => coachObservations(sampleTrades(), { maxVolumePerTrade: 0.8 }), []);
+  return <ObservationList observations={obs} title="Weekly coaching review" badge={<SampleBadge label="Sample account" />} className={className} limit={limit} />;
+}
+
+/** Expandable list of coach observations; each opens to its evidence, suggestion and method. */
+export function ObservationList({ observations: obs, title, badge, className, limit = 6, empty }: { observations: Observation[]; title: string; badge?: React.ReactNode; className?: string; limit?: number; empty?: string }) {
   const [open, setOpen] = useState<string | null>(obs[0]?.kind ?? null);
   return (
     <Glass className={cn("p-4 sm:p-5", className)}>
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="grid h-8 w-8 place-items-center rounded-full bg-accent-soft text-accent"><Sparkles className="h-4 w-4" /></span>
-          <h3 className="text-[15px] font-semibold text-ink">Weekly coaching review</h3>
+          <h3 className="text-[15px] font-semibold text-ink">{title}</h3>
         </div>
-        <SampleBadge label="Sample account" />
+        {badge}
       </div>
+      {obs.length === 0 && <p className="mt-3 text-[13px] text-ink-3">{empty ?? "Nothing to report for this period."}</p>}
       <ul className="mt-4 grid gap-2">
         {obs.slice(0, limit).map((o) => {
           const s = sev[o.severity];

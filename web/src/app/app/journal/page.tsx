@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ChevronDown } from "lucide-react";
 import { and, eq, inArray } from "drizzle-orm";
 import { AccountPicker } from "@/components/app/account-picker";
 import { JournalFilters } from "@/components/app/journal/journal-filters";
@@ -13,14 +14,14 @@ import { inRange, netOf, performanceMetrics, periodRange, sessionAt, SESSIONS } 
 import { cn } from "@/lib/cn";
 import { fmtNumber, fmtSignedMoney } from "@/lib/format";
 import { PERIOD_NAMES, readPeriod } from "@/lib/period-param";
-import { accountOverview, listAccounts } from "@/server/account-data";
+import { accountOverview, listAccounts, pickerOptions } from "@/server/account-data";
 import { db, schema } from "@/server/db";
 import { requireOnboarded } from "@/server/session";
 
 export const metadata = { title: "Trading Journal" };
 
 const PAGE = 25;
-type SP = { account?: string; period?: string; from?: string; to?: string; symbol?: string; side?: string; outcome?: string; session?: string; notes?: string; page?: string };
+type SP = { account?: string; period?: string; from?: string; to?: string; symbol?: string; side?: string; outcome?: string; session?: string; notes?: string; page?: string; q?: string };
 
 const holdLabel = (sec: number) => (sec < 3600 ? `${Math.max(1, Math.round(sec / 60))}m` : sec < 86_400 ? `${fmtNumber(sec / 3600, 1)}h` : `${fmtNumber(sec / 86_400, 1)}d`);
 
@@ -58,8 +59,14 @@ export default async function Journal({ searchParams }: { searchParams: Promise<
   const byTrade = new Map(entries.map((e) => [e.closedTradeId!, e]));
   const reviewed = (id: string) => { const e = byTrade.get(id); return !!e && (!!e.notes || !!e.lessons || e.setupTags.length > 0 || e.mistakeTags.length > 0); };
 
+  const q = (sp.q ?? "").trim().toLowerCase().slice(0, 80);
+  const matches = (t: { id: string; symbol: string }) => {
+    if (!q) return true;
+    const e = byTrade.get(t.id);
+    return [t.symbol, e?.notes, e?.lessons, ...(e?.setupTags ?? []), ...(e?.mistakeTags ?? [])].some((x) => x?.toLowerCase().includes(q));
+  };
   const filtered = inPeriod
-    .filter((t) => (!sp.symbol || t.symbol === sp.symbol)
+    .filter((t) => matches(t) && (!sp.symbol || t.symbol === sp.symbol)
       && (!sp.side || t.side === sp.side)
       && (!sp.outcome || (sp.outcome === "win" ? netOf(t) > 0 : netOf(t) < 0))
       && (!sp.session || sessionOf(t) === sp.session)
@@ -83,6 +90,18 @@ export default async function Journal({ searchParams }: { searchParams: Promise<
       entry: e ? { notes: e.notes ?? "", lessons: e.lessons ?? "", setupTags: e.setupTags, mistakeTags: e.mistakeTags } : null,
     };
   });
+  const pageIds = rows.map((r) => r.id);
+  const shots = pageIds.length ? await db.select({ id: schema.journalScreenshot.id, tradeId: schema.journalScreenshot.closedTradeId }).from(schema.journalScreenshot)
+    .where(and(eq(schema.journalScreenshot.userId, s.user.id), inArray(schema.journalScreenshot.closedTradeId, pageIds))).orderBy(schema.journalScreenshot.createdAt) : [];
+  const fmtFull = new Intl.DateTimeFormat("en-GB", { timeZone: tz, dateStyle: "medium", timeStyle: "short" });
+  const byId = new Map(filtered.map((t) => [t.id, t]));
+  const px = (v: number | undefined) => (!v ? "—" : fmtNumber(v, v >= 100 ? 2 : v >= 10 ? 3 : 5));
+  for (const r of rows) {
+    const t = byId.get(r.id)!;
+    r.screenshots = shots.filter((x) => x.tradeId === r.id).map((x) => x.id);
+    r.detail = { opened: fmtFull.format(new Date(t.openTime * 1000)), open: px(t.openPrice), close: px(t.closePrice), gross: fmtSignedMoney(t.profit, c), commission: fmtSignedMoney(t.commission, c), swap: fmtSignedMoney(t.swap, c), fees: fmtSignedMoney(t.fees, c), net: fmtSignedMoney(netOf(t), c), position: o.account.source === "sample" ? "sample" : t.id.slice(0, 8) };
+  }
+  const sums = filtered.reduce((a, t) => ({ gross: a.gross + t.profit, commission: a.commission + t.commission, swap: a.swap + t.swap, fees: a.fees + t.fees }), { gross: 0, commission: 0, swap: 0, fees: 0 });
   const symbols = [...new Set(o.trades.map((t) => t.symbol))].sort();
   // Notes for the calendar's day view: every closed trade of this account, owner-scoped.
   const allIds = o.trades.map((t) => t.id);
@@ -94,7 +113,7 @@ export default async function Journal({ searchParams }: { searchParams: Promise<
   return (
     <>
       <PageHeader title="Trading Journal" subtitle={<>{PERIOD_NAMES[period.id]} · {o.account.label}{o.account.source === "sample" && <SampleBadge label="Sample account" className="ml-2 align-middle" />}</>}>
-        <AccountPicker accounts={accounts.map((a) => ({ id: a.id, label: a.label }))} selected={o.account.id} />
+        <AccountPicker accounts={pickerOptions(accounts)} selected={o.account.id} />
       </PageHeader>
       <div className="grid gap-4">
         <PnlCalendar trades={o.trades} notes={calNotes} currency={c} tz={tz} connected sampleAccount={o.account.source === "sample"} nowIso={new Date().toISOString()} />
@@ -105,6 +124,14 @@ export default async function Journal({ searchParams }: { searchParams: Promise<
           <Tile label="Profit factor" value={m.profitFactor === null ? "—" : fmtNumber(m.profitFactor)} />
           <Tile label="Reviewed" value={`${reviewedCount} / ${filtered.length}`} sub="trades with notes or tags" />
         </div>
+        <details className="more detail-panel">
+          <summary><span className="min-w-0 flex-1">How these numbers are calculated</span><ChevronDown className="more-chev" aria-hidden /></summary>
+          <div className="more-body grid gap-2 text-[13px] leading-relaxed text-ink-2">
+            <p className="num">For the {filtered.length} trades shown: gross P&amp;L {fmtSignedMoney(sums.gross, c)} + commission {fmtSignedMoney(sums.commission, c)} + swap {fmtSignedMoney(sums.swap, c)} + fees {fmtSignedMoney(sums.fees, c)} = net {fmtSignedMoney(m.netProfit, c)}.</p>
+            <p>Each row is one closed position rebuilt from your broker&apos;s deals by position ID. A position appears only once its closing volume equals its opening volume, so partial closes are combined into one trade instead of being counted twice. Deals are stored once per broker deal ID, so repeated syncs never duplicate them.</p>
+            <p>A win is a trade whose net result (after commission, swap and fees) is above zero; a loss is below zero. Win rate = wins ÷ (wins + losses). Profit factor = gross profit of winners ÷ gross loss of losers, both after costs. Deposits, withdrawals, credits and bonuses are cash flows, never profit, and are excluded from every figure here. Days in the calendar use your time zone ({tz}).</p>
+          </div>
+        </details>
         <JournalFilters symbols={symbols} />
         <Glass className="overflow-hidden p-0">
           <JournalTable rows={rows} />
