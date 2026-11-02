@@ -17,6 +17,25 @@ const num = (v: string | undefined) => { if (v === undefined || v === "." || v.t
 
 export class FredError extends Error {}
 
+/**
+ * A FRED API key is 32 lower-case letters and digits. Values pasted into a dashboard often carry extra characters
+ * (spaces, quotes, upper case, or the whole "FRED_API_KEY=..." line), which FRED rejects with HTTP 400. This reads the
+ * key out of such a value, or returns null when there is no usable key in it.
+ */
+export function normalizeFredKey(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const s = raw.trim().replace(/^FRED_API_KEY\s*[=:]\s*/i, "").replace(/^["'`]+|["'`]+$/g, "").trim().toLowerCase();
+  if (/^[a-z0-9]{32}$/.test(s)) return s;
+  const m = s.match(/(?:^|[^a-z0-9])([a-z0-9]{32})(?:$|[^a-z0-9])/);
+  return m ? m[1]! : null;
+}
+
+/** What is wrong with a FRED_API_KEY value, without revealing it. */
+export function fredKeyState(raw: string | null | undefined): { state: "ok" | "missing" | "malformed"; length: number } {
+  if (!raw || !raw.trim()) return { state: "missing", length: 0 };
+  return { state: normalizeFredKey(raw) ? "ok" : "malformed", length: raw.length };
+}
+
 export function fred(key: string | null, fetchImpl: Fetch = fetch) {
   async function api<T>(path: string, params: Record<string, string>, revalidate: number): Promise<T> {
     if (!key) throw new FredError("fred: FRED_API_KEY is not set");
