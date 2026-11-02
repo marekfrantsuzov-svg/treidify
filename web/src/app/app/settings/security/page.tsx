@@ -22,7 +22,7 @@ export default async function Security() {
       <Glass className="p-5">
         <h2 className="text-[15px] font-semibold text-ink">Account ID</h2>
         <p className="mt-1 text-sm text-ink-2">Your permanent Treidify account ID. Support may ask for it; it never changes, even if your email does.</p>
-        <code className="num mt-3 block select-all break-all rounded-xl bg-inset px-3 py-2 text-[13px] text-ink">{s.user.id}</code>
+        <p className="num mt-3 select-all break-all rounded-xl bg-inset px-3 py-2 font-mono text-[13px] text-ink" aria-label="Account ID">{s.user.id}</p>
         <p className="mt-2 text-xs text-ink-3">{owner ? "Owner access is active on this account." : ownerConfig().configured ? "Standard account." : "Email " + (me?.emailVerified ? "verified." : "not verified yet.")}</p>
       </Glass>
     </div>
