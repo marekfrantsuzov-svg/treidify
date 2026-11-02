@@ -25,7 +25,7 @@ export interface SeriesOk {
   freshness: Freshness;
   digits: number;
 }
-export interface SeriesFail { ok: false; symbol: MarketSymbol; timeframe: Timeframe; reason: "not-configured" | "vendor-error" | "empty" | "not-covered" | "unknown-symbol"; message: string; needs?: string[] }
+export interface SeriesFail { ok: false; symbol: MarketSymbol; timeframe: Timeframe; reason: "not-configured" | "vendor-error" | "empty" | "not-covered" | "unknown-symbol"; message: string; needs?: string[]; detail?: string }
 export type SeriesResult = SeriesOk | SeriesFail;
 
 const env = (k: string) => process.env[k]?.trim() || null;
@@ -80,7 +80,7 @@ export async function getSeries(symbol: MarketSymbol, timeframe: Timeframe, coun
     };
   } catch (e) {
     reportError(e, { where: "market.getSeries", extra: { symbol, timeframe } });
-    return { ok: false, symbol, timeframe, reason: "vendor-error", message: e instanceof VendorError ? "The market-data provider did not answer correctly. Showing nothing rather than a guess." : "Market data could not be loaded." };
+    return { ok: false, symbol, timeframe, reason: "vendor-error", message: e instanceof VendorError ? "The market-data provider did not answer correctly. Showing nothing rather than a guess." : "Market data could not be loaded.", detail: e instanceof VendorError ? e.message : undefined };
   }
 }
 

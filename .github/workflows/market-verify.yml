@@ -1,0 +1,48 @@
+name: Market data verification
+
+# Verifies the LIVE market-data integration on production with real provider requests (GitHub runners can reach
+# app.treidify.com; the Claude sandbox cannot). Prints only bar counts, timestamps, freshness, latency and the
+# provider's error text. Requests are spaced to respect a free plan's 8-requests-per-minute limit.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Wait for this commit to be live
+        run: |
+          want="${GITHUB_SHA::7}"
+          for i in $(seq 1 40); do
+            got=$(curl -fsS -m 20 https://app.treidify.com/api/health | python3 -c 'import json,sys; print(json.load(sys.stdin).get("commit"))' || true)
+            echo "live commit: $got (want $want)"
+            [ "$got" = "$want" ] && exit 0
+            sleep 15
+          done
+          echo "Production did not switch to $want in 10 minutes; checking whatever is live."
+      - name: Live requests
+        run: |
+          cat > /tmp/show.py <<'PY'
+          import json, sys
+          d = json.load(sys.stdin)
+          print("configured:", d.get("configured"), "| vendor:", d.get("vendor"), "| needs:", d.get("needs"), "| dxy:", d.get("dxyMethod"), "| commit:", d.get("commit"))
+          for r in d.get("results", []):
+              if r["ok"]:
+                  print("  OK   %-7s %-4s bars=%-4s last=%s close=%s %-8s %sms method=%s" % (r["symbol"], r["tf"], r["bars"], r["lastBarAt"], r["lastClose"], r["freshness"], r["ms"], r["method"]))
+              else:
+                  print("  FAIL %-7s %-4s %s: %s (%sms)" % (r["symbol"], r["tf"], r["reason"], r.get("detail") or r["message"], r["ms"]))
+          for r in d.get("probe", []):
+              print("  probe", r)
+          for r in d.get("coverage", []):
+              print("  %-8s %-11s %-10s %s" % (r["symbol"], r["state"], r.get("vendorSymbol") or "", r.get("reason") or ""))
+          PY
+          show() { curl -sS -m 60 "https://app.treidify.com/api/market/status?set=$1" | python3 /tmp/show.py; }
+          echo "== XAUUSD, all timeframes"; show gold; sleep 65
+          echo "== Silver, FX, crypto (1H)"; show core; sleep 65
+          echo "== DXY (computed from 6 pairs)"; show dxy; sleep 65
+          echo "== Refresh check: XAUUSD again 3+ minutes later"; show gold
+          for i in 1 2 3 4 5 6 7 8; do sleep 65; echo "== Coverage probe $i"; show probe; done
+          echo "== Coverage of every instrument"; show coverage
