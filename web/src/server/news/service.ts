@@ -2,19 +2,20 @@ import "server-only";
 import type { UpcomingEvent } from "@/lib/intelligence";
 import { reportError } from "@/lib/monitoring";
 import { finnhub, type RawEvent } from "./finnhub";
+import { newsConfig } from "./config";
 import { categoriesOf, eventImportance, headlineImportance, tagInstruments, trackedKind, type Instrument, type NewsCategory } from "./classify";
 
-export interface Headline { id: string; title: string; summary: string; source: string; url: string; publishedAt: string; instruments: Instrument[]; importance: "high" | "medium" | "low"; categories: NewsCategory[]; breaking: boolean }
+export interface Headline { id: string; title: string; summary: string; source: string; url: string; publishedAt: string; instruments: Instrument[]; importance: "high" | "medium" | "low"; categories: NewsCategory[]; breaking: boolean; image: string | null }
 export interface EconEvent { id: string; title: string; country: string; at: string; importance: "high" | "medium" | "low"; kind: ReturnType<typeof trackedKind>; actual: string | null; forecast: string | null; previous: string | null }
 
 const env = (k: string) => process.env[k]?.trim() || null;
 export function newsStatus() {
-  const provider = env("NEWS_PROVIDER");
-  const needs = [!provider && "NEWS_PROVIDER", !env("NEWS_API_KEY") && "NEWS_API_KEY"].filter(Boolean) as string[];
+  const { provider, key } = newsConfig();
+  const needs = [!provider && "NEWS_PROVIDER", !key && "NEWS_API_KEY (or FINNHUB_API_KEY)"].filter(Boolean) as string[];
   const supported = provider === null || provider === "finnhub";
   return { configured: needs.length === 0 && supported, vendor: provider, needs: supported ? needs : [`a supported NEWS_PROVIDER (finnhub), not "${provider}"`] };
 }
-const client = () => finnhub(env("NEWS_API_KEY")!);
+const client = () => finnhub(newsConfig().key!);
 /** Headlines older than this are never shown as latest news. */
 export const MAX_AGE_MS = 72 * 3600_000;
 /** A high-importance story counts as breaking for its first hour. */
@@ -28,17 +29,18 @@ export async function latestHeadlines(limit = 30): Promise<Result<Headline[]>> {
   const st = newsStatus();
   if (!st.configured) return { ok: false, reason: "not-configured", message: "The news feed is not connected.", needs: st.needs };
   try {
-    const [fx, gen] = await Promise.all([client().news("forex"), client().news("general")]);
+    // Three cached feeds (5 min each): well inside Finnhub's free 60 requests per minute.
+    const [fx, gen, crypto] = await Promise.all([client().news("forex"), client().news("general"), client().news("crypto").catch(() => [])]);
     const seen = new Set<string>();
     const now = Date.now();
-    const items = [...fx, ...gen]
+    const items = [...fx, ...gen, ...crypto]
       // Stale protection: drop items without a valid publication time, from the future, or older than 72 hours.
       .filter((n) => n.headline && n.url && Number.isFinite(n.datetime) && n.datetime * 1000 <= now + 5 * 60_000 && now - n.datetime * 1000 <= MAX_AGE_MS && !seen.has(n.url) && seen.add(n.url))
       .map((n) => {
         const text = `${n.headline} ${n.summary}`;
         const importance = headlineImportance(text);
         const publishedMs = n.datetime * 1000;
-        return { id: String(n.id), title: n.headline, summary: n.summary, source: n.source, url: n.url, publishedAt: new Date(publishedMs).toISOString(), instruments: tagInstruments(text), importance, categories: categoriesOf(text), breaking: importance === "high" && now - publishedMs <= BREAKING_MS };
+        return { id: String(n.id), title: n.headline, summary: n.summary, source: n.source, url: n.url, publishedAt: new Date(publishedMs).toISOString(), instruments: tagInstruments(text), importance, categories: categoriesOf(text), breaking: importance === "high" && now - publishedMs <= BREAKING_MS, image: n.image && /^https:\/\//.test(n.image) ? n.image : null };
       })
       .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
     // Instrument-relevant stories first, then everything else, newest first in each group.

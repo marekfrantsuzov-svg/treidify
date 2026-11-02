@@ -18,7 +18,7 @@ export function finnhub(token: string, fetchImpl: Fetch = fetch) {
   }
   return {
     vendor: "finnhub" as const,
-    news: (category: "forex" | "general") => get<RawNews[]>("/news", { category }, 300),
+    news: (category: "forex" | "general" | "crypto") => get<RawNews[]>("/news", { category }, 300),
     calendar: async (from: string, to: string) => (await get<{ economicCalendar?: RawEvent[] }>("/calendar/economic", { from, to }, 1800)).economicCalendar ?? [],
   };
 }
