@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSeries, marketDataStatus, type SeriesResult } from "@/server/market/service";
+import { getSeries, marketDataStatus, marketPlan, type SeriesResult } from "@/server/market/service";
 import { coverageMap, probeCoverage } from "@/server/market/coverage";
 import { TIMEFRAMES, type Timeframe } from "@/server/market/instruments";
 
@@ -37,6 +37,7 @@ export async function GET(req: Request) {
   const base = { configured: st.configured, vendor: st.vendor, needs: st.needs, dxyMethod: st.dxyMethod, commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null };
   const headers = { "Cache-Control": "no-store" };
   if (!st.configured) return NextResponse.json({ ...base, results: [] }, { headers });
+  Object.assign(base, { plan: await marketPlan() });
 
   const hit = memo.get(set);
   if (hit && Date.now() - hit.at < REUSE_MS) return NextResponse.json({ ...base, reused: true, ...(hit.body as object) }, { headers });

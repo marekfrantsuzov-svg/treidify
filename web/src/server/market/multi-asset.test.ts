@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { _resetCoverageMemory, coverageMap, probeCoverage } from "./coverage";
-import { getSeries } from "./service";
+import { _resetMarketBudget, getSeries } from "./service";
 import { deskIntelligence } from "./intelligence";
 
 const bars = (n: number, start = 100) => ({ status: "ok", values: Array.from({ length: n }, (_, i) => ({ datetime: new Date(Date.UTC(2026, 9, 28, 0, 0) + i * 3600_000).toISOString().slice(0, 19).replace("T", " "), open: String(start + i), high: String(start + i + 1), low: String(start + i - 1), close: String(start + i + 0.5) })) });
@@ -18,7 +18,7 @@ function mockVendor(table: Record<string, unknown>) {
 }
 
 describe("provider coverage is verified, never assumed", () => {
-  beforeEach(() => { vi.stubEnv("MARKET_DATA_PROVIDER", "twelvedata"); vi.stubEnv("MARKET_DATA_API_KEY", "test"); vi.stubEnv("DATABASE_URL", ""); _resetCoverageMemory(); });
+  beforeEach(() => { vi.stubEnv("MARKET_DATA_PROVIDER", "twelvedata"); vi.stubEnv("MARKET_DATA_API_KEY", "test"); vi.stubEnv("MARKET_DATA_PLAN", "paid"); vi.stubEnv("DATABASE_URL", ""); _resetCoverageMemory(); _resetMarketBudget(); });
   afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
   it("falls through refused candidates and remembers the one that served bars", async () => {
@@ -37,6 +37,42 @@ describe("provider coverage is verified, never assumed", () => {
     const r = await getSeries("UKOIL", "1H", 50);
     expect(r).toMatchObject({ ok: false, reason: "not-covered" });
     expect(r.ok ? "" : r.detail).toContain("XBR/USD: twelvedata: symbol XBR/USD not found");
+  });
+
+  it("a symbol the provider refused is not requested again within a day", async () => {
+    const calls = mockVendor({});
+    await getSeries("UKOIL", "1H", 50);
+    const n = calls.length;
+    const again = await getSeries("UKOIL", "4H", 50);
+    expect(again).toMatchObject({ ok: false, reason: "not-covered" });
+    expect(again.ok ? "" : again.detail).toContain("not found");
+    expect(calls.length).toBe(n);
+  });
+
+  it("the free plan stretches cache and refresh times; a paid plan keeps them short", async () => {
+    mockVendor({ "EUR/USD": bars(50, 1.1) });
+    const paid = await getSeries("EURUSD", "1M", 50);
+    expect(paid).toMatchObject({ ok: true, plan: "paid", refreshSeconds: 15 });
+    vi.stubEnv("MARKET_DATA_PLAN", "free");
+    const free = await getSeries("EURUSD", "1M", 50);
+    expect(free).toMatchObject({ ok: true, plan: "free", refreshSeconds: 900 });
+  });
+
+  it("reads the key's plan from the provider when MARKET_DATA_PLAN is not set", async () => {
+    vi.stubEnv("MARKET_DATA_PLAN", "");
+    vi.stubGlobal("fetch", vi.fn(async (url: URL) => new Response(JSON.stringify(url.pathname === "/api_usage" ? { plan_limit: 8, plan_category: "basic" } : bars(50, 1.1)), { status: 200 })));
+    expect(await getSeries("EURUSD", "1H", 50)).toMatchObject({ ok: true, plan: "free", refreshSeconds: 900 });
+  });
+
+  it("the free plan never sends more than 8 requests a minute; DXY needs 6 at once", async () => {
+    vi.stubEnv("MARKET_DATA_PLAN", "free");
+    const calls = mockVendor({ "EUR/USD": bars(50, 1.1), "GBP/USD": bars(50, 1.3), "USD/JPY": bars(50, 150), "USD/CAD": bars(50, 1.4), "USD/SEK": bars(50, 10), "USD/CHF": bars(50, 0.8), "XAU/USD": bars(50, 3900) });
+    const tfs = ["1M", "5M", "15M"] as const;
+    const gold = await Promise.all(tfs.map((tf) => getSeries("XAUUSD", tf, 50)));
+    expect(gold.every((r) => r.ok)).toBe(true);
+    const dxy = await getSeries("DXY", "1H", 50);
+    expect(dxy).toMatchObject({ ok: false, reason: "rate-limited" });
+    expect(calls.length).toBe(3);
   });
 
   it("rate limits and outages are errors, not coverage verdicts", async () => {

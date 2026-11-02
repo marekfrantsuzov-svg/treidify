@@ -72,6 +72,8 @@ export async function vendorCandidates(symbol: string): Promise<string[]> {
   const map = await coverageMap();
   const c = map[symbol];
   if (c?.state === "verified" && c.vendorSymbol) return [c.vendorSymbol];
+  // Refused within the last day: the daily probe re-checks it, so bar requests do not spend credits on it.
+  if (c?.state === "unavailable" && c.checkedAt && Date.now() - Date.parse(c.checkedAt) < REFRESH_MS) return [];
   return def.providers.twelvedata.candidates;
 }
 

@@ -3,9 +3,8 @@ name: Market data verification
 # Verifies the LIVE market-data integration on production with real provider requests (GitHub runners can reach
 # app.treidify.com; the Claude sandbox cannot). Prints only bar counts, timestamps, freshness, latency and the
 # provider's error text. Requests are spaced to respect a free plan's 8-requests-per-minute limit.
+# Manual only: on the free data plan (800 requests/day) every run spends real credits.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -28,7 +27,7 @@ jobs:
           cat > /tmp/show.py <<'PY'
           import json, sys
           d = json.load(sys.stdin)
-          print("configured:", d.get("configured"), "| vendor:", d.get("vendor"), "| needs:", d.get("needs"), "| dxy:", d.get("dxyMethod"), "| commit:", d.get("commit"))
+          print("configured:", d.get("configured"), "| vendor:", d.get("vendor"), "| needs:", d.get("needs"), "| plan:", d.get("plan"), "| dxy:", d.get("dxyMethod"), "| commit:", d.get("commit"))
           for r in d.get("results", []):
               if r["ok"]:
                   print("  OK   %-7s %-4s bars=%-4s last=%s close=%s %-8s %sms method=%s" % (r["symbol"], r["tf"], r["bars"], r["lastBarAt"], r["lastClose"], r["freshness"], r["ms"], r["method"]))
@@ -44,5 +43,5 @@ jobs:
           echo "== Silver, FX, crypto (1H)"; show core; sleep 65
           echo "== DXY (computed from 6 pairs)"; show dxy; sleep 65
           echo "== Refresh check: XAUUSD again 3+ minutes later"; show gold
-          for i in 1 2 3 4 5 6 7 8; do sleep 65; echo "== Coverage probe $i"; show probe; done
+          for i in 1 2; do sleep 65; echo "== Coverage probe $i"; show probe; done
           echo "== Coverage of every instrument"; show coverage
