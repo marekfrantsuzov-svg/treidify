@@ -1,6 +1,6 @@
 "use client";
 
-import { Link2, RefreshCw, Unplug } from "lucide-react";
+import { Link2, RefreshCw, RotateCcw, Unplug } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { disconnectTradingAccount, syncTradingAccount } from "@/server/actions/accounts";
@@ -52,5 +52,18 @@ export function AccountActions({ accountId, label }: { accountId: string; label:
         <button disabled={pending} onClick={() => setConfirm(true)} className="press inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] font-medium text-ink-3 hover:bg-inset hover:text-down disabled:opacity-50"><Unplug className="h-3.5 w-3.5" />Disconnect</button>
       )}
     </div>
+  );
+}
+
+/** Reconnect with a new investor password, keeping the account's synced history (same login and server). */
+export function ReconnectButton({ enabled, platform, server, login }: { enabled: boolean; platform: "mt4" | "mt5"; server: string; login: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button onClick={() => setOpen(true)} className="press inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] font-semibold text-accent hover:bg-accent-soft"><RotateCcw className="h-3.5 w-3.5" />Reconnect</button>
+      <Modal open={open} onClose={() => setOpen(false)} title={`Reconnect ${platform.toUpperCase()} ${login}`} subtitle="Enter the current investor password. Your synced history stays and only new deals are added.">
+        <ConnectForm enabled={enabled} defaults={{ platform, server, login }} />
+      </Modal>
+    </>
   );
 }

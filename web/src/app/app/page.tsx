@@ -13,7 +13,7 @@ import { goldImpact } from "@/lib/intelligence";
 import { ANALYSTS } from "@/lib/community/analysts";
 import { greetingFor } from "@/lib/greeting";
 import { readPeriod } from "@/lib/period-param";
-import { accountOverview, listAccounts } from "@/server/account-data";
+import { accountOverview, listAccounts, pickerOptions } from "@/server/account-data";
 import { db, schema } from "@/server/db";
 import { getPlanState } from "@/server/entitlements";
 import { loadIntel } from "@/server/market/load";
@@ -103,7 +103,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
             </Alert>
           )}
           {intel.message && <p className="rounded-xl bg-warn-soft px-3 py-1.5 text-[11.5px] leading-snug text-ink-2 sm:px-3.5 sm:text-[12px]">{intel.message}</p>}
-          {accounts.length > 1 && overview && <div className="flex justify-end"><AccountPicker accounts={accounts.map((a) => ({ id: a.id, label: a.label }))} selected={overview.account.id} /></div>}
+          {accounts.length > 1 && overview && <div className="flex justify-end"><AccountPicker accounts={pickerOptions(accounts)} selected={overview.account.id} /></div>}
         </div>
       )}
 

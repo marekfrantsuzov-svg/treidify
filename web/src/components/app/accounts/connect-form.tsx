@@ -10,10 +10,10 @@ import { Segmented } from "@/components/onboarding/onboarding-flow";
 import { Button } from "@/components/ui/button";
 
 /** Read-only MetaTrader connection. Disabled, with the reason, while the sync provider is not switched on. */
-export function ConnectForm({ enabled }: { enabled: boolean }) {
+export function ConnectForm({ enabled, defaults }: { enabled: boolean; defaults?: { platform: "mt4" | "mt5"; server: string; login: string } }) {
   const router = useRouter();
   const [pending, start] = useTransition();
-  const [platform, setPlatform] = useState<"mt5" | "mt4">("mt5");
+  const [platform, setPlatform] = useState<"mt5" | "mt4">(defaults?.platform ?? "mt5");
   const [r, setR] = useState<ActionResult | null>(null);
   return (
     <form
@@ -31,8 +31,8 @@ export function ConnectForm({ enabled }: { enabled: boolean }) {
       <fieldset disabled={!enabled || pending} className="grid gap-4 disabled:opacity-60">
         <Segmented label="Platform" value={platform} onChange={setPlatform} options={[{ id: "mt5", label: "MetaTrader 5" }, { id: "mt4", label: "MetaTrader 4" }]} />
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Broker server"><input name="server" autoComplete="off" placeholder="Broker-Live01" className={inputClass} /></Field>
-          <Field label="Login (account number)"><input name="login" inputMode="numeric" autoComplete="off" placeholder="12345678" className={inputClass} /></Field>
+          <Field label="Broker server"><input name="server" defaultValue={defaults?.server} readOnly={!!defaults} autoComplete="off" placeholder="Broker-Live01" className={inputClass} /></Field>
+          <Field label="Login (account number)"><input name="login" defaultValue={defaults?.login} readOnly={!!defaults} inputMode="numeric" autoComplete="off" placeholder="12345678" className={inputClass} /></Field>
         </div>
         <Field label="Investor password" hint="The read-only password. Never your master password.">
           <PasswordInput name="investorPassword" autoComplete="off" />
@@ -43,7 +43,7 @@ export function ConnectForm({ enabled }: { enabled: boolean }) {
         </label>
       </fieldset>
       {r && <Alert tone={r.ok ? "up" : "down"}>{r.ok ? r.message : r.error}</Alert>}
-      <div><Button type="submit" disabled={!enabled || pending}>{pending && <Spinner />}Connect read-only</Button></div>
+      <div><Button type="submit" disabled={!enabled || pending}>{pending && <Spinner />}{defaults ? "Reconnect read-only" : "Connect read-only"}</Button></div>
     </form>
   );
 }
