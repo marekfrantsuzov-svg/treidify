@@ -33,6 +33,11 @@ export function HeadlineList({ r, limit = 6, nowMs, compact, explain = false, em
                 <span className={cn("rounded-full px-1.5 py-px font-semibold capitalize", imp[n.importance])}>{n.importance}</span>
               </span>
             </span>
+            {!compact && n.image && (
+              // Publisher image from the feed, loaded straight from the publisher.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={n.image} alt="" loading="lazy" referrerPolicy="no-referrer" className="hidden h-14 w-20 shrink-0 rounded-xl object-cover sm:block" />
+            )}
           </a>
           {explain && !compact && n.importance !== "low" && <NewsBrief id={n.id} enabled />}
         </li>

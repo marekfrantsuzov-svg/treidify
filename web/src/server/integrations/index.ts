@@ -1,4 +1,5 @@
 import "server-only";
+import { newsConfig } from "../news/config";
 import { NotConfiguredError, type AccountSyncProvider, type AiProvider, type BillingProvider, type MarketDataProvider, type NewsProvider, type ProviderInfo } from "./types";
 
 export * from "./types";
@@ -30,7 +31,8 @@ export function marketDataProvider(): MarketDataProvider {
 }
 
 export function newsProvider(): NewsProvider {
-  const m = missing("news", env("NEWS_PROVIDER"), need("NEWS_PROVIDER", "NEWS_API_KEY"));
+  const c = newsConfig();
+  const m = missing("news", c.provider, [!c.provider && "NEWS_PROVIDER", !c.key && "NEWS_API_KEY"].filter((x): x is string => !!x));
   return { info: m.info, latest: m.fail, calendar: m.fail };
 }
 
