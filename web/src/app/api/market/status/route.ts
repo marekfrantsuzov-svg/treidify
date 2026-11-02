@@ -3,7 +3,7 @@ import { getSeries, marketDataStatus, marketPlan, type SeriesResult } from "@/se
 import { coverageMap, probeCoverage } from "@/server/market/coverage";
 import { TIMEFRAMES, type Timeframe } from "@/server/market/instruments";
 import { economicCalendar, latestHeadlines, newsStatus } from "@/server/news/service";
-import { macroIndicators, macroKeyConfigured } from "@/server/macro/service";
+import { macroIndicators, macroKeyConfigured, macroKeyState } from "@/server/macro/service";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -44,7 +44,7 @@ export async function GET(req: Request) {
     const [m, c] = await Promise.all([macroIndicators(), economicCalendar(new Date(now.getTime() - 8 * 86_400_000), new Date(now.getTime() + 9 * 86_400_000))]);
     const ind = (x: typeof m.rates) => ({ ok: x.ok, value: x.value, period: x.period, releasedOn: x.releasedOn, previous: x.previous, facts: x.facts, next: x.next, via: x.via, points: x.history.length, message: x.message });
     return NextResponse.json({ macro: {
-      fredKey: macroKeyConfigured(), commit: base.commit,
+      fredKey: macroKeyConfigured(), fredKeyState: macroKeyState(), commit: base.commit,
       rates: ind(m.rates), inflation: ind(m.inflation), gdp: ind(m.gdp), yields: m.yields,
       calendar: c.ok ? { ok: true, vendor: c.vendor, count: c.data.length, events: c.data.map((e) => ({ at: e.at, title: e.title, status: e.status, period: e.period, actual: e.actual, forecast: e.forecast, previous: e.previous, revisedFrom: e.revisedFrom })) } : c,
     } }, { headers });

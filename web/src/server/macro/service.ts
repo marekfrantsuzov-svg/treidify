@@ -3,7 +3,7 @@ import { cache } from "react";
 import { reportError } from "@/lib/monitoring";
 import { addDays, isoDay, zonedToUtc } from "@/lib/time/zoned";
 import { compute, fmtLine, fmtRange, fomcOutcome, gdpEstimate, latestDate, lineAt, quarterLabel, US_RELEASES, type LineDef, type ReleaseDef } from "./calc";
-import { fred, type Obs, type VObs } from "./fred";
+import { fred, fredKeyState, normalizeFredKey, type Obs, type VObs } from "./fred";
 
 /**
  * US macro data from official sources through FRED: the Fed's target range, CPI, GDP, and the official release
@@ -12,8 +12,10 @@ import { fred, type Obs, type VObs } from "./fred";
  */
 const ET = "America/New_York";
 const env = (k: string) => process.env[k]?.trim() || null;
-const client = () => fred(env("FRED_API_KEY"));
-export const macroKeyConfigured = () => Boolean(env("FRED_API_KEY"));
+const client = () => fred(normalizeFredKey(env("FRED_API_KEY")));
+/** True only when FRED_API_KEY holds a usable key (32 lower-case letters and digits). */
+export const macroKeyConfigured = () => Boolean(normalizeFredKey(env("FRED_API_KEY")));
+export const macroKeyState = () => fredKeyState(process.env.FRED_API_KEY);
 
 export const SOURCE = {
   fred: { name: "FRED, Federal Reserve Bank of St. Louis", url: "https://fred.stlouisfed.org/" },
@@ -54,7 +56,10 @@ const fomcDays = async (from: string, to: string) => {
 
 async function values(id: string, start: string, revalidate: number): Promise<{ obs: Obs[]; via: "api" | "csv" }> {
   const c = client();
-  if (c.hasKey) return { obs: await c.observations(id, start, revalidate), via: "api" };
+  if (c.hasKey) {
+    try { return { obs: await c.observations(id, start, revalidate), via: "api" }; }
+    catch (e) { reportError(e, { where: `macro.values.api.${id}` }); /* the public download still has the values */ }
+  }
   return { obs: await c.csv(id, start, revalidate), via: "csv" };
 }
 

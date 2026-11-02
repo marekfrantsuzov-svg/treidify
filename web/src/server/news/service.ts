@@ -2,7 +2,7 @@ import "server-only";
 import type { UpcomingEvent } from "@/lib/intelligence";
 import { reportError } from "@/lib/monitoring";
 import { finnhub, type RawEvent } from "./finnhub";
-import { officialCalendar } from "../macro/service";
+import { macroKeyState, officialCalendar } from "../macro/service";
 import { cleanLine, cleanText } from "@/lib/news/sanitize";
 import { newsConfig } from "./config";
 import { categoriesOf, eventImportance, headlineImportance, tagInstruments, trackedKind, type Instrument, type NewsCategory } from "./classify";
@@ -84,8 +84,12 @@ export const OFFICIAL_VENDOR = "Official US releases (BLS, BEA, Federal Reserve)
 
 /** The official US release calendar from FRED. Needs FRED_API_KEY (free). Forecasts are never available here. */
 async function officialFallback(from: Date, to: Date, why: string): Promise<Result<EconEvent[]>> {
-  if (!process.env.FRED_API_KEY?.trim()) {
+  const key = macroKeyState();
+  if (key.state === "missing") {
     return { ok: false, reason: "not-configured", message: `${why} The official US release calendar needs a free FRED API key.`.trim(), needs: ["FRED_API_KEY"] };
+  }
+  if (key.state === "malformed") {
+    return { ok: false, reason: "not-configured", message: `${why} FRED_API_KEY is set but is not a valid FRED key (it must be exactly 32 lower-case letters and digits).`.trim(), needs: ["FRED_API_KEY (valid 32-character key)"] };
   }
   try {
     const ev = await officialCalendar(from, to);
