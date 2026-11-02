@@ -5,6 +5,7 @@ import type { EconEvent, Headline, Result } from "@/server/news/service";
 import { cn } from "@/lib/cn";
 import { Glass } from "@/components/ui/glass";
 import { Card, CardHeader } from "@/components/ui/card";
+import { NewsBrief } from "@/components/news/news-brief";
 
 const imp = { high: "bg-down-soft text-down", medium: "bg-warn-soft text-warn", low: "bg-inset text-ink-3" } as const;
 const ago = (iso: string, now: number) => { const m = Math.max(0, Math.round((now - Date.parse(iso)) / 60000)); return m < 60 ? `${m}m ago` : m < 1440 ? `${Math.round(m / 60)}h ago` : `${Math.round(m / 1440)}d ago`; };
@@ -13,9 +14,9 @@ function NotConnected({ what, needs }: { what: string; needs?: string[] }) {
   return <EmptyState icon={Newspaper} title={`${what} is not connected`} needs={needs} compact>Nothing is shown here until it is. No example headlines are used.</EmptyState>;
 }
 
-export function HeadlineList({ r, limit = 6, nowMs, compact }: { r: Result<Headline[]>; limit?: number; nowMs: number; compact?: boolean }) {
+export function HeadlineList({ r, limit = 6, nowMs, compact, explain = false, emptyText = "No headlines right now." }: { r: Result<Headline[]>; limit?: number; nowMs: number; compact?: boolean; explain?: boolean; emptyText?: string }) {
   if (!r.ok) return r.reason === "not-configured" ? <NotConnected what="The news feed" needs={r.needs} /> : <p className="rounded-2xl bg-warn-soft px-4 py-3 text-sm text-ink">{r.message}</p>;
-  if (!r.data.length) return <p className="text-sm text-ink-3">No headlines right now.</p>;
+  if (!r.data.length) return <p className="text-sm text-ink-3">{emptyText}</p>;
   return (
     <ul className="grid gap-1">
       {r.data.slice(0, limit).map((n) => (
@@ -26,12 +27,14 @@ export function HeadlineList({ r, limit = 6, nowMs, compact }: { r: Result<Headl
               <span className="flex items-start gap-1 text-[13.5px] font-semibold leading-snug text-ink group-hover:text-accent">{n.title}<ArrowUpRight className="mt-0.5 h-3.5 w-3.5 shrink-0 opacity-0 transition-opacity group-hover:opacity-100" /></span>
               {!compact && n.summary && <span className="mt-0.5 line-clamp-2 block text-[12.5px] text-ink-3">{n.summary}</span>}
               <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-ink-3">
-                <span className="font-medium text-ink-2">{n.source}</span><span>· {ago(n.publishedAt, nowMs)}</span>
+                {n.breaking && <span className="rounded-full bg-down px-1.5 py-px font-semibold text-white">Breaking</span>}
+                <span className="font-medium text-ink-2">{n.source}</span><span>· <time dateTime={n.publishedAt} title={new Date(n.publishedAt).toUTCString()}>{ago(n.publishedAt, nowMs)}</time></span>
                 {n.instruments.map((i) => <span key={i} className="rounded-full bg-accent-soft px-1.5 py-px font-semibold text-accent">{i}</span>)}
                 <span className={cn("rounded-full px-1.5 py-px font-semibold capitalize", imp[n.importance])}>{n.importance}</span>
               </span>
             </span>
           </a>
+          {explain && !compact && n.importance !== "low" && <NewsBrief id={n.id} enabled />}
         </li>
       ))}
     </ul>
