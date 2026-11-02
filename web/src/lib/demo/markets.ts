@@ -4,7 +4,7 @@ import { mulberry32, sampleCandles } from "./sample";
 
 /** Any registry symbol. XAUUSD, DXY and XAGUSD keep their original seeds so existing previews are unchanged. */
 export type SampleSymbol = string;
-export type SampleTf = "1D" | "4H" | "1H" | "15M" | "5M" | "1M";
+export type SampleTf = "1W" | "1D" | "4H" | "1H" | "30M" | "15M" | "5M" | "1M";
 
 const FIXED: Record<string, { start: number; vol: number; drift: number; seed: number; digits: number }> = {
   XAUUSD: { start: 3920, vol: 0.0042, drift: 0.04, seed: 7, digits: 2 },
@@ -21,9 +21,11 @@ function profileOf(symbol: string) {
   return { start: d?.sample.ref ?? 100, vol: d?.sample.vol ?? 0.004, drift: ((seed % 7) - 3) / 100, seed, digits: d?.digits ?? 4 };
 }
 const tfScale: Record<SampleTf, { step: number; volMul: number; seedAdd: number }> = {
+  "1W": { step: 604_800, volMul: 5, seedAdd: 600 },
   "1D": { step: 86_400, volMul: 2.2, seedAdd: 500 },
   "4H": { step: 14_400, volMul: 1, seedAdd: 0 },
   "1H": { step: 3600, volMul: 0.55, seedAdd: 100 },
+  "30M": { step: 1800, volMul: 0.4, seedAdd: 250 },
   "15M": { step: 900, volMul: 0.3, seedAdd: 200 },
   "5M": { step: 300, volMul: 0.18, seedAdd: 300 },
   "1M": { step: 60, volMul: 0.09, seedAdd: 400 },

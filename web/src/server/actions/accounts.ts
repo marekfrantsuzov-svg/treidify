@@ -62,7 +62,7 @@ export async function connectTradingAccount(input: z.input<typeof connectSchema>
       if (c) await syncConnection(c.id);
     });
     revalidatePath("/app", "layout");
-    return { ok: true, message: "Connection requested. MetaApi is connecting to your broker; the first sync usually takes one to three minutes." };
+    return { ok: true, message: r.reconnected ? "Reconnect requested. Your existing history is kept and only new deals are added; the first sync usually takes one to three minutes." : "Connection requested. MetaApi is connecting to your broker; the first sync usually takes one to three minutes." };
   } catch (e) {
     if (e instanceof MetaApiError) return { ok: false, error: e.status === 400 || e.status === 404 ? "The broker server or login was not recognised. Check them and try again." : "MetaApi could not create the connection. Nothing was saved; try again shortly." };
     return { ok: false, error: "The connection could not be made. Check the server name, login and investor password, then try again." };

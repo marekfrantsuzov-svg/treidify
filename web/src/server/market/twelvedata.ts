@@ -6,9 +6,9 @@ import type { Candle } from "@/lib/analytics/types";
 import type { Timeframe } from "./instruments";
 
 const BASE = "https://api.twelvedata.com";
-export const TD_INTERVAL: Record<Timeframe, string> = { "1M": "1min", "5M": "5min", "15M": "15min", "1H": "1h", "4H": "4h", "1D": "1day" };
+export const TD_INTERVAL: Record<Timeframe, string> = { "1M": "1min", "5M": "5min", "15M": "15min", "30M": "30min", "1H": "1h", "4H": "4h", "1D": "1day", "1W": "1week" };
 /** Data-cache lifetime per timeframe, in seconds. Shorter than a bar so the in-progress bar keeps moving. */
-export const CACHE_SECONDS: Record<Timeframe, number> = { "1M": 20, "5M": 30, "15M": 60, "1H": 120, "4H": 300, "1D": 900 };
+export const CACHE_SECONDS: Record<Timeframe, number> = { "1M": 15, "5M": 20, "15M": 30, "30M": 45, "1H": 60, "4H": 120, "1D": 300, "1W": 900 };
 
 export class VendorError extends Error {
   constructor(readonly vendor: string, message: string, readonly status?: number) { super(`${vendor}: ${message}`); }

@@ -2,9 +2,9 @@ import "server-only";
 import type { UpcomingEvent } from "@/lib/intelligence";
 import { reportError } from "@/lib/monitoring";
 import { finnhub, type RawEvent } from "./finnhub";
-import { eventImportance, headlineImportance, tagInstruments, trackedKind, type Instrument } from "./classify";
+import { categoriesOf, eventImportance, headlineImportance, tagInstruments, trackedKind, type Instrument, type NewsCategory } from "./classify";
 
-export interface Headline { id: string; title: string; summary: string; source: string; url: string; publishedAt: string; instruments: Instrument[]; importance: "high" | "medium" | "low" }
+export interface Headline { id: string; title: string; summary: string; source: string; url: string; publishedAt: string; instruments: Instrument[]; importance: "high" | "medium" | "low"; categories: NewsCategory[]; breaking: boolean }
 export interface EconEvent { id: string; title: string; country: string; at: string; importance: "high" | "medium" | "low"; kind: ReturnType<typeof trackedKind>; actual: string | null; forecast: string | null; previous: string | null }
 
 const env = (k: string) => process.env[k]?.trim() || null;
@@ -15,6 +15,10 @@ export function newsStatus() {
   return { configured: needs.length === 0 && supported, vendor: provider, needs: supported ? needs : [`a supported NEWS_PROVIDER (finnhub), not "${provider}"`] };
 }
 const client = () => finnhub(env("NEWS_API_KEY")!);
+/** Headlines older than this are never shown as latest news. */
+export const MAX_AGE_MS = 72 * 3600_000;
+/** A high-importance story counts as breaking for its first hour. */
+export const BREAKING_MS = 60 * 60_000;
 
 export type Result<T> = { ok: true; data: T; vendor: string; fetchedAt: string } | { ok: false; reason: "not-configured" | "error"; message: string; needs?: string[] };
 
@@ -24,16 +28,20 @@ export async function latestHeadlines(limit = 30): Promise<Result<Headline[]>> {
   try {
     const [fx, gen] = await Promise.all([client().news("forex"), client().news("general")]);
     const seen = new Set<string>();
+    const now = Date.now();
     const items = [...fx, ...gen]
-      .filter((n) => n.headline && n.url && !seen.has(n.url) && seen.add(n.url))
+      // Stale protection: drop items without a valid publication time, from the future, or older than 72 hours.
+      .filter((n) => n.headline && n.url && Number.isFinite(n.datetime) && n.datetime * 1000 <= now + 5 * 60_000 && now - n.datetime * 1000 <= MAX_AGE_MS && !seen.has(n.url) && seen.add(n.url))
       .map((n) => {
         const text = `${n.headline} ${n.summary}`;
-        return { id: String(n.id), title: n.headline, summary: n.summary, source: n.source, url: n.url, publishedAt: new Date(n.datetime * 1000).toISOString(), instruments: tagInstruments(text), importance: headlineImportance(text) };
+        const importance = headlineImportance(text);
+        const publishedMs = n.datetime * 1000;
+        return { id: String(n.id), title: n.headline, summary: n.summary, source: n.source, url: n.url, publishedAt: new Date(publishedMs).toISOString(), instruments: tagInstruments(text), importance, categories: categoriesOf(text), breaking: importance === "high" && now - publishedMs <= BREAKING_MS };
       })
       .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
     // Instrument-relevant stories first, then everything else, newest first in each group.
-    const relevant = items.filter((i) => i.instruments.length), rest = items.filter((i) => !i.instruments.length);
-    return { ok: true, data: [...relevant, ...rest].slice(0, limit), vendor: "finnhub", fetchedAt: new Date().toISOString() };
+    const breaking = items.filter((i) => i.breaking), relevant = items.filter((i) => !i.breaking && i.instruments.length), rest = items.filter((i) => !i.breaking && !i.instruments.length);
+    return { ok: true, data: [...breaking, ...relevant, ...rest].slice(0, limit), vendor: "finnhub", fetchedAt: new Date().toISOString() };
   } catch (e) {
     reportError(e, { where: "news.latestHeadlines" });
     return { ok: false, reason: "error", message: "The news provider did not answer. No headlines are shown rather than old or invented ones." };

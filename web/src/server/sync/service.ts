@@ -14,6 +14,8 @@ const env = (k: string) => process.env[k]?.trim() || null;
 export const syncStatus = () => ({ configured: !!env("METAAPI_TOKEN"), needs: env("METAAPI_TOKEN") ? [] : ["METAAPI_TOKEN"] });
 const client = () => metaApi(env("METAAPI_TOKEN")!);
 const split = (ext: string) => { const i = ext.indexOf(":"); return i > 0 ? { region: ext.slice(0, i), id: ext.slice(i + 1) } : { region: "new-york", id: ext }; };
+const ORDER_TYPE: Record<string, string> = { ORDER_TYPE_BUY_LIMIT: "Buy limit", ORDER_TYPE_SELL_LIMIT: "Sell limit", ORDER_TYPE_BUY_STOP: "Buy stop", ORDER_TYPE_SELL_STOP: "Sell stop", ORDER_TYPE_BUY_STOP_LIMIT: "Buy stop limit", ORDER_TYPE_SELL_STOP_LIMIT: "Sell stop limit" };
+export const orderType = (t: string) => ORDER_TYPE[t] ?? t.replace(/^ORDER_TYPE_/, "").replace(/_/g, " ").toLowerCase();
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export async function createConnection(userId: string, a: { platform: "mt4" | "mt5"; server: string; login: string; investorPassword: string }) {
@@ -32,9 +34,27 @@ export async function createConnection(userId: string, a: { platform: "mt4" | "m
   if (!created) return { ok: false as const, error: "The broker check is still running. Try again in a minute; nothing was saved." };
   const acc = await api.account(created.id).catch(() => null);
   const region = acc?.region ?? "new-york";
+  const externalId = `${region}:${created.id}`;
+  // Reconnecting the same login reuses its Treidify account, so synced history is never duplicated.
+  const existing = await reconnectTarget(userId, a);
+  if (existing) {
+    if (existing.externalId && existing.externalId !== externalId) await api.remove(split(existing.externalId).id).catch(() => {});
+    await db.insert(schema.providerConnection).values({ tradingAccountId: existing.accountId, provider: "metaapi", externalId, status: "pending", historyFrom: new Date(Date.now() - 730 * 86_400_000) })
+      .onConflictDoUpdate({ target: [schema.providerConnection.tradingAccountId, schema.providerConnection.provider], set: { externalId, status: "pending", lastError: null, consecutiveFailures: 0 } });
+    return { ok: true as const, accountId: existing.accountId, reconnected: true };
+  }
   const [row] = await db.insert(schema.tradingAccount).values({ userId, platform: a.platform, server: a.server, login: a.login, source: "provider" }).returning();
-  await db.insert(schema.providerConnection).values({ tradingAccountId: row!.id, provider: "metaapi", externalId: `${region}:${created.id}`, status: "pending", historyFrom: new Date(Date.now() - 730 * 86_400_000) });
-  return { ok: true as const, accountId: row!.id };
+  await db.insert(schema.providerConnection).values({ tradingAccountId: row!.id, provider: "metaapi", externalId, status: "pending", historyFrom: new Date(Date.now() - 730 * 86_400_000) });
+  return { ok: true as const, accountId: row!.id, reconnected: false };
+}
+
+/** The user's existing provider account for this platform, server and login, if any (used by Reconnect). */
+async function reconnectTarget(userId: string, a: { platform: "mt4" | "mt5"; server: string; login: string }) {
+  const [row] = await db.select({ accountId: schema.tradingAccount.id, externalId: schema.providerConnection.externalId }).from(schema.tradingAccount)
+    .leftJoin(schema.providerConnection, eq(schema.providerConnection.tradingAccountId, schema.tradingAccount.id))
+    .where(and(eq(schema.tradingAccount.userId, userId), eq(schema.tradingAccount.source, "provider"), eq(schema.tradingAccount.platform, a.platform), sql`lower(${schema.tradingAccount.server}) = lower(${a.server})`, eq(schema.tradingAccount.login, a.login)))
+    .limit(1);
+  return row ?? null;
 }
 
 /** Pulls account information, open positions and deals since the last sync. Safe to call repeatedly. */
@@ -61,7 +81,7 @@ export async function syncConnection(connectionId: string) {
     }
     const now = new Date();
     const from = conn.lastSyncAt ? new Date(conn.lastSyncAt.getTime() - 2 * 86_400_000) : conn.historyFrom ?? new Date(now.getTime() - 730 * 86_400_000);
-    const [positions, rawDeals] = await Promise.all([api.positions(region, id), api.deals(region, id, from, now)]);
+    const [positions, rawDeals, orders] = await Promise.all([api.positions(region, id), api.deals(region, id, from, now), api.orders(region, id).catch(() => null)]);
     const deals = rawDeals.map(normaliseDeal);
     const acctId = conn.tradingAccountId;
     await db.transaction(async (tx) => {
@@ -73,6 +93,15 @@ export async function syncConnection(connectionId: string) {
         tradingAccountId: acctId, externalId: String(p.id), symbol: p.symbol, side: p.type === "POSITION_TYPE_SELL" ? "sell" : "buy", volume: p.volume, openPrice: p.openPrice,
         currentPrice: p.currentPrice ?? null, stopLoss: p.stopLoss ?? null, takeProfit: p.takeProfit ?? null, floatingPnl: p.profit ?? p.unrealizedProfit ?? null, swap: p.swap ?? null, openedAt: new Date(p.time),
       })));
+      // Pending orders are replaced as a set; if MetaApi did not answer for them, the previous set is kept.
+      if (orders) {
+        await tx.delete(schema.pendingOrder).where(eq(schema.pendingOrder.tradingAccountId, acctId));
+        const live = orders.filter((o) => !o.state || o.state === "ORDER_STATE_PLACED" || o.state === "ORDER_STATE_PARTIAL" || o.state === "ORDER_STATE_STARTED");
+        if (live.length) await tx.insert(schema.pendingOrder).values(live.map((o) => ({
+          tradingAccountId: acctId, externalId: String(o.id), symbol: o.symbol, type: orderType(o.type), volume: o.currentVolume ?? o.volume ?? 0, price: o.openPrice ?? 0,
+          stopLoss: o.stopLoss ?? null, takeProfit: o.takeProfit ?? null, placedAt: new Date(o.time),
+        })));
+      }
       if (deals.length) {
         const inserted = await tx.insert(schema.deal).values(deals.map((d) => ({ tradingAccountId: acctId, ...d }))).onConflictDoNothing().returning({ id: schema.deal.id, externalId: schema.deal.externalId });
         const idOf = new Map(inserted.map((r) => [r.externalId, r.id]));

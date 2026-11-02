@@ -15,6 +15,13 @@
       "when": 1793566280389,
       "tag": "0001_multi_asset",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793609575664,
+      "tag": "0002_journal_screenshots",
+      "breakpoints": true
     }
   ]
 }

@@ -1,11 +1,12 @@
 import { PageHeader } from "@/components/app/status";
-import { AccountActions, ConnectButton } from "@/components/app/accounts/account-actions";
+import { AccountActions, ConnectButton, ReconnectButton } from "@/components/app/accounts/account-actions";
 import { DemoControls } from "@/components/app/accounts/demo-controls";
 import { Alert } from "@/components/auth/auth-ui";
 import { GlassIcon } from "@/components/icons/glass-icon";
 import { Glass } from "@/components/ui/glass";
 import { Pill, SampleBadge } from "@/components/ui/pill";
-import { listAccounts } from "@/server/account-data";
+import { accountOverview, listAccounts } from "@/server/account-data";
+import { fmtMoney, fmtNumber } from "@/lib/format";
 import { providerStatus } from "@/server/providers";
 import { requireOnboarded } from "@/server/session";
 
@@ -18,6 +19,8 @@ export default async function Accounts() {
   const accounts = await listAccounts(s.user.id);
   const sync = providerStatus().sync;
   const hasDemo = accounts.some((a) => a.source === "sample");
+  const details = new Map(await Promise.all(accounts.filter((a) => a.source === "provider").map(async (a) => [a.id, await accountOverview(s.user.id, a.id, accounts)] as const)));
+  const allOrders = [...details.values()].flatMap((o) => (o?.orders ?? []).map((r) => ({ ...r, account: o!.account.label, digits: r.price >= 100 ? 2 : r.price >= 10 ? 3 : 5 })));
   const fmt = (iso: string) => new Date(iso).toLocaleString("en-GB", { timeZone: s.profile.timezone, dateStyle: "medium", timeStyle: "short" });
   return (
     <>
@@ -36,14 +39,41 @@ export default async function Accounts() {
                       {a.platform.toUpperCase()} · {a.server} · {a.currency}
                       {a.source === "sample" ? " · generated sample data" : a.lastSyncAt ? ` · last sync ${fmt(a.lastSyncAt)}` : " · not synced yet"}
                     </div>
+                    {(() => { const d = details.get(a.id); if (!d || d.balance === null) return null; return (
+                      <div className="num mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-ink-2">
+                        <span>Balance {fmtMoney(d.balance, a.currency)}</span>
+                        {d.equity !== null && <span>Equity {fmtMoney(d.equity, a.currency)}</span>}
+                        {d.freeMargin !== null && <span>Free margin {fmtMoney(d.freeMargin, a.currency)}</span>}
+                        <span>Margin level {d.marginLevel === null ? "no margin in use" : `${fmtNumber(d.marginLevel, 0)}%`}</span>
+                        <span>{d.positions.length} open · {d.orders.length} pending</span>
+                      </div>
+                    ); })()}
+                    {a.lastError && a.status !== "connected" && <p className="mt-1 text-xs text-down">Last error{a.lastErrorAt ? ` (${fmt(a.lastErrorAt)})` : ""}: {a.lastError}</p>}
                   </div>
                   {a.source === "sample" ? <SampleBadge label="Sample" /> : <Pill tone={statusTone(a.status)}>{a.status ?? "pending"}</Pill>}
-                  {a.source === "provider" && <AccountActions accountId={a.id} label={a.label} />}
+                  {a.source === "provider" && (a.status === "disconnected" || a.status === "reconnection_required" || a.status === "error") && <ReconnectButton enabled={sync} platform={a.platform} server={a.server} login={a.login} />}
+                  {a.source === "provider" && a.status !== "disconnected" && <AccountActions accountId={a.id} label={a.label} />}
                 </li>
               ))}
             </ul>
           )}
         </Glass>
+
+        {allOrders.length > 0 && (
+          <Glass className="p-5 sm:p-6">
+            <h2 className="text-[17px] font-semibold text-ink">Pending orders</h2>
+            <div className="mt-3 overflow-x-auto">
+              <table className="num w-full min-w-[560px] text-left text-[13px]">
+                <thead className="text-xs text-ink-3"><tr><th className="py-1.5 font-medium">Account</th><th className="font-medium">Symbol</th><th className="font-medium">Type</th><th className="font-medium">Volume</th><th className="font-medium">Price</th><th className="font-medium">SL</th><th className="font-medium">TP</th><th className="font-medium">Placed</th></tr></thead>
+                <tbody className="divide-y divide-[var(--border)] text-ink-2">
+                  {allOrders.map((r) => (
+                    <tr key={r.id}><td className="py-2">{r.account}</td><td className="font-medium text-ink">{r.symbol}</td><td>{r.type}</td><td>{fmtNumber(r.volume, 2)}</td><td>{fmtNumber(r.price, r.digits)}</td><td>{r.stopLoss ? fmtNumber(r.stopLoss, r.digits) : "—"}</td><td>{r.takeProfit ? fmtNumber(r.takeProfit, r.digits) : "—"}</td><td>{fmt(r.placedAt.toISOString())}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Glass>
+        )}
 
         <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
           <Glass className="p-5">

@@ -1,5 +1,20 @@
 # Web platform status
 
+## Production functionality (2026-11-02, branch `claude/project-thread-prgndb`)
+
+Production check (GitHub runner, `.github/workflows/prod-smoke.yml`): app.treidify.com is up, database up, email configured, but **no provider keys are set**, so market data, MT5 sync, news, AI and billing all report "not configured". Every integration below is coded and switches on when its Vercel env var is set. See `docs/PRODUCTION_SETUP.md`.
+
+| Area | Built in this pass | Tested with |
+| --- | --- | --- |
+| Charts | 1M, 5M, 15M, 30M, 1H, 4H, 1D, 1W; bars re-read every 15 s (1M) to 15 min (1W) while real and the tab is visible, zoom kept; failed refresh keeps the last bars and says so; provider, last-bar time, freshness and check time under the chart | unit tests (intervals, cache < bar, per-timeframe overlays, weekly freshness), e2e on desktop and mobile |
+| MT5 | Pending orders synced; margin, free margin and margin level; last sync error shown; Reconnect re-uses the same account so history is never duplicated; "All accounts" combined view when every real account shares a currency | unit test (orders endpoint, mocked fetch); live MetaApi untested: no token |
+| News | Topic categories, search and filters, Breaking (high importance, first hour), stories older than 72 h or future-dated never shown; "Explain with AI" splits Reported vs AI interpretation, re-reads the story server-side by id, cached 24 h | unit test (categories); e2e (not-connected state); live Finnhub and Claude untested: no keys |
+| AI coach | Daily, weekly, monthly cards with real period numbers; AI reviews generated from computed facts only, saved to `ai_report`, the exact facts shown under each review; pattern detectors on the whole history | unit tests (facts builder, size after losses); e2e on the demo account |
+| Journal | Search across symbol, notes and tags; trade detail (entry, exit, gross, commission, swap, fees, net); up to 4 screenshots per trade (re-encoded WebP, owner-only route); "How these numbers are calculated" panel | e2e (search, upload, owner-only 401 for a stranger) |
+| Health | `/api/health` adds sign-in providers, cron and encryption booleans | e2e |
+
+Not done: Apple sign-in (needs the paid Apple Developer Program), billing (Stripe not set up), licensed news images (not displayed).
+
 ## Premium terminal upgrade (2026-11-01, branch `claude/project-thread-4t7gwg`)
 
 - XAUUSD pip convention fixed: 1 pip = $0.10, max structural stop 50 pips = $5.00; 51+ pips is WAIT / NO VALID SETUP. A touch is never a setup: BUY/SELL needs the 5M confirmation.

@@ -17,9 +17,12 @@ export function JournalFilters({ symbols }: { symbols: string[] }) {
     router.push(`${path}?${q}`, { scroll: false });
   };
   const val = (k: string) => params.get(k) ?? "";
-  const active = ["symbol", "side", "outcome", "session", "notes"].some((k) => params.get(k));
+  const active = ["symbol", "side", "outcome", "session", "notes", "q"].some((k) => params.get(k));
   return (
     <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter trades">
+      <form role="search" onSubmit={(e) => { e.preventDefault(); set("q", String(new FormData(e.currentTarget).get("q") ?? "").trim()); }}>
+        <input key={val("q")} type="search" name="q" defaultValue={val("q")} placeholder="Search symbol, notes, tags" aria-label="Search trades" className={cn(select, "w-[220px]")} onBlur={(e) => { if (e.target.value.trim() !== val("q")) set("q", e.target.value.trim()); }} />
+      </form>
       <select aria-label="Instrument" className={select} value={val("symbol")} onChange={(e) => set("symbol", e.target.value)}>
         <option value="">All instruments</option>
         {symbols.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -38,7 +41,7 @@ export function JournalFilters({ symbols }: { symbols: string[] }) {
       </select>
       <button
         type="button"
-        onClick={() => { const q = new URLSearchParams(params.toString()); ["symbol", "side", "outcome", "session", "notes", "page"].forEach((k) => q.delete(k)); router.push(`${path}?${q}`, { scroll: false }); }}
+        onClick={() => { const q = new URLSearchParams(params.toString()); ["symbol", "side", "outcome", "session", "notes", "q", "page"].forEach((k) => q.delete(k)); router.push(`${path}?${q}`, { scroll: false }); }}
         className={cn("h-9 rounded-full px-3 text-sm font-medium text-accent hover:bg-accent-soft", !active && "invisible")}
       >
         Clear filters

@@ -13,7 +13,7 @@ import { analyzeStructure, type StructureEvent, type Trend } from "./structure";
  * Methodology: docs/INTELLIGENCE_METHODOLOGY.md § "Timeframe overlays".
  */
 export const OVERLAY_VERSION = "tf-overlays-v1";
-export type OverlayTf = "1M" | "5M" | "15M" | "1H" | "4H" | "1D";
+export type OverlayTf = "1M" | "5M" | "15M" | "30M" | "1H" | "4H" | "1D" | "1W";
 
 export const OVERLAY_RULES = {
   atrPeriod: 14,

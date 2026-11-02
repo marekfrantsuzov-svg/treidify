@@ -1,26 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
-import { linkFromOutbox, uniqueEmail } from "./helpers";
-
-/** Signs up, verifies and finishes onboarding without connecting an account. */
-async function signUp(page: Page, tag: string) {
-  const email = uniqueEmail(tag);
-  await page.goto("/signup?trial=1");
-  await page.getByLabel("Name").fill("Terminal Tester");
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password", { exact: true }).fill("a-long-test-passphrase-42");
-  await page.getByRole("checkbox").check();
-  await page.getByRole("button", { name: "Create free account" }).click();
-  await expect(page.getByRole("heading", { name: "Check your inbox" })).toBeVisible({ timeout: 30_000 });
-  await page.goto(await linkFromOutbox(page, email, "/api/auth/verify-email"));
-  await page.getByLabel("Username").fill(`t_${Date.now().toString(36)}${tag[0]}`);
-  await page.getByRole("button", { name: "Continue" }).click();
-  await page.getByRole("radio", { name: /Developing/ }).click();
-  for (let i = 0; i < 4; i++) await page.getByRole("button", { name: "Continue" }).click();
-  await page.getByRole("button", { name: "Continue without connecting" }).click();
-  await page.getByRole("checkbox", { name: /I understand the risks/ }).click();
-  await page.getByRole("button", { name: /Enter my dashboard/ }).click();
-  await expect(page).toHaveURL(/\/app/, { timeout: 30_000 });
-}
+import { expect, test } from "@playwright/test";
+import { signUp } from "./helpers";
 
 test("terminal: overlays toggle independently, zones explain the 50-pip rule, data is labelled, nothing overflows", async ({ page }, info) => {
   await signUp(page, `term-${info.project.name}`);

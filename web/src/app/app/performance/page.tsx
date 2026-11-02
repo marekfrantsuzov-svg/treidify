@@ -7,7 +7,7 @@ import { SampleBadge } from "@/components/ui/pill";
 import { byMonth, bySessionOpened, bySide, bySymbol, byWeekday, drawdownSeries, equitySeries, holdingHours, inRange, performanceMetrics, periodRange } from "@/lib/analytics";
 import { fmtNumber, fmtPct, fmtSignedMoney } from "@/lib/format";
 import { PERIOD_NAMES, readPeriod } from "@/lib/period-param";
-import { accountOverview, listAccounts } from "@/server/account-data";
+import { accountOverview, listAccounts, pickerOptions } from "@/server/account-data";
 import { requireOnboarded } from "@/server/session";
 
 export const metadata = { title: "Performance" };
@@ -36,7 +36,7 @@ export default async function Performance({ searchParams }: { searchParams: Prom
   return (
     <>
       <PageHeader title="Performance" subtitle={o ? <>{PERIOD_NAMES[period.id]} · {o.account.label}{o.account.source === "sample" && <SampleBadge label="Sample account" className="ml-2 align-middle" />}</> : <>{PERIOD_NAMES[period.id]} · Deep analytics from your closed trades.</>}>
-        {o && <AccountPicker accounts={accounts.map((a) => ({ id: a.id, label: a.label }))} selected={o.account.id} />}
+        {o && <AccountPicker accounts={pickerOptions(accounts)} selected={o.account.id} />}
       </PageHeader>
       {!o && <ConnectStrip />}
       <div className="grid gap-4">

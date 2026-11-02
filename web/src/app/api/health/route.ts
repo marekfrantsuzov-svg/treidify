@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import { db, dbConfigured } from "@/server/db";
 import { emailConfigured } from "@/server/email";
 import { providerStatus } from "@/server/providers";
+import { enabledProviders } from "@/server/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,9 @@ export async function GET() {
       database,
       email: emailConfigured(),
       providers: providerStatus(),
+      signIn: { email: true, ...enabledProviders },
+      cron: Boolean(process.env.CRON_SECRET),
+      encryption: Boolean(process.env.DATA_ENCRYPTION_KEY),
       commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null,
       environment: process.env.VERCEL_ENV ?? process.env.NODE_ENV,
     },

@@ -38,3 +38,18 @@ export function trackedKind(title: string): "CPI" | "PPI" | "NFP" | "FOMC" | "Ra
   if (/speech|speaks|testimony|press conference/i.test(title) && /fed|ecb|boe|boj|powell|lagarde|bailey|ueda|governor|chair/i.test(title)) return "Central bank speech";
   return null;
 }
+
+/** Coverage categories for filtering. Keyword rules; a story can sit in several. */
+export const NEWS_CATEGORIES = [
+  { id: "central-banks", label: "Central banks", re: /\bfed\b|fomc|federal reserve|ecb|bank of england|\bboe\b|\bboj\b|bank of japan|\bsnb\b|\brba\b|\bpboc\b|central bank|powell|lagarde|bailey|ueda/i },
+  { id: "inflation", label: "Inflation", re: /inflation|\bcpi\b|\bppi\b|\bpce\b|consumer price|producer price|deflation/i },
+  { id: "employment", label: "Employment", re: /payrolls|\bnfp\b|jobs report|unemployment|jobless|labou?r market|employment|wages/i },
+  { id: "rates", label: "Interest rates", re: /interest rate|rate (cut|hike|decision)|yields?\b|treasur(y|ies)|bond/i },
+  { id: "geopolitics", label: "Geopolitics", re: /war|sanction|tariff|election|conflict|missile|ceasefire|geopolit|trade (war|deal)|opec/i },
+  { id: "currencies", label: "Currencies", re: /dollar|\beuro\b|\byen\b|sterling|pound|yuan|franc|forex|\bfx\b|currenc/i },
+  { id: "commodities", label: "Commodities", re: /gold|silver|oil|crude|brent|copper|natural gas|commodit|bullion/i },
+  { id: "equities", label: "Equities", re: /stocks?\b|equit|s&p|nasdaq|dow\b|dax|ftse|nikkei|earnings|shares/i },
+  { id: "crypto", label: "Crypto", re: /bitcoin|ethereum|crypto|\bbtc\b|\beth\b|stablecoin/i },
+] as const;
+export type NewsCategory = (typeof NEWS_CATEGORIES)[number]["id"];
+export const categoriesOf = (text: string): NewsCategory[] => NEWS_CATEGORIES.filter((c) => c.re.test(text)).map((c) => c.id);

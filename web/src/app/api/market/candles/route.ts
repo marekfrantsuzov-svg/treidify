@@ -16,7 +16,7 @@ export async function GET(req: Request) {
   const symbol = u.searchParams.get("symbol") ?? "", tf = u.searchParams.get("tf") ?? "";
   if (!isMarketSymbol(symbol) || !isTimeframe(tf)) return NextResponse.json({ error: "Unknown symbol or timeframe." }, { status: 400 });
   if (!marketDataStatus().configured) {
-    return NextResponse.json({ ok: true, sample: true, symbol, timeframe: tf, candles: tf === "1M" || tf === "1D" ? sampleSeries(symbol, tf) : sampleMtf(symbol)[tf], freshness: null, method: null, lastBarAt: null, digits: digitsOf(symbol) }, { headers: { "Cache-Control": "private, no-store" } });
+    return NextResponse.json({ ok: true, sample: true, symbol, timeframe: tf, candles: tf === "4H" || tf === "1H" || tf === "15M" || tf === "5M" ? sampleMtf(symbol)[tf] : sampleSeries(symbol, tf), freshness: null, method: null, lastBarAt: null, digits: digitsOf(symbol) }, { headers: { "Cache-Control": "private, no-store" } });
   }
   const r = await getSeries(symbol, tf, 500);
   return NextResponse.json(r.ok ? { ...r, sample: false } : r, { status: r.ok ? 200 : 502, headers: { "Cache-Control": "private, no-store" } });

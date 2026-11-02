@@ -26,3 +26,25 @@ export const ChartReadingSchema = z.object({
   uncertainty: z.array(z.string()).describe("What cannot be known from this image."),
 });
 export type ChartReading = z.infer<typeof ChartReadingSchema>;
+
+/** AI explanation of one reported headline. Only the provider's headline and summary are facts; the rest is interpretation. */
+export const NewsBriefSchema = z.object({
+  whatHappened: z.string().describe("One or two sentences restating ONLY what the headline and summary report. No new facts."),
+  whyItMatters: z.string().describe("Why markets may care, as interpretation."),
+  instruments: z.array(z.string()).max(6).describe("Instruments plausibly affected, from the candidate list only."),
+  bullishCase: z.string().describe("How this could be read bullishly for the most affected instrument, and which instrument."),
+  bearishCase: z.string().describe("How this could be read bearishly, and for which instrument."),
+  uncertain: z.array(z.string()).max(4).describe("What the report does not say or what is still unknown."),
+});
+export type NewsBrief = z.infer<typeof NewsBriefSchema>;
+
+/** AI coaching review grounded in computed trade statistics. */
+export const CoachReviewSchema = z.object({
+  headline: z.string().describe("One sentence summary of the period, using only numbers from the facts."),
+  strengths: z.array(z.string()).max(4),
+  problems: z.array(z.string()).max(5).describe("Concrete issues backed by the facts (overtrading, size changes after losses, session leaks, cost drag, stops)."),
+  actions: z.array(z.string()).max(4).describe("Specific, checkable changes for the next period."),
+  learn: z.array(z.string()).max(3).describe("Educational topics that address the problems, named generically."),
+  dataGaps: z.array(z.string()).max(3).describe("What the data cannot show (e.g. no stop-loss recorded, too few trades)."),
+});
+export type CoachReview = z.infer<typeof CoachReviewSchema>;
