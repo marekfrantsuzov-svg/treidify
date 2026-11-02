@@ -11,14 +11,19 @@ import { SlidingPill } from "@/components/ui/sliding-pill";
 import { Modal } from "@/components/intel/modal";
 import { ZoneDetail, fmtPrice, statusText } from "./zone-detail";
 
-export type ChartTf = "5M" | "15M" | "1H" | "4H";
-export const CHART_TFS: ChartTf[] = ["5M", "15M", "1H", "4H"];
+export type ChartTf = "1M" | "5M" | "15M" | "30M" | "1H" | "4H" | "1D" | "1W";
+export const CHART_TFS: ChartTf[] = ["1M", "5M", "15M", "30M", "1H", "4H", "1D", "1W"];
+/** How often the open chart re-reads its bars while the data is real (the server caches each series for less than this). */
+const REFRESH_MS: Record<ChartTf, number> = { "1M": 15_000, "5M": 20_000, "15M": 30_000, "30M": 45_000, "1H": 60_000, "4H": 120_000, "1D": 300_000, "1W": 900_000 };
 export type Layer = "zones" | "fib" | "liquidity" | "structure" | "volume";
 export const LAYERS: { id: Layer; label: string }[] = [
   { id: "zones", label: "Zones" }, { id: "fib", label: "Fibonacci" }, { id: "liquidity", label: "Liquidity" }, { id: "structure", label: "Structure" }, { id: "volume", label: "Volume" },
 ];
 export type Layers = Record<Layer, boolean>;
-export interface ChartMeta { sample: boolean; freshness: string | null; method: string | null; lastBarAt: string | null }
+export interface ChartMeta { sample: boolean; freshness: string | null; method: string | null; lastBarAt: string | null; vendor?: string | null; fetchedAt?: string | null }
+const VENDOR_NAME: Record<string, string> = { twelvedata: "Twelve Data" };
+const FRESH_TEXT: Record<string, string> = { live: "Up to date", delayed: "Delayed", stale: "Stale", closed: "Market closed" };
+const hhmm = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
 const css = (name: string) => (typeof window === "undefined" ? "#888" : getComputedStyle(document.documentElement).getPropertyValue(name).trim() || "#888");
 
@@ -51,6 +56,7 @@ export function TerminalChart({
   const series = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const vol = useRef<ISeriesApi<"Histogram"> | null>(null);
   const markers = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
+  const fitKey = useRef<string | null>(null);
   const [tf, setTfState] = useState<ChartTf>(initialTf);
   const [candles, setCandles] = useState<Candle[]>([]);
   const [state, setState] = useState<"ready" | "loading" | "error">("loading");
@@ -68,7 +74,7 @@ export function TerminalChart({
   const labelH = narrow ? 34 : 40;
 
   const setTf = (t: ChartTf) => { setTfState(t); onTf?.(t); setLocalSel(null); if (overlays) onSelectZone?.(null, overlays); };
-  const toggle = (l: Layer) => setLayersState((x) => { const n = { ...x, [l]: !x[l] }; onLayers?.(n); return n; });
+  const toggle = (l: Layer) => { const n = { ...layers, [l]: !layers[l] }; setLayersState(n); onLayers?.(n); };
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 639px)");
@@ -108,19 +114,33 @@ export function TerminalChart({
     series.current?.applyOptions({ upColor: up, downColor: down, wickUpColor: up, wickDownColor: down, priceFormat: { type: "price", precision: digits, minMove: 1 / 10 ** digits } });
   }, [resolvedTheme, digits]);
 
-  // Load candles for the timeframe.
+  // Load candles for the timeframe, then keep re-reading them while the data is real and the tab is visible.
+  // A failed refresh keeps the last good bars on screen and says so; it never invents a price.
+  const [refreshErr, setRefreshErr] = useState(false);
   useEffect(() => {
-    let live = true;
-    setState("loading");
-    fetch(`/api/market/candles?symbol=${symbol}&tf=${tf}`, { cache: "no-store" })
-      .then(async (r) => ({ ok: r.ok, body: await r.json() }))
-      .then(({ ok, body }) => {
-        if (!live) return;
-        if (!ok || !body.candles?.length) { setErr(body.message ?? "Market data unavailable."); setState("error"); setCandles([]); return; }
-        setCandles(body.candles); setMeta({ sample: !!body.sample, freshness: body.freshness ?? null, method: body.method ?? null, lastBarAt: body.lastBarAt ?? null }); setState("ready");
-      })
-      .catch(() => { if (live) { setErr("Market data unavailable."); setState("error"); } });
-    return () => { live = false; };
+    let live = true, timer: ReturnType<typeof setTimeout> | null = null, first = true;
+    setState("loading"); setRefreshErr(false);
+    const load = () => {
+      fetch(`/api/market/candles?symbol=${symbol}&tf=${tf}`, { cache: "no-store" })
+        .then(async (r) => ({ ok: r.ok, body: await r.json() }))
+        .then(({ ok, body }) => {
+          if (!live) return;
+          if (!ok || !body.candles?.length) {
+            if (first) { setErr(body.message ?? "Market data unavailable."); setState("error"); setCandles([]); } else setRefreshErr(true);
+          } else {
+            setCandles(body.candles); setRefreshErr(false);
+            setMeta({ sample: !!body.sample, freshness: body.freshness ?? null, method: body.method ?? null, lastBarAt: body.lastBarAt ?? null, vendor: body.vendor ?? null, fetchedAt: body.fetchedAt ?? null });
+            setState("ready");
+          }
+          if (body.sample) return; // sample bars never refresh: there is nothing live to follow
+          first = false;
+          timer = setTimeout(tick, REFRESH_MS[tf]);
+        })
+        .catch(() => { if (!live) return; if (first) { setErr("Market data unavailable."); setState("error"); } else setRefreshErr(true); timer = setTimeout(tick, REFRESH_MS[tf] * 2); });
+    };
+    const tick = () => { if (!live) return; if (document.visibilityState === "visible") load(); else timer = setTimeout(tick, REFRESH_MS[tf]); };
+    load();
+    return () => { live = false; if (timer) clearTimeout(timer); };
   }, [tf, symbol]);
 
   // Candles, volume and displacement colouring.
@@ -140,10 +160,13 @@ export function TerminalChart({
     if (!candles.length) return;
     const ts = chart.current?.timeScale();
     if (!ts) return;
+    const key = `${symbol}|${tf}|${narrow}`;
+    if (fitKey.current === key) return; // a refresh of the same series keeps the user's zoom and pan
+    fitKey.current = key;
     // Leave empty space right of the last candle: zone labels live there instead of covering price.
     const n = candles.length, show = narrow ? 50 : 104, room = narrow ? 34 : 40;
     ts.setVisibleLogicalRange({ from: Math.max(0, n - show), to: n + room });
-  }, [candles, narrow]);
+  }, [candles, narrow]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     vol.current?.applyOptions({ visible: layers.volume && overlays?.volume.kind !== "none" });
@@ -339,6 +362,12 @@ export function TerminalChart({
         {state === "ready" && overlays?.limitations.length ? <div className="absolute inset-x-3 bottom-3 rounded-xl bg-warn-soft px-3 py-1.5 text-[11.5px] text-ink-2">{overlays.limitations[0]}</div> : null}
       </div>
 
+      {state === "ready" && !sample && meta.lastBarAt && (
+        <p className="mt-1.5 px-1 text-[11.5px] leading-snug text-ink-3" aria-live="polite">
+          {VENDOR_NAME[meta.vendor ?? ""] ?? meta.vendor ?? "Provider"}{meta.method === "computed-ice" ? " · computed from the six ICE pairs" : ""} · last bar {hhmm(meta.lastBarAt)} · {FRESH_TEXT[meta.freshness ?? ""] ?? "Unknown"}{meta.fetchedAt ? ` · checked ${hhmm(meta.fetchedAt)}` : ""}
+          {refreshErr && <span className="text-down"> · Refresh failed, showing the last bars received</span>}
+        </p>
+      )}
       {showToggles && overlays && (layers.volume || layers.liquidity || layers.fib) && (
         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 px-1 text-[11.5px] leading-snug text-ink-3" aria-label="Overlay notes">
           {layers.fib && <span>{fibScen ? `Fibonacci: ${fibScen.direction} retracement of the ${tf} leg ${fmtPrice(fibScen.from.price, digits)} → ${fmtPrice(fibScen.to.price, digits)}.` : `Fibonacci: no qualifying ${tf} ${fibSide === "active" ? "" : `${fibSide} `}leg; nothing drawn.`}</span>}

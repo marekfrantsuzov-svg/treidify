@@ -4,9 +4,9 @@
  */
 import { INSTRUMENTS as REGISTRY, isSymbol } from "@/lib/markets/registry";
 
-export type Timeframe = "1M" | "5M" | "15M" | "1H" | "4H" | "1D";
-export const TIMEFRAMES: Timeframe[] = ["1M", "5M", "15M", "1H", "4H", "1D"];
-export const TF_SECONDS: Record<Timeframe, number> = { "1M": 60, "5M": 300, "15M": 900, "1H": 3600, "4H": 14_400, "1D": 86_400 };
+export type Timeframe = "1M" | "5M" | "15M" | "30M" | "1H" | "4H" | "1D" | "1W";
+export const TIMEFRAMES: Timeframe[] = ["1M", "5M", "15M", "30M", "1H", "4H", "1D", "1W"];
+export const TF_SECONDS: Record<Timeframe, number> = { "1M": 60, "5M": 300, "15M": 900, "30M": 1800, "1H": 3600, "4H": 14_400, "1D": 86_400, "1W": 604_800 };
 
 /** Any registry symbol. */
 export type MarketSymbol = string;
