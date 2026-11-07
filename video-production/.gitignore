@@ -1,0 +1,10 @@
+# heavy or regenerable media: shipped as a zip alongside the render (see README)
+assets/
+film/public/ui/
+film/public/audio/
+film/public/music/
+film/out/
+node_modules/
+capture/node_modules
+# local sign-in session for the capture (never commit)
+capture/state.json
