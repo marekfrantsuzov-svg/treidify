@@ -30,7 +30,7 @@ const POINTS = [
 /** Scene three: account intelligence. Text on the left, one dominant figure on the right, detail beneath it. */
 export function EdAccount() {
   return (
-    <section id="product" className="ed-section" aria-labelledby="account-title">
+    <section id="account" className="ed-section" aria-labelledby="account-title">
       <Container>
         <div className="ed-split">
           <Reveal className="ed-split-text">

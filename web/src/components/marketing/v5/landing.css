@@ -17,32 +17,35 @@ body:has(.v5-hero) .mk-header .mk-bar { max-width: 1560px; height: 84px; padding
 
 /* ── Entrance sequence: CSS only, starts at first paint ── */
 @keyframes v5-fade { from { opacity: 0; } to { opacity: 1; } }
-@keyframes v5-rise { from { opacity: 0; transform: translate3d(0, 18px, 0); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes v5-rise { from { opacity: 0; transform: translate3d(0, 14px, 0); } to { opacity: 1; transform: none; } }
 @keyframes v5-line { from { transform: translate3d(0, 105%, 0); } to { transform: none; } }
 @keyframes v5-nav { from { opacity: 0; transform: translate3d(0, -10px, 0); } to { opacity: 1; transform: none; } }
-@keyframes v5-stage { from { opacity: 0; transform: translate3d(80px, 30px, 0) scale(0.94); filter: blur(10px); } 55% { opacity: 1; filter: blur(0); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes v5-stage { from { opacity: 0; transform: translate3d(70px, 26px, 0) scale(0.95); } 60% { opacity: 1; } to { opacity: 1; transform: none; } }
 @keyframes v5-plinth { from { opacity: 0; transform: translate3d(0, 30px, 0); } to { opacity: 1; transform: none; } }
 
-.v5-hero::before { animation: v5-fade 900ms linear both; }
-body:has(.v5-hero) .mk-header .mk-bar { animation: v5-nav 600ms var(--ease-out-expo) 90ms both; }
-.v5-in { animation: v5-rise 820ms var(--ease-out-expo) var(--d, 0ms) both; }
+.v5-hero::before { animation: v5-fade 250ms linear both; }
+body:has(.v5-hero) .mk-header .mk-bar { animation: v5-nav 250ms var(--ease-out-expo) both; }
+.v5-in { animation: v5-rise 450ms var(--ease-out-expo) var(--d, 0ms) both; }
 .v5-line { display: block; overflow: hidden; padding-bottom: 0.1em; margin-bottom: -0.1em; }
-.v5-in-line { display: inline-block; animation: v5-line 900ms var(--ease-out-expo) var(--d, 0ms) both; }
-.v5-in-stage { animation: v5-stage 1500ms var(--ease-out-expo) 520ms both; }
-.v5-plinth { animation: v5-plinth 1200ms var(--ease-out-expo) 420ms both; }
+.v5-in-line { display: inline-block; animation: v5-line 500ms var(--ease-out-expo) var(--d, 0ms) both; }
+.v5-in-stage { animation: v5-stage 700ms var(--ease-out-expo) 600ms both; }
+.v5-plinth { animation: v5-plinth 700ms var(--ease-out-expo) 500ms both; }
+/* Seen in this tab already (reload, back navigation): no entrance replay. */
+:root[data-hero-seen] :is(.v5-in, .v5-in-line, .v5-in-stage, .v5-plinth), :root[data-hero-seen] body:has(.v5-hero) .mk-header .mk-bar { animation: none !important; }
+:root[data-hero-seen] .v5-hero::before { animation: none !important; }
 
 /* ── Scene: blurred city interior, only behind the hero ── */
 .v5-hero { position: relative; isolation: isolate; overflow: clip; margin-top: -84px; padding: calc(84px + clamp(40px, 6.5vw, 110px)) 0 0; }
 .v5-hero::before {
   content: ""; position: absolute; inset: 0; z-index: -2;
   background:
-    linear-gradient(180deg, #0a0b0f 0, rgba(10, 11, 15, 0) 150px),
-    linear-gradient(90deg, rgba(10, 11, 15, 0.3) 0%, rgba(10, 11, 15, 0.05) 45%, rgba(10, 11, 15, 0) 100%),
-    linear-gradient(0deg, #0a0b0f 0, rgba(10, 11, 15, 0) 22%),
+    linear-gradient(180deg, #0b0911 0, rgba(11, 9, 17, 0) 150px),
+    linear-gradient(90deg, rgba(11, 9, 17, 0.3) 0%, rgba(11, 9, 17, 0.05) 45%, rgba(11, 9, 17, 0) 100%),
+    linear-gradient(0deg, #0b0911 0, rgba(11, 9, 17, 0) 22%),
     image-set(url("/brand/backdrop/city-1920.webp") type("image/webp")) center top / cover no-repeat;
 }
 :root[data-theme="light"] .v5-hero::before { filter: none; }
-@media (max-width: 1023.98px) { .v5-hero { margin-top: -64px; padding-top: calc(64px + 40px); } .v5-hero::before { background-image: linear-gradient(180deg, #0a0b0f 0, rgba(10, 11, 15, 0) 120px), linear-gradient(0deg, #0a0b0f 0, rgba(10, 11, 15, 0) 30%), linear-gradient(0deg, rgba(10,11,15,.35), rgba(10,11,15,.35)), image-set(url("/brand/backdrop/city-900.webp") type("image/webp")); background-size: auto, auto, auto, cover; background-position: center top; } }
+@media (max-width: 1023.98px) { .v5-hero { margin-top: -64px; padding-top: calc(64px + 40px); } .v5-hero::before { background-image: linear-gradient(180deg, #0b0911 0, rgba(11, 9, 17, 0) 120px), linear-gradient(0deg, #0b0911 0, rgba(11, 9, 17, 0) 30%), linear-gradient(0deg, rgba(11,9,17,.35), rgba(11,9,17,.35)), image-set(url("/brand/backdrop/city-900.webp") type("image/webp")); background-size: auto, auto, auto, cover; background-position: center top; } }
 
 /* The hero is a dark scene in both themes, like a product launch stage; the rest of the page follows the theme. */
 .v5-hero { --text: #f5f6fa; --text-2: #c9cad4; --text-3: #9a9cab; --border-strong: rgba(255, 255, 255, 0.16); color: var(--text); }
@@ -140,3 +143,42 @@ body:has(.v5-hero) .mk-header .mk-bar { animation: v5-nav 600ms var(--ease-out-e
 .lx-ov-tile svg { width: 3.6em; height: 1.4em; fill: none; stroke-width: 1.4; }
 .lx-ov-tile svg.is-up { stroke: var(--up); } .lx-ov-tile svg.is-down { stroke: var(--down); }
 .lx-ov-tile .is-up { color: var(--up); } .lx-ov-tile .is-down { color: var(--down); }
+
+/* ── Light trails (light-trails.tsx) over the scene, under the copy ── */
+.v5-trails { position: absolute; inset: 0; z-index: -1; pointer-events: none; will-change: transform; mix-blend-mode: screen; -webkit-mask-image: linear-gradient(90deg, transparent 0 34%, #000 62%); mask-image: linear-gradient(90deg, transparent 0 34%, #000 62%); }
+@media (max-width: 1099.98px) { .v5-trails { -webkit-mask-image: linear-gradient(180deg, transparent 0 58%, #000 78%); mask-image: linear-gradient(180deg, transparent 0 58%, #000 78%); } }
+.v5-trails svg { display: block; }
+.v5-trail { stroke-dasharray: 28 72; animation: v5-flow var(--t, 30s) linear infinite; animation-delay: calc(var(--o, 0) * 1s); }
+.v5-trail-glow { filter: blur(6px); }
+@keyframes v5-flow { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+/* A violet wash over the city so the scene reads in brand light. */
+.v5-hero::after { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(60% 55% at 78% 30%, rgba(168, 90, 245, 0.22), transparent 70%), radial-gradient(40% 40% at 98% 8%, rgba(219, 110, 219, 0.18), transparent 70%), radial-gradient(45% 50% at 8% 90%, rgba(132, 69, 232, 0.16), transparent 70%); }
+@media (max-width: 1023.98px) { .v5-trail-desktop { display: none; } .v5-trail-glow { filter: none; } }
+@media (prefers-reduced-motion: reduce) { .v5-trail { animation: none; stroke-dasharray: none; } }
+
+/* ── Product showcase (showcase.tsx) ── */
+.sc-root { position: relative; }
+.sc-head { max-width: 760px; margin: 0 auto; padding: 0 20px; text-align: center; }
+.sc-head .ts-h2 { margin-top: 12px; text-wrap: balance; }
+.sc-lead { margin: 16px auto 0; max-width: 56ch; color: var(--text-2); }
+.sc-stage { position: relative; max-width: 1240px; margin: clamp(36px, 5vw, 72px) auto 0; padding: 0 clamp(16px, 3vw, 40px); perspective: 1800px; }
+.sc-desk { container-type: inline-size; transform-origin: 50% 0%; will-change: transform; }
+.sc-desk .lx-desk { font-size: calc(100cqw / 75); box-shadow: 0 50px 120px -40px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.08), 0 30px 120px -40px rgba(168, 90, 245, 0.55); }
+.sc-phone { display: none; }
+.sc-notes { position: absolute; inset: 0; pointer-events: none; }
+.sc-note { position: absolute; display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 16px; pointer-events: auto; box-shadow: var(--shadow-lg); }
+.sc-note-icon { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: rgba(168, 90, 245, 0.18); color: #d9b3fb; }
+.sc-note-icon svg { width: 18px; height: 18px; }
+.sc-note-k { display: block; font-size: 12px; color: var(--text-3); }
+.sc-note-v { display: block; font-size: 15px; font-weight: 600; color: var(--text); }
+.sc-n1 { right: -1%; top: 30%; } .sc-n2 { left: -1%; top: 12%; } .sc-n3 { right: 4%; bottom: 6%; } .sc-n4 { left: 3%; bottom: 18%; }
+.sc-caption { margin-top: 22px; text-align: center; font-size: 12px; color: var(--text-3); }
+@media (max-width: 767.98px) {
+  .sc-desk { display: none; }
+  .sc-stage { perspective: none; display: grid; justify-items: center; gap: 18px; }
+  .sc-phone { display: block; width: min(300px, 78vw); container-type: inline-size; }
+  .sc-phone .lx-phone { font-size: calc(100cqw / 26); }
+  .sc-notes { position: static; display: grid; gap: 10px; width: 100%; max-width: 360px; }
+  .sc-note { position: static; }
+}

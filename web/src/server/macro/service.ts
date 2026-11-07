@@ -111,7 +111,7 @@ export interface MacroIndicator {
 const monthName = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
 const fail = (id: MacroIndicator["id"], measure: string, source: { name: string; url: string }, e: unknown): MacroIndicator => {
   reportError(e, { where: `macro.${id}` });
-  return { id, ok: false, value: null, measure, period: null, releasedOn: null, previous: null, previousLabel: "Previous", facts: [], next: null, history: [], historyLabel: "", source, via: null, fetchedAt: new Date().toISOString(), message: `FRED did not answer (${e instanceof Error ? e.message : "error"}). Nothing is shown rather than an old or estimated value.`, needs: [] };
+  return { id, ok: false, value: null, measure, period: null, releasedOn: null, previous: null, previousLabel: "Previous", facts: [], next: null, history: [], historyLabel: "", source, via: null, fetchedAt: new Date().toISOString(), message: "Official data could not be loaded just now. Nothing is shown rather than an old or estimated value.", needs: [] };
 };
 const needsKey = () => (macroKeyConfigured() ? [] : ["FRED_API_KEY (free) for release dates"]);
 

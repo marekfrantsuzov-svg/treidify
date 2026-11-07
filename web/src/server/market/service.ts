@@ -138,7 +138,7 @@ async function fetchSeries(symbol: MarketSymbol, timeframe: Timeframe, plan: Pla
   } catch (e) {
     if (e instanceof VendorError && e.status === 429) return limited(e.message);
     reportError(e, { where: "market.getSeries", extra: { symbol, timeframe } });
-    return { ok: false, symbol, timeframe, reason: "vendor-error", message: e instanceof VendorError ? "The market-data provider did not answer correctly. Showing nothing rather than a guess." : "Market data could not be loaded.", detail: e instanceof VendorError ? e.message : undefined };
+    return { ok: false, symbol, timeframe, reason: "vendor-error", message: e instanceof VendorError ? "Market data could not be loaded just now. Showing nothing rather than a guess." : "Market data could not be loaded.", detail: e instanceof VendorError ? e.message : undefined };
   }
 }
 

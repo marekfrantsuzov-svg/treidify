@@ -20,6 +20,8 @@
   --accent-purple: #8445e8;
   --accent-lavender: #d68af3;
   --accent-magenta: #db6edb;
+  --brand-violet: #a85af5;
+  --brand-pink: #db6edb;
   --brand-violet-5: #a85af5;
   --brand-pink-5: #db6edb;
   --brand-grad-5: linear-gradient(100deg in oklab, #8445e8 0%, #a85af5 40%, #d68af3 74%, #db6edb 100%);
@@ -43,6 +45,8 @@
 
 /* ── Dark (default) ── */
 :root:not([data-theme="light"]) {
+  --brand-violet: #a85af5;
+  --brand-pink: #db6edb;
   --bg-primary: #0b0911;
   --bg-secondary: #12101b;
   --bg-0: #0b0911;
@@ -112,6 +116,8 @@
 
 /* ── Light: pearl and porcelain glass. Same hierarchy, its own values (not an inversion). ── */
 :root[data-theme="light"] {
+  --brand-violet: #8445e8;
+  --brand-pink: #db6edb;
   --bg-0: #f3f4f8;
   --bg-1: #eceef4;
   --chrome-tint: #f3f4f8;
@@ -257,6 +263,9 @@ html { background-color: var(--bg-0); }
 :root[data-theme] :is(.dcard, .glass-card) { border-radius: var(--r-card); }
 .glass-card { position: relative; border: 1px solid var(--glass-border); box-shadow: var(--shadow); }
 .glass-panel { position: relative; border-radius: 18px; background: var(--surface-inset); border: 1px solid var(--border); }
+/* Landing tiles that used the old blue */
+.ed-root .lx-stops i { background: linear-gradient(180deg, #d68af3, #8445e8) !important; }
+
 /* Phones: the same look with less blur (cheaper to composite on iPhone). */
 @media (max-width: 639px) {
   :root:not([data-theme="light"]) :is(.dcard, .glass-card) { -webkit-backdrop-filter: blur(14px) saturate(140%); backdrop-filter: blur(14px) saturate(140%); }

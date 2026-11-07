@@ -8,12 +8,13 @@ import { MacroSection } from "@/components/marketing/lx/sections-ef";
 import "@/components/marketing/lx/landing.css";
 import { V5Hero } from "@/components/marketing/v5/hero";
 import "@/components/marketing/v5/landing.css";
+import { ProductShowcase } from "@/components/marketing/v5/showcase";
+import { LandingFaq } from "@/components/marketing/v5/faq";
 import { EdFigures } from "@/components/marketing/ed/figures";
 import { EdAccount } from "@/components/marketing/ed/account";
 import { EdFinal, EdSteps, EdTools } from "@/components/marketing/ed/index-sections";
 import "@/components/marketing/ed/ed.css";
 import "@/components/marketing/ed/glass-landing.css";
-import { AppStoreSoon } from "@/components/marketing/v3/app-store";
 import { providerStatus } from "@/server/providers";
 
 export const metadata: Metadata = {
@@ -27,8 +28,9 @@ export const metadata: Metadata = {
 export const revalidate = 3600;
 
 /**
- * Homepage, composed as a sequence of scenes: the promise and the product, the rules as figures, the account read,
- * the timeframe analysis, the journal, the coach, the macro desk, the tool index, the steps, pricing and the close.
+ * Homepage, in the brief's order: navigation, cinematic hero, product showcase, trading intelligence (the rules as
+ * figures, then the tool index), account analytics, AI market analysis, Macro Desk and calendar, journal and Account
+ * Health, the coach, how it works, plans, FAQ, final call to action, footer.
  */
 export default function Home() {
   const st = providerStatus();
@@ -36,21 +38,22 @@ export default function Home() {
   return (
     <div className="lx-root ed-root">
       <V5Hero />
+      <ProductShowcase />
       <EdFigures />
+      <EdTools live={live} />
       <EdAccount />
       <AnalysisSection />
+      <MacroSection />
       <JournalSection />
       <CoachSection />
-      <MacroSection />
-      <EdTools live={live} />
       <EdSteps syncLive={live.sync} />
 
       <section className="lx-section" id="pricing">
         <Container>
           <Reveal className="ed-head">
             <p className="ed-kicker">Pricing</p>
-            <h2 className="ts-h2 ed-head-title">Simple pricing.</h2>
-            <p className="ts-body ed-head-lead">Start free. Try everything in Premium for 72 hours, no card and no automatic billing.</p>
+            <h2 className="ts-h2 ed-head-title">Two plans. One honest trial.</h2>
+            <p className="ts-body ed-head-lead">Essential measures your own trading. Premium adds AI, news intelligence and the Macro Desk.</p>
           </Reveal>
           <Reveal delay={0.06} className="mt-10 sm:mt-14">
             <PricingCards />
@@ -58,11 +61,7 @@ export default function Home() {
         </Container>
       </section>
 
-      <section className="lx-section" id="app">
-        <Container>
-          <Reveal><AppStoreSoon /></Reveal>
-        </Container>
-      </section>
+      <LandingFaq />
 
       <EdFinal />
     </div>

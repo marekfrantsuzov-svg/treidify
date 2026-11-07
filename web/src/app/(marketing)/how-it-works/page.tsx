@@ -9,12 +9,12 @@ import { FinalCta } from "@/components/marketing/final-cta";
 
 export const metadata: Metadata = {
   title: "How it works",
-  description: "Create a free account, connect MT4 or MT5 read-only, and Treidify syncs your history, calculates your performance and adds market and AI context.",
+  description: "Create an account, start a 3-day trial, connect MT4 or MT5 read-only, and Treidify syncs your history, calculates your performance and adds market and AI context.",
   alternates: { canonical: "/how-it-works" },
 };
 
 const steps = [
-  { Icon: UserPlus, title: "Create a free account", body: "Sign up with Apple, Google or email. No card. Choose your experience level, instruments, time zone and dashboard layout." },
+  { Icon: UserPlus, title: "Create your account", body: "Sign up with Apple, Google or email, then start a 3-day trial (card required). Choose your experience level, instruments, time zone and dashboard layout." },
   { Icon: Globe2, title: "Use market intelligence straight away", body: "Gold and DXY bias, key zones, events and the Macro Desk work without connecting anything." },
   { Icon: KeyRound, title: "Connect MT4 or MT5, read-only", body: "Enter your account number, broker server and investor (read-only) password. It cannot place trades or withdraw. The secret is encrypted and handled by our connectivity provider." },
   { Icon: RefreshCw, title: "History imports and stays in sync", body: "Balance, positions, orders and deal history import automatically. Treidify keeps syncing and tells you if the connection needs attention." },

@@ -89,7 +89,7 @@ export function Header() {
             Log in
           </Link>
           <ButtonLink href="/signup" size="sm" className="ed-cta mk-cta hidden whitespace-nowrap sm:inline-flex">
-            Create free account <ArrowRight className="h-4 w-4" />
+            Get started <ArrowRight className="h-4 w-4" />
           </ButtonLink>
           <button
             className="grid h-10 w-10 place-items-center rounded-full text-ink lg:hidden"
@@ -127,7 +127,7 @@ export function Header() {
                 <ThemeToggle />
                 <div className="flex gap-2">
                   <ButtonLink href="/login" variant="secondary" size="sm">Log in</ButtonLink>
-                  <ButtonLink href="/signup" size="sm" className="ed-cta">Create free account</ButtonLink>
+                  <ButtonLink href="/signup" size="sm" className="ed-cta">Get started</ButtonLink>
                 </div>
               </div>
             </nav>

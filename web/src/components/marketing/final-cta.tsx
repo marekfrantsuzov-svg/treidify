@@ -3,7 +3,7 @@ import { ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { Reveal } from "@/components/ui/reveal";
 
-export function FinalCta({ title = "Your trading, finally understood.", lead = "Create a free account in under a minute. Connect your MT4 or MT5 account whenever you are ready.", action = "Get Started Free" }: { title?: string; lead?: string; action?: string }) {
+export function FinalCta({ title = "Your trading, finally understood.", lead = "Start a 3-day trial in under a minute. Connect your MT4 or MT5 account read-only whenever you are ready.", action = "Get Started Free" }: { title?: string; lead?: string; action?: string }) {
   return (
     <section className="py-16 sm:py-24">
       <Container>
