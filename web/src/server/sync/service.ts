@@ -38,6 +38,8 @@ const HISTORY_DAYS = 730;
 const FIRST_WINDOW_DAYS = 30;
 const BACKFILL_CHUNK_DAYS = 90;
 const BACKFILL_BUDGET_MS = 20_000;
+/** Whole-sync budget, under the 60 s function limit of every route that runs a sync. */
+const SYNC_BUDGET_MS = 50_000;
 
 /** Cost and abuse guards. Each MetaApi account is billed, so the totals are capped and configurable. */
 export function connectionLimits() {
@@ -97,9 +99,37 @@ export async function syncDiagnostics(now = Date.now()) {
       metaapi = (await client().list()).slice(0, 20).map((m) => ({ state: m.state, connectionStatus: m.connectionStatus ?? null, region: m.region ?? null, type: m.type ?? null, tracked: held.has(m._id ?? m.id ?? "") }));
     } catch (e) { metaapi = { error: scrub(e instanceof Error ? e.message : "list failed") }; }
   }
-  const value = { connections, metaapi };
+  const [regional] = await db.select({ at: schema.auditLog.createdAt, meta: schema.auditLog.meta }).from(schema.auditLog).where(eq(schema.auditLog.action, "diag.regional")).orderBy(desc(schema.auditLog.createdAt)).limit(1);
+  const value = { connections, metaapi, regional: regional ? { at: regional.at.toISOString(), ...(regional.meta as object) } : null };
   diagCache = { at: now, value };
   return value;
+}
+
+/**
+ * Background check of the regional MetaApi API for the most recent connection, at most every 10 minutes: how long
+ * provisioning, account information and positions take, and MetaApi's answer. The result is kept in the audit log
+ * (action diag.regional) so any instance can report it. Read-only calls only.
+ */
+export async function regionalProbe(now = Date.now()) {
+  if (!syncStatus().configured) return;
+  const [last] = await db.select({ at: schema.auditLog.createdAt }).from(schema.auditLog).where(eq(schema.auditLog.action, "diag.regional")).orderBy(desc(schema.auditLog.createdAt)).limit(1);
+  if (last && now - last.at.getTime() < 10 * 60_000) return;
+  const [c] = await db.select().from(schema.providerConnection).where(isNotNull(schema.providerConnection.externalId)).orderBy(desc(schema.providerConnection.updatedAt)).limit(1);
+  if (!c?.externalId) return;
+  await audit("diag.regional", { meta: { started: true } }); // claims the slot before the slow calls
+  const api = client();
+  const { region, id } = split(c.externalId);
+  const steps: Record<string, unknown>[] = [];
+  const step = async (name: string, f: () => Promise<unknown>) => {
+    const t = Date.now();
+    try { const r = await f(); steps.push({ name, ok: true, ms: Date.now() - t }); return r; }
+    catch (e) { steps.push({ name, ok: false, ms: Date.now() - t, status: e instanceof MetaApiError ? e.status ?? null : null, error: scrub(e instanceof Error ? e.message : String(e)) }); return null; }
+  };
+  const acc = (await step("account", () => api.account(id))) as { region?: string; state?: string; connectionStatus?: string } | null;
+  const r = acc?.region ?? region;
+  const info = (await step("account-information", () => api.info(r, id, false, 50_000))) as MetaAccountInfo | null;
+  if (info) await step("positions", () => api.positions(r, id, 15_000));
+  await audit("diag.regional", { meta: { storedRegion: region, accountRegion: acc?.region ?? null, state: acc?.state ?? null, connectionStatus: acc?.connectionStatus ?? null, investorMode: info?.investorMode ?? null, steps } });
 }
 
 /** Active = holds a MetaApi account (externalId set). Disconnected rows hold none and cost nothing. */
@@ -213,6 +243,12 @@ export interface SyncResult { ok: boolean; phase: SyncPhase; error?: string }
 export async function syncConnection(connectionId: string): Promise<SyncResult> {
   const [conn] = await db.select().from(schema.providerConnection).where(eq(schema.providerConnection.id, connectionId));
   if (!conn?.externalId || conn.status === "disconnected") return { ok: false, phase: "inactive", error: "No active connection." };
+  // One sync per connection at a time: polling tabs, the live refresh and the cron must not stack overlapping runs.
+  const [busy] = await db.select({ id: schema.syncRun.id }).from(schema.syncRun)
+    .where(and(eq(schema.syncRun.connectionId, connectionId), isNull(schema.syncRun.finishedAt), sql`${schema.syncRun.startedAt} > now() - interval '70 seconds'`)).limit(1);
+  if (busy) return { ok: false, phase: conn.status === "connected" ? "synced" : "connecting", error: "A sync is already running." };
+  const deadline = Date.now() + SYNC_BUDGET_MS;
+  const left = (cap: number) => Math.max(3_000, Math.min(cap, deadline - Date.now()));
   const [run] = await db.insert(schema.syncRun).values({ connectionId, kind: conn.lastSyncAt ? "incremental" : "backfill" }).returning();
   const api = client();
   const { id } = split(conn.externalId);
@@ -233,14 +269,14 @@ export async function syncConnection(connectionId: string): Promise<SyncResult> 
       await finish(false, `account ${acc.state}/${acc.connectionStatus ?? "?"}`);
       return rejected ? { ok: false, phase: "broker_rejected", error: "The broker disconnected this login. Check the server name and password, then reconnect." } : { ok: false, phase: "connecting", error: "MetaApi is still connecting to the broker." };
     }
-    const info = await api.info(region, id);
+    const info = await api.info(region, id, false, left(40_000));
     const access = await enforceAccess(conn, info, api);
     if (!access.ok) { await finish(false, access.reason); return { ok: false, phase: "refused", error: access.message }; }
 
     const now = new Date();
     const acctId = conn.tradingAccountId;
     // 1. Live state first, so the account shows as connected with real balance and positions even while history loads.
-    const [positions, orders] = await Promise.all([api.positions(region, id), api.orders(region, id).catch(() => null)]);
+    const [positions, orders] = await Promise.all([api.positions(region, id, left(15_000)), api.orders(region, id, left(15_000)).catch(() => null)]);
     await db.transaction(async (tx) => {
       await tx.update(schema.tradingAccount).set({ currency: info.currency, broker: info.broker ?? null }).where(eq(schema.tradingAccount.id, acctId));
       await writeLive(tx, acctId, info, positions, now, true);
@@ -264,12 +300,12 @@ export async function syncConnection(connectionId: string): Promise<SyncResult> 
     let historyError: string | null = null;
     try {
       const recentFrom = conn.lastSyncAt ? new Date(conn.lastSyncAt.getTime() - 2 * 86_400_000) : new Date(now.getTime() - FIRST_WINDOW_DAYS * 86_400_000);
-      imported += await importDeals(acctId, info.currency, await api.deals(region, id, recentFrom, now));
+      imported += await importDeals(acctId, info.currency, await api.deals(region, id, recentFrom, now, left(40_000)));
       await db.update(schema.providerConnection).set({ lastSyncAt: now, ...(conn.historyCursor ? {} : { historyCursor: recentFrom }) }).where(eq(schema.providerConnection.id, connectionId));
       let cursor = conn.historyCursor ?? recentFrom;
-      while (cursor > target && Date.now() - started < BACKFILL_BUDGET_MS) {
+      while (cursor > target && Date.now() - started < BACKFILL_BUDGET_MS && deadline - Date.now() > 8_000) {
         const from = new Date(Math.max(target.getTime(), cursor.getTime() - BACKFILL_CHUNK_DAYS * 86_400_000));
-        imported += await importDeals(acctId, info.currency, await api.deals(region, id, from, cursor));
+        imported += await importDeals(acctId, info.currency, await api.deals(region, id, from, cursor, left(40_000)));
         cursor = from;
         await db.update(schema.providerConnection).set({ historyCursor: cursor }).where(eq(schema.providerConnection.id, connectionId));
       }

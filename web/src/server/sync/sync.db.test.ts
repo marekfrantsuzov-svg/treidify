@@ -252,6 +252,17 @@ run("MetaApi sync (database)", () => {
     expect(fake.calls.filter((x) => x === "deals").length).toBeGreaterThan(2); // recent window + backfill chunks
   });
 
+  it("runs one sync per connection at a time", async () => {
+    const r = await connect(ALICE, "1004", "Investor#4");
+    if (!r.ok) throw new Error(r.error);
+    const c = await conn(r.accountId);
+    await db.insert(schema.syncRun).values({ connectionId: c.id, kind: "backfill" });
+    expect(await syncOf(r.accountId)).toMatchObject({ ok: false, error: "A sync is already running." });
+    const { eq } = await import("drizzle-orm");
+    await db.update(schema.syncRun).set({ finishedAt: new Date() }).where(eq(schema.syncRun.connectionId, c.id));
+    expect(await syncOf(r.accountId)).toEqual({ ok: true, phase: "synced" });
+  });
+
   it("wrong password and wrong server are reported by code and store nothing", async () => {
     const e1 = await connect(ALICE, "1001", "wrong").catch((e) => e);
     expect(e1).toMatchObject({ code: "E_AUTH" });

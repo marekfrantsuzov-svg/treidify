@@ -115,12 +115,16 @@ export function metaApi(token: string, fetchImpl: Fetch = fetch) {
     deploy: (id: string) => call<void>(`${PROVISIONING}/users/current/accounts/${encodeURIComponent(id)}/deploy`, { method: "POST" }),
     /** Removes the account from MetaApi entirely, which also deletes the stored investor password there. */
     remove: (id: string) => call<void>(`${PROVISIONING}/users/current/accounts/${encodeURIComponent(id)}?executeForAllReplicas=true`, { method: "DELETE" }),
-    info: (region: string, id: string, refresh = false) => call<MetaAccountInfo>(`${clientBase(region)}/users/current/accounts/${encodeURIComponent(id)}/account-information${refresh ? "?refreshTerminalState=true" : ""}`),
-    positions: (region: string, id: string) => call<MetaPosition[]>(`${clientBase(region)}/users/current/accounts/${encodeURIComponent(id)}/positions`),
+    /**
+     * The first regional call after a quiet period can take tens of seconds: MetaApi's REST server has to load the
+     * terminal state before it answers. So account information gets a longer limit by default.
+     */
+    info: (region: string, id: string, refresh = false, timeoutMs = 40_000) => call<MetaAccountInfo>(`${clientBase(region)}/users/current/accounts/${encodeURIComponent(id)}/account-information${refresh ? "?refreshTerminalState=true" : ""}`, {}, timeoutMs),
+    positions: (region: string, id: string, timeoutMs = 15_000) => call<MetaPosition[]>(`${clientBase(region)}/users/current/accounts/${encodeURIComponent(id)}/positions`, {}, timeoutMs),
     /** Pending orders (limit, stop, stop-limit) currently on the account. */
-    orders: (region: string, id: string) => call<MetaOrder[]>(`${clientBase(region)}/users/current/accounts/${encodeURIComponent(id)}/orders`),
-    deals: async (region: string, id: string, from: Date, to: Date) => {
-      const body = await call<MetaDeal[] | { deals: MetaDeal[] }>(`${clientBase(region)}/users/current/accounts/${encodeURIComponent(id)}/history-deals/time/${from.toISOString()}/${to.toISOString()}`, {}, 40_000);
+    orders: (region: string, id: string, timeoutMs = 15_000) => call<MetaOrder[]>(`${clientBase(region)}/users/current/accounts/${encodeURIComponent(id)}/orders`, {}, timeoutMs),
+    deals: async (region: string, id: string, from: Date, to: Date, timeoutMs = 40_000) => {
+      const body = await call<MetaDeal[] | { deals: MetaDeal[] }>(`${clientBase(region)}/users/current/accounts/${encodeURIComponent(id)}/history-deals/time/${from.toISOString()}/${to.toISOString()}`, {}, timeoutMs);
       return Array.isArray(body) ? body : body.deals ?? [];
     },
   };
