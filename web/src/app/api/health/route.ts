@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { sql } from "drizzle-orm";
 import { db, dbConfigured } from "@/server/db";
 import { emailConfigured } from "@/server/email";
@@ -6,9 +6,10 @@ import { providerStatus } from "@/server/providers";
 import { enabledProviders } from "@/server/auth";
 import { boundOwnerId } from "@/server/owner-binding";
 import { metaApiToken } from "@/server/sync/metaapi";
-import { metaApiProbe, syncDiagnostics } from "@/server/sync/service";
+import { metaApiProbe, regionalProbe, syncDiagnostics } from "@/server/sync/service";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 /**
  * Deployment health check for uptime monitors and post-deploy verification.
@@ -20,6 +21,7 @@ export async function GET() {
     try { await db.execute(sql`select 1`); database = "up"; } catch { database = "down"; }
   }
   const ok = database === "up";
+  if (ok) after(() => regionalProbe().catch(() => {}));
   return NextResponse.json(
     {
       ok,
