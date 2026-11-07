@@ -294,8 +294,8 @@ export function TerminalChart({
     <div className={cn("flex min-w-0 flex-col", className)}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         {lead}
-        <div className={cn("flex flex-wrap items-center gap-2", lead ? "ml-auto" : "")}>
-          <div role="tablist" aria-label="Timeframe" className="inset relative flex rounded-full p-0.5">
+        <div className={cn("flex min-w-0 max-w-full flex-wrap items-center gap-2", lead ? "ml-auto" : "")}>
+          <div role="tablist" aria-label="Timeframe" className="inset relative flex max-w-full overflow-x-auto rounded-full p-0.5 [scrollbar-width:none]">
             <SlidingPill watch={tf} className="tf-pill rounded-full" />
             {tfs.map((t) => (
               <button key={t} role="tab" aria-selected={tf === t} data-active={tf === t} onClick={() => setTf(t)} className={cn("num relative z-[1] min-h-[30px] min-w-[38px] rounded-full px-2 py-1 text-[12.5px] font-semibold text-ink-2 transition-colors duration-150 hover:text-ink", tf === t && "text-white hover:text-white")}>{t}</button>

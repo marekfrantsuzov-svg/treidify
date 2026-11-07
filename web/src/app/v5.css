@@ -328,3 +328,11 @@ html { background-color: var(--bg-0); }
 .acct-dot.is-off { background: var(--down); box-shadow: 0 0 0 4px color-mix(in oklab, var(--down) 18%, transparent); }
 
 @media (prefers-reduced-motion: reduce) { .ring-anim { transition: none !important; } }
+
+/* Touch targets: at least 44 × 44 on touch screens. Small visual pills keep their look and get a larger hit area. */
+@media (pointer: coarse) {
+  .m-topbar .hdr-btn, .m-topbar [aria-label="Account menu"], .mk-header [aria-label="Open menu"], .mk-header [aria-label="Close menu"] { min-width: 44px; min-height: 44px; display: inline-grid; place-items: center; }
+  [role="tablist"] > button[role="tab"] { position: relative; }
+  [role="tablist"] > button[role="tab"]::after { content: ""; position: absolute; inset: -7px -2px; }
+  [role="tablist"][aria-label="Timeframe"] > button[role="tab"] { min-height: 40px; }
+}

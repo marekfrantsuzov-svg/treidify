@@ -182,3 +182,6 @@ body:has(.v5-hero) .mk-header .mk-bar { animation: v5-nav 250ms var(--ease-out-e
   .sc-notes { position: static; display: grid; gap: 10px; width: 100%; max-width: 360px; }
   .sc-note { position: static; }
 }
+/* The showcase follows the hero closely: no double section gap. */
+.lx-root .sc-root { padding-top: clamp(8px, 2vw, 32px); }
+.v5-caption { margin-top: clamp(28px, 4vw, 64px); }
