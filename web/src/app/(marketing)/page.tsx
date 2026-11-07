@@ -6,7 +6,8 @@ import { AnalysisSection } from "@/components/marketing/lx/sections-ab";
 import { CoachSection, JournalSection } from "@/components/marketing/lx/sections-cd";
 import { MacroSection } from "@/components/marketing/lx/sections-ef";
 import "@/components/marketing/lx/landing.css";
-import { EdHero } from "@/components/marketing/ed/hero";
+import { V5Hero } from "@/components/marketing/v5/hero";
+import "@/components/marketing/v5/landing.css";
 import { EdFigures } from "@/components/marketing/ed/figures";
 import { EdAccount } from "@/components/marketing/ed/account";
 import { EdFinal, EdSteps, EdTools } from "@/components/marketing/ed/index-sections";
@@ -34,7 +35,7 @@ export default function Home() {
   const live = { market: st.marketData, sync: st.sync, news: st.news, ai: st.ai };
   return (
     <div className="lx-root ed-root">
-      <EdHero />
+      <V5Hero />
       <EdFigures />
       <EdAccount />
       <AnalysisSection />

@@ -29,14 +29,13 @@ export function Header() {
   }, [open]);
 
   return (
-    <header className="sticky top-0 z-50 px-3 pt-3 sm:px-4">
+    <header className="mk-header sticky top-0 z-50 px-3 sm:px-4" data-scrolled={scrolled || open ? "true" : "false"}>
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-accent focus:px-4 focus:py-2 focus:text-white">
         Skip to content
       </a>
       <div
         className={cn(
-          "mx-auto flex h-14 max-w-7xl items-center gap-3 rounded-full px-3 pl-5 transition-[background,box-shadow,border-color] duration-300",
-          scrolled || open ? "glass glass-strong" : "border border-transparent",
+          "mk-bar mx-auto flex h-16 max-w-7xl items-center gap-3 px-1 sm:px-2",
         )}
       >
         <Wordmark />
@@ -88,10 +87,10 @@ export function Header() {
         <div className="ml-auto flex items-center gap-2">
           <ThemeToggle className="hidden md:inline-flex" />
           <Link href="/login" className="hidden whitespace-nowrap rounded-full px-3 py-2 text-sm text-ink-2 hover:text-ink sm:block">
-            Log In
+            Log in
           </Link>
-          <ButtonLink href="/signup" size="sm" className="hidden whitespace-nowrap sm:inline-flex">
-            Get Started Free
+          <ButtonLink href="/signup" size="sm" className="ed-cta hidden whitespace-nowrap sm:inline-flex">
+            Start free trial
           </ButtonLink>
           <button
             className="grid h-10 w-10 place-items-center rounded-full text-ink lg:hidden"
@@ -110,7 +109,7 @@ export function Header() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ type: "spring", stiffness: 320, damping: 30 }}
-            className="glass glass-strong mx-auto mt-2 max-h-[calc(100dvh-5.5rem)] max-w-7xl overflow-y-auto rounded-[28px] p-3 lg:hidden"
+            className="glass glass-strong mk-menu mx-auto mb-3 max-h-[calc(100dvh-5.5rem)] max-w-7xl overflow-y-auto rounded-[24px] p-3 lg:hidden"
           >
             <nav aria-label="Mobile" className="grid gap-1">
               <p className="px-3 pt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-3">Product</p>
@@ -128,8 +127,8 @@ export function Header() {
               <div className="mt-3 flex items-center justify-between gap-3 px-1">
                 <ThemeToggle />
                 <div className="flex gap-2">
-                  <ButtonLink href="/login" variant="secondary" size="sm">Log In</ButtonLink>
-                  <ButtonLink href="/signup" size="sm">Get Started Free</ButtonLink>
+                  <ButtonLink href="/login" variant="secondary" size="sm">Log in</ButtonLink>
+                  <ButtonLink href="/signup" size="sm" className="ed-cta">Start free trial</ButtonLink>
                 </div>
               </div>
             </nav>

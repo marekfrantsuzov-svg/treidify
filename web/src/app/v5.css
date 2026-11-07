@@ -1,0 +1,231 @@
+/* ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   Treidify design system v5 "Graphite Glass" (2026-11-07, master spec Phase B). Loaded last (after glass.css).
+
+   What changes from v4: the canvas and the glass go neutral graphite instead of violet-tinted; the brand accent is the
+   site's own CTA gradient again (electric blue → violet → pink, sampled from Marek's reference screenshots), used only
+   on primary actions, the selected navigation state, small progress marks and a few premium moments. Card titles go
+   back to clean white. A blurred night-studio backdrop (public/brand/backdrop, generated, not stock) sits under the
+   brand light, visible through the glass and the open space.
+
+   Material levels (tokens below, classes at the end):
+     L1 navigation  .g1 + sidebar, headers, bottom nav  – lightest, low noise
+     L2 cards       .dcard (default)                     – standard translucent graphite
+     L3 featured    .g3 (chart, AI analysis, hero stage)  – denser, brighter rim, deeper shadow
+     L4 overlays    .glass-strong, dialogs, menus, drawer – most separation, strongest blur
+   Charts, prices and tables sit on near-opaque fills inside their card: never more blur behind data.
+
+   Brand gradient source of truth (reference CTA pixels): #2350FF · #4556FC · #7C41ED · #E36FD5.
+   The logo image and the Inter font are untouched.
+   ───────────────────────────────────────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --brand-blue: #2f5bff;
+  --brand-indigo: #4556fc;
+  --brand-violet-5: #7c41ed;
+  --brand-pink-5: #e36fd5;
+  --brand-grad-5: linear-gradient(100deg in oklab, #2350ff 0%, #4a55fb 26%, #7c41ed 56%, #e36fd5 100%);
+  --logo-grad: var(--brand-grad-5);
+  --accent-grad: var(--brand-grad-5);
+  --brand-grad: var(--brand-grad-5);
+  --grad-a: #4a5cff;
+  --grad-b: #e36fd5;
+  --r-card: 20px;
+  --r-feature: 24px;
+  --ease-glass: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Motion scale (shared by CSS and components/motion/tokens.ts) */
+  --m-fast: 160ms;
+  --m-base: 260ms;
+  --m-slow: 520ms;
+  --m-enter: 900ms;
+}
+
+/* ── Dark (default) ── */
+:root:not([data-theme="light"]) {
+  --bg-0: #0a0b0f;
+  --bg-1: #0e0f14;
+  --chrome-tint: #0a0b0f;
+  /* L2 standard glass */
+  --surface: rgba(22, 23, 30, 0.5);
+  --surface-top: rgba(32, 33, 43, 0.56);
+  /* L4 overlays */
+  --surface-strong: rgba(19, 20, 27, 0.9);
+  --surface-inset: rgba(255, 255, 255, 0.035);
+  --surface-sunk: rgba(0, 0, 0, 0.28);
+  --border: rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(255, 255, 255, 0.13);
+  --edge: rgba(255, 255, 255, 0.08);
+  --highlight: rgba(255, 255, 255, 0.06);
+  --rim: linear-gradient(165deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.05) 24%, rgba(255, 255, 255, 0) 50%, rgba(255, 255, 255, 0.03) 78%, rgba(255, 255, 255, 0.09));
+  --rim-feature: linear-gradient(165deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.06) 26%, rgba(255, 255, 255, 0) 52%, rgba(124, 65, 237, 0.12) 80%, rgba(227, 111, 213, 0.2));
+  --shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 1px 2px rgba(0, 0, 0, 0.35), 0 26px 60px -30px rgba(0, 0, 0, 0.9);
+  --shadow-feature: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 2px 4px rgba(0, 0, 0, 0.4), 0 40px 90px -36px rgba(0, 0, 0, 0.95), 0 30px 80px -50px rgba(76, 86, 252, 0.35);
+  --shadow-lg: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 48px 110px -36px rgba(0, 0, 0, 0.95);
+  --spot-color: 140, 150, 255;
+  --text: #f5f6fa;
+  --text-2: #b5b7c5;
+  --text-3: #878a9a;
+  --accent: #8a86ff;
+  --accent-2: #e36fd5;
+  --accent-ice: #b9c2ff;
+  --accent-soft: rgba(110, 110, 255, 0.13);
+  --accent-glow: rgba(80, 90, 255, 0.5);
+  --title-grad: linear-gradient(180deg, #ffffff, #ffffff);
+  --figure-grad: linear-gradient(180deg, #ffffff 40%, #d5d8ff 130%);
+  --up: #2ad388;
+  --down: #ff5a68;
+  --chart-grid: rgba(255, 255, 255, 0.045);
+  --nav-glass: rgba(20, 21, 28, 0.6);
+  --nav-edge: rgba(255, 255, 255, 0.09);
+  --nav-pill: rgba(110, 110, 255, 0.16);
+  --bar-bg: rgba(12, 13, 18, 0.72);
+  --bar-bg-solid: #101117;
+  --tab-pill: rgba(110, 110, 255, 0.16);
+  /* L1 navigation glass */
+  --g1-bg: rgba(16, 17, 23, 0.46);
+  --g1-blur: 20px;
+  --g3-bg: rgba(18, 19, 26, 0.66);
+  --g3-top: rgba(30, 31, 41, 0.7);
+  --g3-blur: 30px;
+  --g4-blur: 40px;
+  /* Ambient light: restrained brand blue, violet and pink over the backdrop */
+  --amb-1: rgba(47, 91, 255, 0.2);
+  --amb-2: rgba(227, 111, 213, 0.12);
+  --amb-3: rgba(124, 65, 237, 0.16);
+  --amb-4: rgba(227, 111, 213, 0.08);
+  --amb-5: rgba(47, 91, 255, 0.1);
+  --amb-base: #0a0b0f;
+  --amb-photo-opacity: 1;
+  --amb-grain-opacity: 0.045;
+}
+
+/* ── Light: pearl and porcelain glass. Same hierarchy, its own values (not an inversion). ── */
+:root[data-theme="light"] {
+  --bg-0: #f3f4f8;
+  --bg-1: #eceef4;
+  --chrome-tint: #f3f4f8;
+  --surface: rgba(255, 255, 255, 0.62);
+  --surface-top: rgba(255, 255, 255, 0.78);
+  --surface-strong: rgba(255, 255, 255, 0.96);
+  --surface-inset: rgba(20, 24, 60, 0.035);
+  --border: rgba(20, 24, 60, 0.08);
+  --border-strong: rgba(20, 24, 60, 0.14);
+  --rim: linear-gradient(165deg, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0.5) 30%, rgba(255, 255, 255, 0.12) 60%, rgba(190, 196, 255, 0.35));
+  --rim-feature: linear-gradient(165deg, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0.6) 30%, rgba(170, 160, 255, 0.3) 70%, rgba(227, 111, 213, 0.35));
+  --shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 2px rgba(20, 24, 60, 0.05), 0 22px 50px -30px rgba(30, 40, 120, 0.25);
+  --shadow-feature: inset 0 1px 0 rgba(255, 255, 255, 1), 0 2px 4px rgba(20, 24, 60, 0.05), 0 36px 80px -40px rgba(40, 50, 160, 0.32);
+  --spot-color: 70, 86, 252;
+  --text: #0f1118;
+  --text-2: #434759;
+  --text-3: #656a7d;
+  --accent: #3f4df0;
+  --accent-2: #c03fbf;
+  --accent-soft: rgba(63, 77, 240, 0.09);
+  --title-grad: linear-gradient(180deg, #0f1118, #0f1118);
+  --figure-grad: linear-gradient(180deg, #0f1118 40%, #3242c8 140%);
+  --nav-pill: rgba(63, 77, 240, 0.1);
+  --tab-pill: rgba(63, 77, 240, 0.1);
+  --g1-bg: rgba(255, 255, 255, 0.55);
+  --g1-blur: 18px;
+  --g3-bg: rgba(255, 255, 255, 0.72);
+  --g3-top: rgba(255, 255, 255, 0.86);
+  --g3-blur: 26px;
+  --g4-blur: 36px;
+  --amb-1: rgba(47, 91, 255, 0.12);
+  --amb-2: rgba(227, 111, 213, 0.1);
+  --amb-3: rgba(124, 65, 237, 0.1);
+  --amb-4: rgba(227, 111, 213, 0.08);
+  --amb-5: rgba(47, 91, 255, 0.08);
+  --amb-base: radial-gradient(120% 80% at 50% -10%, #ffffff 0%, #f3f4f8 60%), #f3f4f8;
+  --amb-photo-opacity: 0;
+}
+
+/* ── iPhone safe area ──
+   iOS 26 Safari no longer paints the status-bar area from theme-color; it samples the page: the root background and
+   any fixed or sticky element touching the top edge. html had no background and the sticky header was transparent,
+   so Safari fell back to its own light chrome (the grey strip in Marek's screenshot). Give both a real colour that
+   equals the top of the page. Installed (standalone) mode pads the header below the status bar instead. */
+html { background-color: var(--bg-0); }
+.mk-header { background-color: var(--chrome-tint); }
+.mk-header::after { content: ""; position: absolute; inset: 100% 0 auto; height: 48px; pointer-events: none; background: linear-gradient(180deg, var(--chrome-tint), transparent); opacity: 1; transition: opacity var(--m-base) linear; }
+.mk-header[data-scrolled="true"]::after { opacity: 0; }
+.mk-header { transition: background-color var(--m-base) linear, box-shadow var(--m-base) linear; }
+.mk-header[data-scrolled="true"] { background-color: color-mix(in oklab, var(--chrome-tint) 74%, transparent); box-shadow: 0 1px 0 var(--border); -webkit-backdrop-filter: blur(var(--g1-blur, 20px)) saturate(150%); backdrop-filter: blur(var(--g1-blur, 20px)) saturate(150%); }
+@media (display-mode: standalone) { .mk-header { padding-top: calc(env(safe-area-inset-top) + 8px); } }
+
+/* ── Backdrop: the blurred night studio, then the brand light ── */
+.ambient::before {
+  content: ""; position: absolute; inset: 0; opacity: var(--amb-photo-opacity);
+  background: image-set(url("/brand/backdrop/studio-1920.webp") type("image/webp")) center 30% / cover no-repeat;
+  transition: opacity 600ms linear;
+}
+@media (max-aspect-ratio: 1/1) { .ambient::before { background-image: image-set(url("/brand/backdrop/studio-1080.webp") type("image/webp")); background-position: center 20%; } }
+.amb-sheen { display: none; }
+:root:not([data-theme="light"]) .amb-vignette { background: radial-gradient(130% 95% at 50% 35%, transparent 45%, rgba(0, 0, 0, 0.55) 100%); }
+:root .waves { opacity: 0.08; }
+:root[data-theme="light"] .waves { opacity: 0.22; }
+.m-main::before { background: radial-gradient(50% 50% at 50% 40%, rgba(70, 86, 252, 0.08), transparent 70%) !important; }
+
+/* ── L2 standard cards: neutral graphite glass ── */
+:root[data-theme] .dcard, :root:not([data-theme]) .dcard { border-radius: var(--r-card); }
+:root[data-theme] .dcard-title { background: none; -webkit-background-clip: border-box; background-clip: border-box; color: var(--text); font-weight: 600; letter-spacing: -0.015em; }
+:root[data-theme] .dcard-title svg { stroke: url(#tdy-stroke); }
+:root[data-theme] .page-title { background: none; color: var(--text); }
+
+/* ── L3 featured: chart, AI analysis, hero stage ── */
+:root[data-theme] :is(.g3, .d-chart, .d-ai) {
+  background:
+    radial-gradient(620px circle at var(--mx, 50%) var(--my, -40%), rgba(var(--spot-color), calc(var(--spot) * 0.08)), transparent 60%),
+    linear-gradient(180deg, var(--g3-top), var(--g3-bg) 38%);
+  box-shadow: var(--shadow-feature);
+  -webkit-backdrop-filter: blur(var(--g3-blur)) saturate(150%);
+  backdrop-filter: blur(var(--g3-blur)) saturate(150%);
+  border-radius: var(--r-feature);
+}
+:root[data-theme] :is(.g3, .d-chart, .d-ai)::before { background: var(--rim-feature); }
+
+/* ── L1 navigation: sidebar, headers, bottom nav ── */
+:root[data-theme] .side-panel { background: var(--g1-bg); -webkit-backdrop-filter: blur(var(--g1-blur)) saturate(140%); backdrop-filter: blur(var(--g1-blur)) saturate(140%); }
+:root[data-theme] .side-premium { background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015)); }
+/* Selected navigation: the brand gradient as a soft wash plus a lit edge mark. */
+.side-nav .side-pill { background: linear-gradient(90deg, rgba(47, 91, 255, 0.24), rgba(124, 65, 237, 0.16) 55%, rgba(227, 111, 213, 0.06)) !important; box-shadow: inset 0 0 0 1px rgba(150, 140, 255, 0.2), 0 10px 26px -16px rgba(76, 86, 252, 0.8) !important; }
+:root[data-theme="light"] .side-nav .side-pill { background: linear-gradient(90deg, rgba(47, 91, 255, 0.12), rgba(124, 65, 237, 0.07) 60%, transparent) !important; box-shadow: inset 0 0 0 1px rgba(63, 77, 240, 0.14) !important; }
+.side-nav .side-pill::before { background: var(--brand-grad-5); box-shadow: 0 0 12px rgba(76, 86, 252, 0.8); }
+:root[data-theme] .side-link[data-active="true"] svg { stroke: url(#tdy-stroke); }
+
+/* ── L4 overlays ── */
+:root[data-theme] :is(.glass-strong, [role="menu"].glass, [role="listbox"].glass, [role="dialog"].glass, .m-drawer) {
+  -webkit-backdrop-filter: blur(var(--g4-blur)) saturate(180%);
+  backdrop-filter: blur(var(--g4-blur)) saturate(180%);
+}
+
+/* ── Actions: the CTA gradient (blue → pink) on primary buttons only ── */
+:root[data-theme] .bg-brand, .bg-brand-grad, .ed-cta {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0) 55%), var(--brand-grad-5) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 12px 30px -14px rgba(76, 86, 252, 0.75), 0 10px 30px -18px rgba(227, 111, 213, 0.6) !important;
+}
+:root[data-theme] .bg-brand:hover, .bg-brand-grad:hover, .ed-cta:hover { filter: brightness(1.08) saturate(1.05); }
+:root[data-theme] .current-chip { background: var(--brand-grad-5); }
+:root[data-theme] .d-metric.is-primary .d-metric-value { background: var(--figure-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+/* Generic level classes for new surfaces. */
+:root[data-theme] .g1 { background: var(--g1-bg); border: 1px solid var(--border); -webkit-backdrop-filter: blur(var(--g1-blur)) saturate(140%); backdrop-filter: blur(var(--g1-blur)) saturate(140%); }
+:root[data-theme] .g3 { position: relative; border: 1px solid var(--border); }
+:root[data-theme] .g3::before { content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; pointer-events: none; -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+
+/* Tabular numerals for every financial figure. */
+.num, .d-metric-value, .mo-price, .mo-chg, [data-num] { font-variant-numeric: tabular-nums; font-feature-settings: "tnum", "cv11", "ss01"; }
+
+@media (prefers-reduced-transparency: reduce) {
+  :root[data-theme] :is(.g1, .g3, .d-chart, .d-ai) { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--surface-strong); }
+  .ambient::before { opacity: 0; }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root:not([data-theme="light"]) { --surface: rgba(20, 21, 28, 0.95); --surface-top: rgba(26, 27, 35, 0.95); --g1-bg: rgba(14, 15, 20, 0.96); --g3-bg: rgba(20, 21, 28, 0.97); --g3-top: rgba(26, 27, 35, 0.97); }
+}
+
+/* html now carries the canvas colour (safe-area fix), so body must stay transparent or its box would paint over the
+   fixed ambient layer (negative z-index layers paint below in-flow block backgrounds). */
+:root body { background: transparent; }
+/* The backdrop fades into the canvas colour at the very top, so the status-bar tint and the header band are seamless. */
+:root:not([data-theme="light"]) .amb-vignette { background: linear-gradient(180deg, var(--chrome-tint) 0, rgba(10, 11, 15, 0.6) 9%, transparent 22%), radial-gradient(130% 95% at 50% 35%, transparent 45%, rgba(0, 0, 0, 0.55) 100%); }
