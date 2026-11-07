@@ -1,10 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { linkFromOutbox, totp, uniqueEmail } from "./helpers";
+import { grantPlan, linkFromOutbox, totp, uniqueEmail } from "./helpers";
 
 /**
- * Journey A: a new visitor creates an account with email, verifies it, completes onboarding with the
- * 72-hour trial, reaches the dashboard led by Market Intelligence, edits their profile, protects the
- * account with two-step sign-in, and signs back in with it.
+ * Journey A: a new visitor creates an account with email, verifies it, completes onboarding and is sent to choose a
+ * plan (3-day trial, card required), meets the server-side plan gate while on Free, then (with a plan) reaches the
+ * dashboard led by Market Intelligence, edits their profile, protects the account with two-step sign-in, and signs
+ * back in with it.
  */
 test("sign up, verify, onboard, dashboard, profile, two-step sign-in", async ({ page }, info) => {
   const email = uniqueEmail(info.project.name);
@@ -16,7 +17,7 @@ test("sign up, verify, onboard, dashboard, profile, two-step sign-in", async ({ 
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("checkbox").check();
-  await page.getByRole("button", { name: "Create free account" }).click();
+  await page.getByRole("button", { name: "Create account" }).click();
   // The first request to each route compiles it on the CI dev server, which can take well over 5 s.
   await expect(page.getByRole("heading", { name: "Check your inbox" })).toBeVisible({ timeout: 30_000 });
 
@@ -49,15 +50,22 @@ test("sign up, verify, onboard, dashboard, profile, two-step sign-in", async ({ 
   const enter = page.getByRole("button", { name: /Enter my dashboard/ });
   await expect(enter).toBeDisabled();
   await page.getByRole("checkbox", { name: /I understand the risks/ }).click();
-  await expect(page.getByRole("checkbox", { name: /Premium trial/ })).toHaveAttribute("aria-checked", "true");
+  await expect(page.getByRole("checkbox", { name: /3-day trial next/ })).toHaveAttribute("aria-checked", "true");
   await enter.click();
 
-  await expect(page).toHaveURL(/\/app\?welcome=trial/, { timeout: 30_000 });
-  await expect(page.getByText(/72-hour Premium trial is active/)).toBeVisible();
+  // The trial starts at checkout (card required), never on its own: the account is on Free until then.
+  await expect(page).toHaveURL(/\/app\/settings\/plan\?start=premium/, { timeout: 30_000 });
+  await page.goto("/app/coach");
+  await expect(page.getByRole("link", { name: /Start 3-day trial/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Daily review" })).toHaveCount(0);
+
+  await grantPlan(email);
+  await page.goto("/app?welcome=1");
+  await expect(page.getByText(/Welcome to Treidify/)).toBeVisible();
   // Market Intelligence leads the dashboard; Account Health follows it.
   await expect(page.getByRole("heading", { name: "AI Market Analysis" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Account Health" })).toBeVisible();
-  await expect(page.getByText(/^(WAIT · NO VALID SETUP|BUY SETUP|SELL SETUP)$/)).toBeVisible();
+  await expect(page.getByText(/^(WAIT [·–] NO VALID SETUP|BUY SETUP|SELL SETUP)$/)).toBeVisible();
   await expect(page.getByRole("heading", { name: "Market Overview" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Main" }).or(page.getByRole("complementary", { name: "Main" })).first()).toBeVisible();
   // Without a market-data provider nothing pretends to be live: the engine runs on clearly labelled sample bars.
@@ -127,8 +135,7 @@ test("sign up, verify, onboard, dashboard, profile, two-step sign-in", async ({ 
   await expect(page.getByRole("switch", { name: "Public profile" })).toHaveAttribute("aria-checked", "false");
 
   await page.goto("/app/settings/plan");
-  await expect(page.getByText("Trial", { exact: true })).toBeVisible();
-  await expect(page.getByText(/returns to Free automatically/)).toBeVisible();
+  await expect(page.getByText("Access granted by Treidify.")).toBeVisible();
 
   await page.goto("/app/settings/security");
   await page.getByRole("button", { name: "Set up" }).click();

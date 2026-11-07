@@ -54,7 +54,7 @@ export function EdTools({ live }: { live: Record<Need, boolean> }) {
 }
 
 const STEPS = [
-  { n: "01", title: "Create your account", body: "Email sign-up in under a minute. No card. Every Premium feature for 72 hours, with no automatic billing.", sync: false },
+  { n: "01", title: "Create your account", body: "Email sign-up in under a minute. Pick Essential or Premium and start a 3-day trial. A card is required; cancel before it ends and nothing is charged.", sync: false },
   { n: "02", title: "Connect your trading data", body: "Link MT5 with a read-only investor password. Your history syncs and every figure is computed from your trades.", sync: true },
   { n: "03", title: "Read before you trade", body: "Check the Gold read, the key zones and the event risk. Then review what your own trades say in the coach.", sync: false },
 ];
@@ -90,9 +90,9 @@ export function EdFinal() {
         <Reveal className="ed-final-inner">
           <h2 id="final-title" className="ts-display ed-final-title">Trade with more clarity. <span className="ed-quiet">Start today.</span></h2>
           <div className="ed-final-row">
-            <p className="ts-lead">Create a free account in under a minute. Connect MT5 whenever you are ready.</p>
+            <p className="ts-lead">Start a 3-day trial in under a minute. Connect MT5 read-only whenever you are ready.</p>
             <div className="ed-hero-actions">
-              <ButtonLink href="/signup" size="lg" className="ed-cta">Create free account <ArrowRight className="h-4 w-4" /></ButtonLink>
+              <ButtonLink href="/signup" size="lg" className="ed-cta">Start 3-day trial <ArrowRight className="h-4 w-4" /></ButtonLink>
               <Link href="/pricing" className="ed-textlink">See pricing <ArrowRight className="h-4 w-4" /></Link>
             </div>
           </div>

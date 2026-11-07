@@ -4,7 +4,7 @@ import { ArrowLeft, Check, LineChart, Link2, ShieldCheck, Sparkles } from "lucid
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { experienceChoices, instrumentChoices, onboardingSteps } from "@/config/onboarding";
-import { TRIAL_HOURS } from "@/config/plans";
+import { TRIAL_DAYS } from "@/config/plans";
 import { cn } from "@/lib/cn";
 import { SlidingPill } from "@/components/ui/sliding-pill";
 import { saveOnboardingStep, type StepInput } from "@/server/actions/onboarding";
@@ -100,7 +100,7 @@ export function OnboardingFlow({ initial }: { initial: OnboardingInitial }) {
     start(async () => {
       const r = await saveOnboardingStep(p);
       if (!r.ok) return setError(r.error);
-      if (r.done) { router.replace(`/app${trial ? "?welcome=trial" : "?welcome=1"}`); router.refresh(); return; }
+      if (r.done) { router.replace(trial ? "/app/settings/plan?start=premium" : "/app?welcome=1"); router.refresh(); return; }
       setStep(r.next);
       window.scrollTo({ top: 0 });
     });
@@ -192,7 +192,7 @@ export function OnboardingFlow({ initial }: { initial: OnboardingInitial }) {
               <Choice multi selected={risk} onClick={() => setRisk(!risk)} title="I understand the risks" note="Treidify is information and education, not investment advice. It never places trades. Trading involves risk, including loss of capital." />
               <Choice multi selected={ai} onClick={() => setAi(!ai)} title="Allow AI analysis of my trading data" note="Lets the coach and Macro Desk read your synced history to explain it. You can turn this off anytime." />
               {initial.trialAvailable ? (
-                <Choice multi selected={trial} onClick={() => setTrial(!trial)} title={`Start my ${TRIAL_HOURS}-hour Premium trial`} note="Free, no card. It ends on its own and never turns into a paid plan." />
+                <Choice multi selected={trial} onClick={() => setTrial(!trial)} title={`Start my ${TRIAL_DAYS}-day trial next`} note="Choose Essential or Premium on the next screen. A card is required; nothing is charged for 3 days and you can cancel before then." />
               ) : (
                 <p className="text-sm text-ink-3">Your Premium trial has already been used on this account.</p>
               )}

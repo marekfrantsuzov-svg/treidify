@@ -1,67 +1,88 @@
 /**
- * Configurable plans. Prices are PROPOSED defaults pending Marek's decision; change them here
- * (or via env) and the pricing page, checkout and entitlements all follow.
- * Stripe price IDs are read from env so no secret or account id lives in code.
+ * Plans (Marek, 2026-11-07). Essential $24/mo or $195.84/yr, Premium $49/mo or $399.84/yr (annual = 32% off the
+ * monthly price over 12 months). Every paid plan starts with a 3-day trial that requires a card and renews into the
+ * chosen plan unless cancelled. Without a subscription an account is on "free" access (no paid features); "free" is
+ * not sold or shown as a plan.
+ * Stripe price IDs come from env (STRIPE_PRICE_*), so no account id lives in code. Feature checks run on the server
+ * (server/entitlements.ts); the client only reflects them.
  */
 export type Feature =
   | "market.basic" | "market.advanced" | "news.basic" | "news.global" | "charts.basic" | "charts.ai"
-  | "account.overview" | "account.analytics" | "coach" | "macro.advanced" | "journal.full" | "reports" | "alerts.advanced" | "ai.limited";
+  | "account.overview" | "account.analytics" | "account.health" | "coach" | "ai.chat" | "macro.advanced" | "journal.full" | "reports" | "alerts.advanced" | "ai.limited";
+
+export type PlanId = "free" | "essential" | "premium";
+export type PaidPlanId = Exclude<PlanId, "free">;
+export type BillingInterval = "monthly" | "annual";
 
 export interface Plan {
-  id: "free" | "premium";
+  id: PlanId;
   name: string;
   tagline: string;
-  monthly: number | null;
-  annual: number | null;
+  monthly: number;
+  annual: number;
   currency: "USD";
+  accounts: number;
   features: Feature[];
   highlights: string[];
+  excluded: string[];
 }
 
-const num = (v: string | undefined, fallback: number | null) => (v && !Number.isNaN(Number(v)) ? Number(v) : fallback);
+export const TRIAL_DAYS = 3;
+/** Kept for older screens that speak in hours. */
+export const TRIAL_HOURS = TRIAL_DAYS * 24;
+export const ANNUAL_DISCOUNT = 0.32;
 
-export const TRIAL_HOURS = 72;
+const ESSENTIAL: Feature[] = ["market.basic", "charts.basic", "account.overview", "account.analytics", "account.health", "journal.full", "reports"];
 
 export const plans: Plan[] = [
   {
-    id: "free",
-    name: "Free",
-    tagline: "Market intelligence and a basic account overview.",
-    monthly: 0,
-    annual: 0,
+    id: "free", name: "No plan", tagline: "Market overview only, until a plan starts.", monthly: 0, annual: 0, currency: "USD", accounts: 1,
+    features: ["market.basic", "charts.basic", "account.overview"], highlights: [], excluded: [],
+  },
+  {
+    id: "essential",
+    name: "Essential",
+    tagline: "Your own trading, measured properly.",
+    monthly: 24,
+    annual: 195.84,
     currency: "USD",
-    features: ["market.basic", "news.basic", "charts.basic", "account.overview", "ai.limited"],
+    accounts: 1,
+    features: ESSENTIAL,
     highlights: [
-      "XAUUSD and DXY dashboard with multi-timeframe bias",
-      "Key economic events and basic news",
-      "Basic chart tools and key levels",
-      "Basic overview of one connected account",
-      "Limited AI questions each day",
-      "General community access",
+      "1 connected MT4 or MT5 account (read-only)",
+      "Core account analytics and equity curve",
+      "Account Health score with its full methodology",
+      "Trading journal with calendar and statistics",
+      "Markets, charts and supply and demand zones",
     ],
+    excluded: ["AI Coach and AI chat", "Premium AI market analysis", "News intelligence and Macro Desk"],
   },
   {
     id: "premium",
     name: "Premium",
     tagline: "The complete Treidify trading intelligence platform.",
-    monthly: num(process.env.NEXT_PUBLIC_PRICE_MONTHLY, null),
-    annual: num(process.env.NEXT_PUBLIC_PRICE_ANNUAL, null),
+    monthly: 49,
+    annual: 399.84,
     currency: "USD",
-    features: [
-      "market.basic", "market.advanced", "news.basic", "news.global", "charts.basic", "charts.ai", "account.overview",
-      "account.analytics", "coach", "macro.advanced", "journal.full", "reports", "alerts.advanced", "ai.limited",
-    ],
+    accounts: 2,
+    features: [...ESSENTIAL, "market.advanced", "news.basic", "news.global", "charts.ai", "coach", "ai.chat", "macro.advanced", "alerts.advanced", "ai.limited"],
     highlights: [
-      "Full MetaTrader account analytics and Account Health score",
-      "AI Trading Coach with daily, weekly and monthly reviews",
-      "Advanced Macro Desk and Ask the Macro Desk",
-      "Global geopolitical intelligence with gold and DXY scenarios",
-      "AI chart screenshot analysis",
-      "Full journal analytics, exports and performance reports",
-      "Advanced alerts for zones, events and drawdown",
+      "Everything in Essential",
+      "2 connected MT4 or MT5 accounts",
+      "AI Coach with daily, weekly and monthly reviews",
+      "AI market analysis and chart screenshot analysis",
+      "News intelligence with gold and DXY impact",
+      "Macro Desk with official US data",
+      "Advanced alerts",
     ],
+    excluded: [],
   },
 ];
 
-// Prices show only once approved and set, so an unapproved number never reaches the site.
-export const pricesAreFinal = process.env.NEXT_PUBLIC_PRICES_FINAL === "true" && plans.every((p) => p.monthly !== null && p.annual !== null);
+export const paidPlans = plans.filter((p): p is Plan & { id: PaidPlanId } => p.id !== "free");
+export const planById = (id: PlanId) => plans.find((p) => p.id === id)!;
+/** Annual price per month, for "$16.32/mo billed yearly". */
+export const annualPerMonth = (p: Plan) => Math.round((p.annual / 12) * 100) / 100;
+
+// Prices are approved (2026-11-07), so they always show.
+export const pricesAreFinal = true;

@@ -1,58 +1,74 @@
 import "server-only";
-import { and, eq, isNull } from "drizzle-orm";
-import { TRIAL_HOURS, plans, type Feature } from "@/config/plans";
-import { audit } from "./audit";
+import { eq } from "drizzle-orm";
+import { planById, type Feature, type PlanId } from "@/config/plans";
 import { db, schema } from "./db";
+import { ownerForUserId } from "./owner-binding";
 
 export type Entitlement = typeof schema.entitlement.$inferSelect;
 
 export interface PlanState {
-  plan: "free" | "premium";
+  plan: PlanId;
+  /** none: no plan · trial: legacy no-card trial (honoured until it ends) · stripe: subscription (incl. its card trial) · grant: given by an admin */
   source: "none" | "trial" | "stripe" | "grant";
+  /** True while the person has never had a trial, so checkout may include the 3-day trial. */
   trialAvailable: boolean;
   trialEndsAt: Date | null;
-  /** Milliseconds of trial left, 0 when not on an active trial. */
+  /** Milliseconds of trial left, 0 when not trialing. */
   trialRemainingMs: number;
 }
 
-/** The single source of truth for access. Computed on the server from stored timestamps, never from the client. */
+const PAID = new Set(["essential", "premium"]);
+
+/**
+ * The single source of truth for access, computed on the server from stored timestamps, never from the client.
+ * Stripe webhooks keep the entitlement row current (plan, premiumUntil = paid-through or trial end); nothing else
+ * grants paid access. A missing or expired row is "free", which unlocks no paid feature.
+ */
 export function planState(e: Entitlement | undefined, now = new Date()): PlanState {
   if (!e) return { plan: "free", source: "none", trialAvailable: true, trialEndsAt: null, trialRemainingMs: 0 };
-  const trialActive = e.source === "trial" && !!e.trialEndsAt && e.trialEndsAt > now;
-  const paidActive = (e.source === "stripe" || e.source === "grant") && !!e.premiumUntil && e.premiumUntil > now;
+  const legacyTrial = e.source === "trial" && !!e.trialEndsAt && e.trialEndsAt > now;
+  const paidActive = (e.source === "stripe" || e.source === "grant") && !!e.premiumUntil && e.premiumUntil > now && PAID.has(e.plan);
+  const trialing = paidActive && e.source === "stripe" && !!e.trialEndsAt && e.trialEndsAt > now;
+  const plan: PlanId = legacyTrial ? "premium" : paidActive ? (e.plan as PlanId) : "free";
   return {
-    plan: trialActive || paidActive ? "premium" : "free",
-    source: trialActive ? "trial" : paidActive ? (e.source as "stripe" | "grant") : "none",
+    plan,
+    source: legacyTrial ? "trial" : paidActive ? (e.source as "stripe" | "grant") : "none",
     trialAvailable: !e.trialStartedAt,
-    trialEndsAt: e.trialEndsAt,
-    trialRemainingMs: trialActive ? e.trialEndsAt!.getTime() - now.getTime() : 0,
+    trialEndsAt: legacyTrial || trialing ? e.trialEndsAt : null,
+    trialRemainingMs: legacyTrial || trialing ? e.trialEndsAt!.getTime() - now.getTime() : 0,
   };
 }
 
-export async function getPlanState(userId: string) {
+/** The verified owner always has Premium (it is their product); everyone else needs a subscription or grant. */
+export async function getPlanState(userId: string, now = new Date()): Promise<PlanState> {
   const [e] = await db.select().from(schema.entitlement).where(eq(schema.entitlement.userId, userId));
-  return planState(e);
+  const p = planState(e, now);
+  if (p.plan === "premium") return p;
+  if ((await ownerForUserId(userId)).owner) return { ...p, plan: "premium", source: "grant", trialEndsAt: null, trialRemainingMs: 0 };
+  return p;
 }
+
+export const planHas = (plan: PlanId, f: Feature) => planById(plan).features.includes(f);
 
 export async function hasFeature(userId: string, f: Feature) {
-  const s = await getPlanState(userId);
-  return plans.find((p) => p.id === s.plan)!.features.includes(f);
+  return planHas((await getPlanState(userId)).plan, f);
 }
 
+/** How many trading accounts the person's plan allows (Essential 1, Premium 2; no plan 1 for the read-only overview). */
+export async function accountLimit(userId: string) {
+  return planById((await getPlanState(userId)).plan).accounts;
+}
+
+/** The message every gated action returns, so the wording is consistent. */
+export const upgradeMessage = (f: Feature) =>
+  f === "coach" || f === "ai.chat" || f === "charts.ai" || f === "news.global" || f === "macro.advanced" || f === "market.advanced" || f === "alerts.advanced"
+    ? "This is part of Premium. Start a 3-day trial or upgrade in Settings › Plan."
+    : "This needs a Treidify plan. Start a 3-day trial in Settings › Plan.";
+
 /**
- * Starts the one-time 72-hour trial. No card is taken and nothing renews: when the window ends the
- * account simply returns to Free. The conditional update makes a second start impossible, even concurrently.
+ * Server-side guard for actions and routes: `{ ok: true }` or a refusal with the upgrade message.
+ * Use before any paid work (AI calls, premium data), never rely on hiding a button.
  */
-export async function startTrial(userId: string) {
-  const now = new Date();
-  const ends = new Date(now.getTime() + TRIAL_HOURS * 3_600_000);
-  await db.insert(schema.entitlement).values({ userId }).onConflictDoNothing();
-  const updated = await db
-    .update(schema.entitlement)
-    .set({ plan: "premium", source: "trial", trialStartedAt: now, trialEndsAt: ends })
-    .where(and(eq(schema.entitlement.userId, userId), isNull(schema.entitlement.trialStartedAt)))
-    .returning();
-  if (updated.length === 0) return { ok: false as const, reason: "used" as const };
-  await audit("trial.started", { actorId: userId, targetType: "user", targetId: userId, meta: { endsAt: ends.toISOString() } });
-  return { ok: true as const, endsAt: ends };
+export async function requireFeature(userId: string, f: Feature): Promise<{ ok: true } | { ok: false; error: string; upgrade: true }> {
+  return (await hasFeature(userId, f)) ? { ok: true } : { ok: false, error: upgradeMessage(f), upgrade: true };
 }

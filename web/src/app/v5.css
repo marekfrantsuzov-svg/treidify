@@ -1,0 +1,338 @@
+/* ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   Treidify design system v6 "Violet Glass" (2026-11-07, production design brief). Loaded last (after glass.css).
+   This file is the single token source for the current system; globals.css / system.css / glass.css keep their
+   structure and v6 overrides their values here, so there is one system, not a second one.
+
+   Source of truth: Marek's approved desktop dashboard. Colours sampled from it: health ring #C46AF5 → #EB76FA,
+   active "All" pill #9652FC, signal bar #A853FB → #D065FB, WAIT text #DB79D1, cards #342C41 at ~50% over the aura,
+   canvas #0B0D12 → #161620. Treidify stays violet, lavender, magenta, charcoal and white; green and red only for P&L.
+
+   Material levels (tokens below, classes at the end):
+     L1 navigation  .g1 + sidebar, headers, bottom dock  – lightest, low noise
+     L2 cards       .dcard / .glass-card (default)       – translucent violet-charcoal, top reflection
+     L3 featured    .g3 (chart, AI analysis, hero stage)  – denser, brighter rim, deeper shadow
+     L4 overlays    .glass-strong, dialogs, menus, drawer – most separation, strongest blur
+   Charts, prices and tables sit on near-opaque fills inside their card: never more blur behind data.
+   ───────────────────────────────────────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --accent-violet: #a85af5;
+  --accent-purple: #8445e8;
+  --accent-lavender: #d68af3;
+  --accent-magenta: #db6edb;
+  --brand-violet: #a85af5;
+  --brand-pink: #db6edb;
+  --brand-violet-5: #a85af5;
+  --brand-pink-5: #db6edb;
+  --brand-grad-5: linear-gradient(100deg in oklab, #8445e8 0%, #a85af5 40%, #d68af3 74%, #db6edb 100%);
+  --ring-grad-a: #a85af5;
+  --ring-grad-b: #eb76fa;
+  --logo-grad: var(--brand-grad-5);
+  --accent-grad: var(--brand-grad-5);
+  --brand-grad: var(--brand-grad-5);
+  --grad-a: #9652fc;
+  --grad-b: #eb76fa;
+  --r-card: 22px;
+  --r-feature: 24px;
+  --ease-glass: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Motion scale (shared by CSS and components/motion/tokens.ts) */
+  --m-fast: 160ms;
+  --m-base: 260ms;
+  --m-slow: 520ms;
+  --m-enter: 900ms;
+}
+
+/* ── Dark (default) ── */
+:root:not([data-theme="light"]) {
+  --brand-violet: #a85af5;
+  --brand-pink: #db6edb;
+  --bg-primary: #0b0911;
+  --bg-secondary: #12101b;
+  --bg-0: #0b0911;
+  --bg-1: #12101b;
+  --chrome-tint: #0b0911;
+  --text-primary: #f8f7fc;
+  --text-secondary: #a9a3b8;
+  --text-muted: #777184;
+  /* L2 standard glass */
+  --surface-glass: rgba(36, 30, 51, 0.48);
+  --surface-glass-strong: rgba(48, 38, 67, 0.62);
+  --surface: rgba(36, 30, 51, 0.48);
+  --surface-top: rgba(74, 60, 96, 0.34);
+  --glass-card-bg: linear-gradient(145deg, rgba(74, 60, 96, 0.34) 0%, rgba(29, 24, 42, 0.58) 55%, rgba(19, 16, 29, 0.72) 100%);
+  /* L4 overlays */
+  --surface-strong: rgba(24, 20, 34, 0.92);
+  --surface-inset: rgba(255, 255, 255, 0.05);
+  --surface-sunk: rgba(8, 6, 14, 0.42);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-highlight: rgba(255, 255, 255, 0.18);
+  --border: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --edge: rgba(255, 255, 255, 0.12);
+  --highlight: rgba(255, 255, 255, 0.14);
+  --rim: linear-gradient(165deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0.06) 24%, rgba(255, 255, 255, 0) 50%, rgba(214, 138, 243, 0.05) 78%, rgba(255, 255, 255, 0.1));
+  --rim-feature: linear-gradient(165deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.07) 26%, rgba(255, 255, 255, 0) 52%, rgba(168, 90, 245, 0.16) 80%, rgba(219, 110, 219, 0.24));
+  --shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 14px 36px rgba(0, 0, 0, 0.2);
+  --shadow-feature: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 2px 4px rgba(0, 0, 0, 0.3), 0 30px 70px -30px rgba(0, 0, 0, 0.8), 0 30px 80px -50px rgba(168, 90, 245, 0.35);
+  --shadow-lg: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 48px 110px -36px rgba(0, 0, 0, 0.9);
+  --spot-color: 214, 138, 243;
+  --text: #f8f7fc;
+  --text-2: #a9a3b8;
+  --text-3: #8a8497;
+  --accent: #b77cf7;
+  --accent-2: #db6edb;
+  --accent-ice: #e2c7fb;
+  --accent-soft: rgba(168, 90, 245, 0.16);
+  --accent-glow: rgba(168, 90, 245, 0.5);
+  --title-grad: linear-gradient(180deg, #ffffff, #ffffff);
+  --figure-grad: linear-gradient(180deg, #ffffff 40%, #ead8ff 130%);
+  --up: #21d58c;
+  --down: #ff5b79;
+  --chart-grid: rgba(255, 255, 255, 0.045);
+  --nav-glass: rgba(26, 21, 37, 0.62);
+  --nav-edge: rgba(255, 255, 255, 0.12);
+  --nav-pill: rgba(168, 90, 245, 0.2);
+  --bar-bg: rgba(16, 13, 24, 0.72);
+  --bar-bg-solid: #12101b;
+  --tab-pill: rgba(168, 90, 245, 0.2);
+  /* L1 navigation glass */
+  --g1-bg: rgba(22, 18, 32, 0.5);
+  --g1-blur: 22px;
+  --g3-bg: rgba(22, 18, 32, 0.66);
+  --g3-top: rgba(58, 47, 78, 0.5);
+  --g3-blur: 28px;
+  --g4-blur: 40px;
+  /* Ambient light: the generated violet / lavender / magenta aura */
+  --amb-1: rgba(132, 69, 232, 0.18);
+  --amb-2: rgba(219, 110, 219, 0.12);
+  --amb-3: rgba(168, 90, 245, 0.14);
+  --amb-4: rgba(214, 138, 243, 0.08);
+  --amb-5: rgba(132, 69, 232, 0.08);
+  --amb-base: #0b0911;
+  --amb-photo-opacity: 1;
+  --amb-grain-opacity: 0.04;
+}
+
+/* ── Light: pearl and porcelain glass. Same hierarchy, its own values (not an inversion). ── */
+:root[data-theme="light"] {
+  --brand-violet: #8445e8;
+  --brand-pink: #db6edb;
+  --bg-0: #f3f4f8;
+  --bg-1: #eceef4;
+  --chrome-tint: #f3f4f8;
+  --surface: rgba(255, 255, 255, 0.62);
+  --surface-top: rgba(255, 255, 255, 0.78);
+  --surface-strong: rgba(255, 255, 255, 0.96);
+  --surface-inset: rgba(20, 24, 60, 0.035);
+  --border: rgba(20, 24, 60, 0.08);
+  --border-strong: rgba(20, 24, 60, 0.14);
+  --rim: linear-gradient(165deg, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0.5) 30%, rgba(255, 255, 255, 0.12) 60%, rgba(214, 190, 255, 0.35));
+  --rim-feature: linear-gradient(165deg, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0.6) 30%, rgba(200, 160, 255, 0.3) 70%, rgba(219, 110, 219, 0.35));
+  --shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 2px rgba(20, 24, 60, 0.05), 0 22px 50px -30px rgba(70, 30, 120, 0.25);
+  --shadow-feature: inset 0 1px 0 rgba(255, 255, 255, 1), 0 2px 4px rgba(20, 24, 60, 0.05), 0 36px 80px -40px rgba(90, 40, 160, 0.32);
+  --spot-color: 123, 63, 228;
+  --text: #0f1118;
+  --text-2: #434759;
+  --text-3: #656a7d;
+  --accent: #7b3fe4;
+  --accent-2: #c03fbf;
+  --accent-soft: rgba(123, 63, 228, 0.09);
+  --title-grad: linear-gradient(180deg, #0f1118, #0f1118);
+  --figure-grad: linear-gradient(180deg, #0f1118 40%, #6a32c8 140%);
+  --nav-pill: rgba(123, 63, 228, 0.1);
+  --tab-pill: rgba(123, 63, 228, 0.1);
+  --g1-bg: rgba(255, 255, 255, 0.55);
+  --g1-blur: 18px;
+  --g3-bg: rgba(255, 255, 255, 0.72);
+  --g3-top: rgba(255, 255, 255, 0.86);
+  --g3-blur: 26px;
+  --g4-blur: 36px;
+  --amb-1: rgba(132, 69, 232, 0.12);
+  --amb-2: rgba(219, 110, 219, 0.1);
+  --amb-3: rgba(168, 90, 245, 0.1);
+  --amb-4: rgba(219, 110, 219, 0.08);
+  --amb-5: rgba(132, 69, 232, 0.08);
+  --amb-base: radial-gradient(120% 80% at 50% -10%, #ffffff 0%, #f3f4f8 60%), #f3f4f8;
+  --amb-photo-opacity: 0;
+}
+
+/* ── iPhone safe area ──
+   iOS 26 Safari no longer paints the status-bar area from theme-color; it samples the page: the root background and
+   any fixed or sticky element touching the top edge. html had no background and the sticky header was transparent,
+   so Safari fell back to its own light chrome (the grey strip in Marek's screenshot). Give both a real colour that
+   equals the top of the page. Installed (standalone) mode pads the header below the status bar instead. */
+html { background-color: var(--bg-0); }
+.mk-header { background-color: var(--chrome-tint); }
+.mk-header::after { content: ""; position: absolute; inset: 100% 0 auto; height: 48px; pointer-events: none; background: linear-gradient(180deg, var(--chrome-tint), transparent); opacity: 1; transition: opacity var(--m-base) linear; }
+.mk-header[data-scrolled="true"]::after { opacity: 0; }
+.mk-header { transition: background-color var(--m-base) linear, box-shadow var(--m-base) linear; }
+.mk-header[data-scrolled="true"] { background-color: color-mix(in oklab, var(--chrome-tint) 74%, transparent); box-shadow: 0 1px 0 var(--border); -webkit-backdrop-filter: blur(var(--g1-blur, 20px)) saturate(150%); backdrop-filter: blur(var(--g1-blur, 20px)) saturate(150%); }
+@media (display-mode: standalone) { .mk-header { padding-top: calc(env(safe-area-inset-top) + 8px); } }
+
+/* ── Backdrop: the blurred night studio, then the brand light ── */
+.ambient::before {
+  content: ""; position: absolute; inset: 0; opacity: var(--amb-photo-opacity);
+  background: image-set(url("/brand/backdrop/aura-1920.webp") type("image/webp")) center 30% / cover no-repeat;
+  transition: opacity 600ms linear;
+}
+@media (max-aspect-ratio: 1/1) { .ambient::before { background-image: image-set(url("/brand/backdrop/aura-1080.webp") type("image/webp")); background-position: center top; } }
+.amb-sheen { display: none; }
+:root:not([data-theme="light"]) .amb-vignette { background: radial-gradient(130% 95% at 50% 35%, transparent 45%, rgba(0, 0, 0, 0.55) 100%); }
+:root .waves { opacity: 0.08; }
+:root[data-theme="light"] .waves { opacity: 0.22; }
+.m-main::before { background: radial-gradient(50% 50% at 50% 40%, rgba(168, 90, 245, 0.08), transparent 70%) !important; }
+
+/* ── L2 standard cards: neutral graphite glass ── */
+:root[data-theme] .dcard, :root:not([data-theme]) .dcard { border-radius: var(--r-card); }
+:root[data-theme] .dcard-title { background: none; -webkit-background-clip: border-box; background-clip: border-box; color: var(--text); font-weight: 600; letter-spacing: -0.015em; }
+:root[data-theme] .dcard-title svg { stroke: url(#tdy-stroke); }
+:root[data-theme] .page-title { background: none; color: var(--text); }
+
+/* ── L3 featured: chart, AI analysis, hero stage ── */
+:root[data-theme] :is(.g3, .d-chart, .d-ai) {
+  background:
+    radial-gradient(620px circle at var(--mx, 50%) var(--my, -40%), rgba(var(--spot-color), calc(var(--spot) * 0.08)), transparent 60%),
+    linear-gradient(180deg, var(--g3-top), var(--g3-bg) 38%);
+  box-shadow: var(--shadow-feature);
+  -webkit-backdrop-filter: blur(var(--g3-blur)) saturate(150%);
+  backdrop-filter: blur(var(--g3-blur)) saturate(150%);
+  border-radius: var(--r-feature);
+}
+:root[data-theme] :is(.g3, .d-chart, .d-ai)::before { background: var(--rim-feature); }
+
+/* ── L1 navigation: sidebar, headers, bottom nav ── */
+:root[data-theme] .side-panel { background: var(--g1-bg); -webkit-backdrop-filter: blur(var(--g1-blur)) saturate(140%); backdrop-filter: blur(var(--g1-blur)) saturate(140%); }
+:root[data-theme] .side-premium { background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015)); }
+/* Selected navigation: the brand gradient as a soft wash plus a lit edge mark. */
+.side-nav .side-pill { background: linear-gradient(90deg, rgba(132, 69, 232, 0.42), rgba(168, 90, 245, 0.26) 60%, rgba(219, 110, 219, 0.14)) !important; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 0 0 1px rgba(214, 138, 243, 0.22), 0 12px 28px -16px rgba(168, 90, 245, 0.8) !important; }
+:root[data-theme="light"] .side-nav .side-pill { background: linear-gradient(90deg, rgba(132, 69, 232, 0.14), rgba(168, 90, 245, 0.08) 60%, transparent) !important; box-shadow: inset 0 0 0 1px rgba(132, 69, 232, 0.16) !important; }
+.side-nav .side-pill::before { background: var(--brand-grad-5); box-shadow: 0 0 12px rgba(168, 90, 245, 0.8); }
+:root[data-theme] .side-link[data-active="true"] svg { stroke: url(#tdy-stroke); }
+
+/* ── L4 overlays ── */
+:root[data-theme] :is(.glass-strong, [role="menu"].glass, [role="listbox"].glass, [role="dialog"].glass, .m-drawer) {
+  -webkit-backdrop-filter: blur(var(--g4-blur)) saturate(180%);
+  backdrop-filter: blur(var(--g4-blur)) saturate(180%);
+}
+
+/* ── Actions: the brand gradient (purple → violet → lavender → magenta) on primary buttons only ── */
+:root[data-theme] .bg-brand, .bg-brand-grad, .ed-cta {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0) 55%), var(--brand-grad-5) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 12px 30px -14px rgba(132, 69, 232, 0.8), 0 10px 30px -18px rgba(219, 110, 219, 0.6) !important;
+}
+:root[data-theme] .bg-brand:hover, .bg-brand-grad:hover, .ed-cta:hover { filter: brightness(1.08) saturate(1.05); }
+:root[data-theme] .current-chip { background: var(--brand-grad-5); }
+:root[data-theme] .d-metric.is-primary .d-metric-value { background: var(--figure-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+/* Generic level classes for new surfaces. */
+:root[data-theme] .g1 { background: var(--g1-bg); border: 1px solid var(--border); -webkit-backdrop-filter: blur(var(--g1-blur)) saturate(140%); backdrop-filter: blur(var(--g1-blur)) saturate(140%); }
+:root[data-theme] .g3 { position: relative; border: 1px solid var(--border); }
+:root[data-theme] .g3::before { content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; pointer-events: none; -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+
+/* Tabular numerals for every financial figure. */
+.num, .d-metric-value, .mo-price, .mo-chg, [data-num] { font-variant-numeric: tabular-nums; font-feature-settings: "tnum", "cv11", "ss01"; }
+
+@media (prefers-reduced-transparency: reduce) {
+  :root[data-theme] :is(.g1, .g3, .d-chart, .d-ai) { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--surface-strong); }
+  .ambient::before { opacity: 0; }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root:not([data-theme="light"]) { --surface: rgba(28, 23, 40, 0.96); --surface-top: rgba(36, 30, 51, 0.96); --glass-card-bg: rgba(28, 23, 40, 0.96); --g1-bg: rgba(18, 15, 27, 0.97); --g3-bg: rgba(26, 21, 37, 0.97); --g3-top: rgba(36, 30, 51, 0.97); }
+}
+
+/* html now carries the canvas colour (safe-area fix), so body must stay transparent or its box would paint over the
+   fixed ambient layer (negative z-index layers paint below in-flow block backgrounds). */
+:root body { background: transparent; }
+/* The backdrop fades into the canvas colour at the very top, so the status-bar tint and the header band are seamless. */
+:root:not([data-theme="light"]) .amb-vignette { background: linear-gradient(180deg, var(--chrome-tint) 0, rgba(11, 9, 17, 0.55) 9%, transparent 22%), radial-gradient(130% 95% at 50% 35%, transparent 45%, rgba(0, 0, 0, 0.55) 100%); }
+
+/* ═══ v6 Violet Glass components (production design brief, 2026-11-07) ═══════════════════════════════════════ */
+
+/* L2 cards: layered glass. Translucent violet-charcoal with a diagonal falloff, a 1px rim brighter along the top
+   edge, an inner top reflection and a soft drop. The pointer light (--mx/--my, ambient.tsx) adds a lavender sheen. */
+:root:not([data-theme="light"]) :is(.dcard, .glass-card, .side-premium, .ed-panel, .lx-card) {
+  background:
+    radial-gradient(520px circle at var(--mx, 50%) var(--my, -30%), rgba(var(--spot-color), calc(var(--spot) * 0.09)), transparent 60%),
+    var(--glass-card-bg);
+  border-color: var(--glass-border);
+  -webkit-backdrop-filter: blur(22px) saturate(145%);
+  backdrop-filter: blur(22px) saturate(145%);
+}
+:root:not([data-theme="light"]) .dcard:hover { box-shadow: var(--shadow), 0 30px 70px -40px rgba(168, 90, 245, 0.45); }
+:root[data-theme] :is(.dcard, .glass-card) { border-radius: var(--r-card); }
+.glass-card { position: relative; border: 1px solid var(--glass-border); box-shadow: var(--shadow); }
+.glass-panel { position: relative; border-radius: 18px; background: var(--surface-inset); border: 1px solid var(--border); }
+/* Landing tiles that used the old blue */
+.ed-root .lx-stops i { background: linear-gradient(180deg, #d68af3, #8445e8) !important; }
+
+/* Phones: the same look with less blur (cheaper to composite on iPhone). */
+@media (max-width: 639px) {
+  :root:not([data-theme="light"]) :is(.dcard, .glass-card) { -webkit-backdrop-filter: blur(14px) saturate(140%); backdrop-filter: blur(14px) saturate(140%); }
+}
+
+/* Card titles and figures (desktop 15–17 px titles, 28–36 px values; mobile 24–30 px values). */
+:root[data-theme] .dcard-title { font-size: 16.5px; line-height: 22px; }
+.dcard-title svg { width: 20px; height: 20px; }
+
+/* Dashboard metrics: each figure is its own glass card, as in the approved dashboard. */
+.d-metrics { display: grid; gap: 12px; }
+:root[data-theme] .d-metrics > .d-metric.dcard { border-left-width: 1px; border-top-width: 1px; padding: 16px 18px 17px; justify-content: flex-start; }
+.d-metric .d-metric-label { font-size: 15px; line-height: 20px; color: var(--text); font-weight: 500; }
+.d-metric-icon { width: auto; height: auto; margin-right: 10px; border: 0; background: none; vertical-align: -4px; }
+.d-metric-icon svg { width: 22px; height: 22px; stroke-width: 1.7; }
+.d-metric { container-type: inline-size; }
+.d-metric-value { font-size: clamp(21px, 15.5cqi, 32px) !important; font-weight: 650 !important; letter-spacing: -0.025em !important; margin-top: 2px; }
+.d-metric-sub { font-size: 13px !important; color: var(--text-2) !important; }
+@media (min-width: 640px) { .d-metrics { grid-template-columns: 1.2fr repeat(3, minmax(0, 1fr)) !important; } }
+@media (min-width: 1024px) and (max-width: 1359.98px) { .d-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
+@media (max-width: 639px) {
+  .d-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  :root[data-theme] .d-metrics > .d-metric.dcard { padding: 13px 14px 14px; }
+  .d-metric .d-metric-label { font-size: 13.5px; }
+  .d-metric-icon svg { width: 18px; height: 18px; }
+  .d-metric-value { font-size: clamp(21px, 15.5cqi, 28px) !important; }
+}
+
+/* Health ring status chips: Strong / Moderate / At risk in brand-safe tints. */
+.health-chip { border-radius: 10px; padding: 3px 10px; font-size: 13px; font-weight: 600; }
+
+/* Selected timeframe and filter pills: violet to magenta, as the approved "1H" and "All". */
+.tf-pill { background: linear-gradient(100deg, rgba(168, 90, 245, 0.9), rgba(219, 110, 219, 0.78)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 6px 18px -8px rgba(219, 110, 219, 0.8); }
+.pill-violet { background: linear-gradient(180deg, #a463fd, #8d4cf5); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 8px 20px -10px rgba(150, 82, 252, 0.9); }
+[role="tablist"] [data-active="true"].on-pill, [role="tablist"] [aria-selected="true"].on-pill { color: #fff !important; }
+
+/* WAIT · NO VALID SETUP: a violet-tinted band with magenta text and icon (approved dashboard). */
+.wait-badge { background: linear-gradient(90deg, rgba(168, 90, 245, 0.2), rgba(219, 110, 219, 0.14)); color: #e58ae0; box-shadow: inset 0 0 0 1px rgba(219, 110, 219, 0.22); }
+:root[data-theme="light"] .wait-badge { color: #a2349f; }
+
+/* Sidebar as the approved dashboard: no illustration; a compact Premium card at the foot. */
+@media (min-width: 1024px) { .side-bull { display: none !important; } }
+
+/* Floating glass dock (mobile): clear of the home indicator, content padded so nothing hides behind it. */
+@media (max-width: 1023.98px) {
+  :root[data-theme] .m-nav-inner { border-radius: 26px; background: linear-gradient(180deg, rgba(48, 38, 67, 0.62), rgba(22, 18, 32, 0.78)); border-color: var(--glass-border); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 18px 40px -12px rgba(0, 0, 0, 0.7), 0 10px 40px -20px rgba(168, 90, 245, 0.5); }
+  :root[data-theme="light"] .m-nav-inner { background: rgba(255, 255, 255, 0.78); }
+  :root[data-theme] .m-nav-inner > .nav-pill { background: linear-gradient(180deg, rgba(168, 90, 245, 0.32), rgba(219, 110, 219, 0.2)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), inset 0 0 0 1px rgba(214, 138, 243, 0.24); }
+}
+
+/* Gradient border (GradientBorder primitive and featured pricing). */
+.grad-border { position: relative; }
+.grad-border::after { content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; pointer-events: none; background: var(--brand-grad-5); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+
+/* Account status card (replaces the technical connection bar). */
+.acct-status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; padding: 12px 16px; }
+.acct-dot { width: 8px; height: 8px; border-radius: 999px; flex-shrink: 0; }
+.acct-dot.is-ok { background: var(--up); box-shadow: 0 0 0 4px color-mix(in oklab, var(--up) 18%, transparent); }
+.acct-dot.is-stale { background: #e9a23b; box-shadow: 0 0 0 4px rgba(233, 162, 59, 0.18); }
+.acct-dot.is-off { background: var(--down); box-shadow: 0 0 0 4px color-mix(in oklab, var(--down) 18%, transparent); }
+
+@media (prefers-reduced-motion: reduce) { .ring-anim { transition: none !important; } }
+
+/* Touch targets: at least 44 × 44 on touch screens. Small visual pills keep their look and get a larger hit area. */
+@media (pointer: coarse) {
+  .m-topbar .hdr-btn, .m-topbar [aria-label="Account menu"], .mk-header [aria-label="Open menu"], .mk-header [aria-label="Close menu"] { min-width: 44px; min-height: 44px; display: inline-grid; place-items: center; }
+  [role="tablist"] > button[role="tab"] { position: relative; }
+  [role="tablist"] > button[role="tab"]::after { content: ""; position: absolute; inset: -7px -2px; }
+  [role="tablist"][aria-label="Timeframe"] > button[role="tab"] { min-height: 40px; }
+}

@@ -91,7 +91,7 @@ export default async function Coach({ searchParams }: { searchParams: Promise<{ 
                 <div className="mt-3">
                   {ai
                     ? <ReviewButton period={p.id} accountId={o.account.id} label={r ? "Generate a new review" : "Generate AI review"} disabled={ts.length === 0} />
-                    : <p className="text-[12px] text-ink-3">AI reviews switch on when ANTHROPIC_API_KEY is set. The numbers here are already real.</p>}
+                    : <p className="text-[12px] text-ink-3">AI reviews are not available right now. The numbers here are already real.</p>}
                   {ts.length === 0 && <p className="mt-1 text-[12px] text-ink-3">No trades closed in this period.</p>}
                 </div>
                 {r && <Review r={r} tz={tz} />}

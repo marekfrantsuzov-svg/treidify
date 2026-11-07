@@ -68,7 +68,7 @@ export default async function Indicator({ params }: { params: Promise<{ indicato
             <p className="num mt-1 text-[40px] font-semibold leading-none tracking-[-0.03em] text-ink sm:text-[48px]">{m.value}</p>
             <dl className="mt-4 grid gap-2 text-[13px]">
               <div className="flex justify-between gap-3 border-t border-line pt-2"><dt className="text-ink-3">{m.previousLabel}</dt><dd className="num text-right font-medium text-ink">{m.previous ?? "—"}</dd></div>
-              <div className="flex justify-between gap-3 border-t border-line pt-2"><dt className="text-ink-3">{id === "rates" ? "Decided on" : "Published"}</dt><dd className="text-right font-medium text-ink">{m.releasedOn ? day(m.releasedOn) : <span className="text-ink-3">Needs FRED_API_KEY</span>}</dd></div>
+              <div className="flex justify-between gap-3 border-t border-line pt-2"><dt className="text-ink-3">{id === "rates" ? "Decided on" : "Published"}</dt><dd className="text-right font-medium text-ink">{m.releasedOn ? day(m.releasedOn) : <span className="text-ink-3">—</span>}</dd></div>
               {m.facts.map((f) => <div key={f.label} className="flex justify-between gap-3 border-t border-line pt-2"><dt className="text-ink-3">{f.label}</dt><dd className="num text-right font-medium text-ink">{f.value}</dd></div>)}
               {m.next && <div className="flex justify-between gap-3 border-t border-line pt-2"><dt className="flex items-center gap-1.5 text-ink-3"><CalendarClock className="h-3.5 w-3.5" />{m.next.label}</dt><dd className="text-right font-medium text-ink">{new Date(m.next.at).toLocaleString("en-GB", { timeZone: tz, weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</dd></div>}
             </dl>

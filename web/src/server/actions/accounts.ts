@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { after } from "next/server";
@@ -11,6 +11,7 @@ import { ownerForUserId } from "../owner-binding";
 import { reportError } from "@/lib/monitoring";
 import { MetaApiError } from "../sync/metaapi";
 import { audit } from "../audit";
+import { accountLimit } from "../entitlements";
 import { db, schema } from "../db";
 import { deleteSampleAccounts, insertSampleAccount } from "../sample-account";
 import { requireUser } from "../session";
@@ -66,6 +67,15 @@ export async function connectTradingAccount(input: z.input<typeof connectSchema>
   const { user: u, owner } = await ownerForUserId(s.user.id, { impersonatedBy: s.session.impersonatedBy });
   if (!u) return { ok: false, error: "Please sign in again." };
   const { platform, server, login, password, credential } = p.data;
+  // Plan limit (Essential 1, Premium 2), enforced here on the server. Reconnecting the same login does not count twice.
+  if (!owner) {
+    const limit = await accountLimit(u.id);
+    const real = await db.select({ login: schema.tradingAccount.login, server: schema.tradingAccount.server, platform: schema.tradingAccount.platform, status: schema.providerConnection.status })
+      .from(schema.tradingAccount).leftJoin(schema.providerConnection, eq(schema.providerConnection.tradingAccountId, schema.tradingAccount.id))
+      .where(and(eq(schema.tradingAccount.userId, u.id), ne(schema.tradingAccount.source, "sample")));
+    const others = real.filter((r) => r.status !== "disconnected" && !(r.login === login && r.server === server && r.platform === platform));
+    if (others.length >= limit) return { ok: false, error: limit === 1 ? "Your plan includes 1 connected account. Premium includes 2; upgrade in Settings › Plan, or disconnect the other account first." : `Your plan includes ${limit} connected accounts. Disconnect one first.` };
+  }
   if (!credentialAllowed(credential, owner)) {
     await audit("account.connect_master_refused", { actorId: u.id, targetType: "user", targetId: u.id });
     return { ok: false, error: "Only the investor (read-only) password can be used. Nothing was sent." };

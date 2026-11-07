@@ -73,7 +73,7 @@ export function SignupForm({ providers, trial }: { providers: { google: boolean;
           <span>I accept the <Link href="/legal/terms" className="text-accent hover:underline">Terms</Link> and have read the <Link href="/legal/risk-disclosure" className="text-accent hover:underline">Risk Disclosure</Link> and <Link href="/legal/privacy" className="text-accent hover:underline">Privacy Policy</Link>.</span>
         </label>
         {error && <Alert>{error}</Alert>}
-        <Button type="submit" size="lg" disabled={!!busy} className="w-full">{busy === "email" && <Spinner />}Create free account</Button>
+        <Button type="submit" size="lg" disabled={!!busy} className="w-full">{busy === "email" && <Spinner />}Create account</Button>
         <p className="text-center text-xs text-ink-3">No payment details needed.</p>
       </form>
     </div>

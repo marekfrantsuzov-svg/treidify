@@ -1,44 +1,59 @@
 "use client";
 
+import { RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { ACCOUNT_STALE_AFTER_MS } from "@/config/sync";
 import { cn } from "@/lib/cn";
 import { fmtMoney, fmtSignedMoney } from "@/lib/format";
 import { useLiveAccount } from "./live-account";
 
-const ago = (ms: number) => (ms < 60_000 ? `${Math.max(1, Math.round(ms / 1000))} s ago` : ms < 3600_000 ? `${Math.round(ms / 60_000)} min ago` : ms < 86_400_000 ? `${Math.round(ms / 3600_000)} h ago` : `${Math.round(ms / 86_400_000)} d ago`);
+const ago = (ms: number) => (ms < 60_000 ? "just now" : ms < 3600_000 ? `${Math.round(ms / 60_000)} min ago` : ms < 86_400_000 ? `${Math.round(ms / 3600_000)} h ago` : `${Math.round(ms / 86_400_000)} d ago`);
 
 /**
- * Connection health for the selected real account: status, verified access, equity, floating P&L and how old the
- * figures are. Wording is exact: values are refreshed on an interval, never called real-time.
+ * Account status for the selected real account: "MT5 Connected", equity, floating P&L, status and when the figures
+ * were last synced. Figures follow the hourly sync policy (config/sync.ts) and are never called live. The password
+ * type, provider and refresh mechanics are not shown here. A manual refresh is offered, rate-limited on the server.
  */
-export function ConnectionBar({ label }: { label: string }) {
+export function ConnectionBar({ label, platform = "mt5" }: { label: string; platform?: "mt4" | "mt5" }) {
   const ctx = useLiveAccount();
   const [now, setNow] = useState(() => Date.now());
-  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 5000); return () => clearInterval(t); }, []);
+  const [note, setNote] = useState<string | null>(null);
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 30_000); return () => clearInterval(t); }, []);
   const live = ctx?.live;
   if (!live) return null;
+  const P = platform.toUpperCase();
   const age = live.asOf ? now - Date.parse(live.asOf) : null;
-  const stale = age === null || age > 15 * 60_000;
   const ok = live.status === "connected" && !!live.accessMode;
-  const tone = !ok ? (live.status === "error" || live.status === "reconnection_required" || live.status === "disconnected" ? "down" : "warn") : stale ? "warn" : "up";
-  const statusText = ok
-    ? live.accessMode === "investor" ? "Connected · read-only verified" : "Connected · owner master password, read-only use"
-    : live.status === "pending" || live.status === "synchronizing" ? "Connecting to your broker…" : live.status === "disconnected" ? "Disconnected" : "Needs attention";
+  const stale = ok && (age === null || age > ACCOUNT_STALE_AFTER_MS || !!live.error);
+  const tone = !ok ? (live.status === "pending" || live.status === "synchronizing" ? "stale" : "off") : stale ? "stale" : "ok";
+  const title = ok ? `${P} Connected` : live.status === "pending" || live.status === "synchronizing" ? `Connecting ${P}…` : live.status === "disconnected" ? `${P} Disconnected` : `${P} needs attention`;
   const c = live.currency ?? "USD";
+  const onRefresh = async () => { setNote(null); const err = await ctx?.refresh(); setNote(err ?? null); setNow(Date.now()); };
+
   return (
-    <div className="dcard flex flex-wrap items-center gap-x-4 gap-y-1.5 px-3.5 py-2.5 text-[12.5px] sm:px-4" role="status" aria-live="polite">
-      <span className="flex min-w-0 items-center gap-2 font-medium text-ink">
-        <span aria-hidden className={cn("h-2 w-2 shrink-0 rounded-full", tone === "up" ? "bg-[var(--up)]" : tone === "warn" ? "bg-[var(--warn)]" : "bg-[var(--down)]", ctx?.refreshing && "animate-pulse")} />
-        <span className="truncate">{statusText}</span>
-        <span className="hidden truncate text-ink-3 sm:inline">· {label}</span>
-      </span>
-      {live.equity !== null && <span className="num text-ink-2">Equity <b className="font-semibold text-ink">{fmtMoney(live.equity, c, 2)}</b></span>}
-      {live.floating !== null && <span className="num text-ink-2">Floating <b className={cn("font-semibold", live.floating < 0 ? "text-down-ink" : live.floating > 0 ? "text-up-ink" : "text-ink")}>{fmtSignedMoney(live.floating, c)}</b></span>}
-      <span className="text-[11.5px] text-ink-3 sm:text-[12.5px]">{age === null ? "No account data yet" : `Updated ${ago(age)}`} · refreshes every {Math.round((ctx?.intervalMs ?? 30_000) / 1000)} s while open{live.lastSyncAt ? <span className="hidden sm:inline">{` · history synced ${ago(now - Date.parse(live.lastSyncAt))}`}</span> : null}</span>
-      {ok && stale && age !== null && <span className="font-medium text-warn">These figures are {ago(age).replace(" ago", "")} old.</span>}
-      {live.error && <span className="text-down">{live.error}</span>}
-      {!ok && <Link href="/app/accounts" className="font-semibold text-accent">Manage connection</Link>}
-    </div>
+    <section className="dcard acct-status" aria-label="Trading account status" role="status" aria-live="polite">
+      <div className="flex min-w-0 items-center gap-2.5">
+        <span aria-hidden className={cn("acct-dot", `is-${tone}`, ctx?.refreshing && "animate-pulse")} />
+        <div className="min-w-0 leading-tight">
+          <div className="text-[14.5px] font-semibold text-ink">{title}</div>
+          <div className="truncate text-[12px] text-ink-3">{label}</div>
+        </div>
+      </div>
+      {live.equity !== null && <div className="num leading-tight"><div className="text-[11.5px] text-ink-3">Equity</div><div className="text-[15px] font-semibold text-ink">{fmtMoney(live.equity, c, 2)}</div></div>}
+      {live.floating !== null && <div className="num leading-tight"><div className="text-[11.5px] text-ink-3">Floating P&L</div><div className={cn("text-[15px] font-semibold", live.floating < 0 ? "text-down-ink" : live.floating > 0 ? "text-up-ink" : "text-ink")}>{fmtSignedMoney(live.floating, c)}</div></div>}
+      <div className="leading-tight">
+        <div className="text-[11.5px] text-ink-3">Last sync</div>
+        <div className={cn("text-[13.5px] font-medium", stale ? "text-warn" : "text-ink-2")} suppressHydrationWarning>{age === null ? "Not yet synced" : ago(age)}{stale && age !== null ? " · not current" : ""}</div>
+      </div>
+      <div className="ml-auto flex items-center gap-2">
+        {note && <span className="text-[12px] text-ink-3">{note}</span>}
+        {ok ? (
+          <button type="button" onClick={onRefresh} disabled={ctx?.refreshing} className="press inline-flex h-11 items-center gap-1.5 rounded-full border border-line px-4 text-[13px] font-semibold text-ink-2 transition-colors hover:text-ink disabled:opacity-60 sm:h-9">
+            <RefreshCw className={cn("h-4 w-4", ctx?.refreshing && "animate-spin")} />{ctx?.refreshing ? "Refreshing" : "Refresh"}
+          </button>
+        ) : <Link href="/app/accounts" className="press inline-flex h-11 items-center rounded-full bg-accent-soft px-4 text-[13px] font-semibold text-accent sm:h-9">Manage connection</Link>}
+      </div>
+    </section>
   );
 }

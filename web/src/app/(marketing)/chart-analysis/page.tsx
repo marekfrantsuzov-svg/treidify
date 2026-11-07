@@ -44,7 +44,7 @@ export default function Page() {
       faqs={[
         { q: "Which platforms' screenshots work?", a: "Any clear candlestick chart: MetaTrader 4 and 5, TradingView, cTrader and broker web platforms. Light and dark themes are both supported." },
         { q: "How accurate are the levels?", a: "Levels drawn only from an image are approximate and labelled so. Where Treidify can match the instrument to market data, exact levels come from that data instead." },
-        { q: "Is there a limit?", a: "Free accounts get a small number of analyses to try it. Premium includes a generous monthly allowance, shown in your account." },
+        { q: "Is there a limit?", a: "AI chart analysis is part of Premium, with an hourly fair-use limit shown in the app." },
       ]}
     />
   );

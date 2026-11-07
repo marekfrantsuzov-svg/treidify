@@ -12,7 +12,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ n
   if (await getSession()) redirect("/app");
   const { next, reset, error } = await searchParams;
   return (
-    <AuthCard title="Welcome back" subtitle="Sign in to Treidify." footer={<>New to Treidify? <Link href="/signup" className="font-medium text-accent hover:underline">Create a free account</Link></>}>
+    <AuthCard title="Welcome back" subtitle="Sign in to Treidify." footer={<>New to Treidify? <Link href="/signup" className="font-medium text-accent hover:underline">Create an account</Link></>}>
       {reset && <div className="mb-4"><Alert tone="up">Password updated. Sign in with your new password.</Alert></div>}
       {error && <div className="mb-4"><Alert>{error === "INVALID_TOKEN" ? "That link has expired or was already used." : "Sign-in failed. Please try again."}</Alert></div>}
       <LoginForm providers={enabledProviders} next={next} />

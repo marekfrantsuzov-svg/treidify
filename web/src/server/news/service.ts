@@ -61,7 +61,7 @@ export async function latestHeadlines(limit = 30): Promise<Result<Headline[]>> {
     return { ok: true, data: [...breaking, ...relevant, ...rest].slice(0, limit), vendor: "finnhub", fetchedAt: new Date().toISOString() };
   } catch (e) {
     reportError(e, { where: "news.latestHeadlines" });
-    return { ok: false, reason: "error", message: "The news provider did not answer. No headlines are shown rather than old or invented ones.", detail: detailOf(e) };
+    return { ok: false, reason: "error", message: "Headlines could not be loaded just now. None are shown rather than old or invented ones.", detail: detailOf(e) };
   }
 }
 
@@ -92,7 +92,7 @@ async function officialFallback(from: Date, to: Date, why: string): Promise<Resu
     return { ok: true, data, vendor: ev.exact ? OFFICIAL_VENDOR : OFFICIAL_VENDOR_KEYLESS, fetchedAt: new Date().toISOString() };
   } catch (e) {
     reportError(e, { where: "news.officialCalendar" });
-    return { ok: false, reason: "error", message: "The official release calendar (FRED) did not answer, so no events are shown.", detail: detailOf(e) };
+    return { ok: false, reason: "error", message: "The release calendar could not be loaded just now, so no events are shown.", detail: detailOf(e) };
   }
 }
 
@@ -114,7 +114,7 @@ export async function economicCalendar(from: Date, to: Date): Promise<Result<Eco
   } catch (e) {
     if (refusedByPlan(e)) { calendarRefusedUntil = Date.now() + 6 * 3600_000; return officialFallback(from, to, "The news plan does not include an economic calendar."); }
     reportError(e, { where: "news.economicCalendar" });
-    return officialFallback(from, to, "The calendar provider did not answer.");
+    return officialFallback(from, to, "The calendar could not be loaded just now.");
   }
 }
 

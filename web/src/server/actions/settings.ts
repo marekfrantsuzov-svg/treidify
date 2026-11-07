@@ -9,7 +9,6 @@ import { instrumentChoices } from "@/config/onboarding";
 import { audit } from "../audit";
 import { auth } from "../auth";
 import { db, schema } from "../db";
-import { startTrial } from "../entitlements";
 import { getSession, requireUser } from "../session";
 import { isTimeZone, usernameSchema } from "@/lib/validation";
 
@@ -131,9 +130,3 @@ export async function saveThemePreference(input: string): Promise<ActionResult> 
   return { ok: true };
 }
 
-export async function beginTrial(): Promise<ActionResult> {
-  const s = await requireUser();
-  const r = await startTrial(s.user.id);
-  revalidatePath("/app", "layout");
-  return r.ok ? { ok: true, message: "Your Premium trial has started." } : fail("The Premium trial has already been used on this account.");
-}

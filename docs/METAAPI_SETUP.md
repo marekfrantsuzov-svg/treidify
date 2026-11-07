@@ -60,16 +60,23 @@ After changing variables, **redeploy** (Deployments → ⋯ → Redeploy). `http
   MetaApi account and with it the stored password. **Delete** also removes all synced data from Treidify.
 - Every account operation and API route is authenticated and scoped to the signed-in user's own accounts. Another
   user's account ID behaves exactly like a missing one.
-- Rate limits: 5 connection attempts per user per hour, 12 manual syncs per hour, 30 live refreshes per minute, and
-  MetaApi is called at most once every 20 seconds per account for live values.
+- Rate limits: 5 connection attempts per user per hour, 12 manual syncs per hour, one dashboard **Refresh** per account
+  every 2 minutes, and MetaApi is called for routine account values at most once an hour per account.
 
 ## Freshness, stated exactly
 
-- Balance, equity, floating P&L and open positions **refresh every 30 seconds while a dashboard is open**.
-- Closed-trade history syncs every 10 minutes in the background (GitHub Actions calls `/api/cron/sync`), when a
-  dashboard is open and the last sync is over 5 minutes old, and on **Sync now**.
-- This is polling over MetaApi's REST API, not streaming. The dashboard shows "Updated N s ago" and warns when figures
-  are more than 15 minutes old.
+- One policy, in `web/src/config/sync.ts`: `ACCOUNT_REFRESH_INTERVAL = 60 * 60 * 1000`. Balance, equity, floating
+  P&L, open positions and closed-trade history sync **once an hour per account**. The last successful refresh is
+  stored on the connection row (`last_live_at`, `last_sync_at`) and claimed atomically, so every tab, device and
+  background job shares it and no two calls run at once.
+- Opening the app or moving between pages never calls the broker: pages render the stored figures. An open dashboard
+  schedules one check for when its figures turn an hour old. The background job (GitHub Actions calls
+  `/api/cron/sync` every 10 minutes) syncs only accounts whose last sync is over an hour old, so each account is
+  synced about hourly even when nobody has the app open.
+- **Refresh** on the dashboard's account card refreshes now, at most once every 2 minutes per account.
+- A connection still finishing its first sync (pending, synchronizing, error) is retried every 5 minutes.
+- The account card shows "Last sync N min ago" and marks figures as not current after 75 minutes or a failed refresh.
+  Account figures are never called live. Market data (prices, candles) has its own freshness policy.
 
 ## Costs and limits (checked 2026-11-02 on metaapi.cloud)
 
@@ -80,5 +87,5 @@ After changing variables, **redeploy** (Deployments → ⋯ → Redeploy). `http
   opening sign-ups. `METAAPI_MAX_ACCOUNTS` caps how many Treidify can create.
 - `high` reliability runs redundant servers and costs more than `regular`.
 - REST rate limits are counted in CPU credits (base 1,000/s, 6,000/min per application, scaling with deployed
-  accounts). Deal-history calls cost 75 credits plus 0.65 per deal returned. Treidify's load (one info and one
-  positions call per open dashboard every 30 s, history every 10 min) stays far below this.
+  accounts). Deal-history calls cost 75 credits plus 0.65 per deal returned. Treidify's load (one info, one
+  positions and one history call per account per hour, plus manual refreshes) stays far below this.

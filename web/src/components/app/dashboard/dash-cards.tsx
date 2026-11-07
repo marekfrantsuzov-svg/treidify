@@ -25,11 +25,10 @@ function Head({ icon, title, href, label = "See All", id }: { icon: React.ReactN
   );
 }
 
-function Unavailable({ what, needs }: { what: string; needs?: string[] }) {
+function Unavailable({ what }: { what: string; needs?: string[] }) {
   return (
     <div className="mt-3 rounded-2xl border border-dashed border-line px-3.5 py-3 text-[12.5px] leading-snug text-ink-3">
-      {what} is not connected, so nothing is shown. No example data is used.
-      {needs?.length ? <span className="mt-1 block font-medium text-ink-2">Needs {needs.join(", ")}</span> : null}
+      {what} is not available right now. Nothing is shown rather than example data.
     </div>
   );
 }

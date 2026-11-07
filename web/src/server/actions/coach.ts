@@ -5,6 +5,7 @@ import { coachFacts, type CoachPeriod } from "@/lib/analytics";
 import { reportError } from "@/lib/monitoring";
 import { rateLimit } from "@/lib/rate-limit";
 import { aiStatus, AI_MODEL, coachReview } from "../ai/claude";
+import { requireFeature } from "../entitlements";
 import { accountOverview } from "../account-data";
 import { db, schema } from "../db";
 import { requireOnboarded } from "../session";
@@ -16,7 +17,9 @@ const PERIODS: CoachPeriod[] = ["daily", "weekly", "monthly"];
 export async function generateCoachReview(period: CoachPeriod, accountId?: string): Promise<ActionResult> {
   const s = await requireOnboarded("/app/coach");
   if (!PERIODS.includes(period)) return { ok: false, error: "Unknown period." };
-  if (!aiStatus().configured) return { ok: false, error: "AI coaching is not connected yet (ANTHROPIC_API_KEY is not set). The computed patterns above still work." };
+  const gate = await requireFeature(s.user.id, "coach");
+  if (!gate.ok) return { ok: false, error: gate.error };
+  if (!aiStatus().configured) return { ok: false, error: "AI coaching is not available right now. The computed patterns above still work." };
   if (!rateLimit(`coach:${s.user.id}`, 10, 3600_000).ok) return { ok: false, error: "Hourly limit for coaching reviews reached. Try again later." };
   const o = await accountOverview(s.user.id, accountId);
   if (!o) return { ok: false, error: "Connect a trading account first: the coach only reviews real synced trades." };

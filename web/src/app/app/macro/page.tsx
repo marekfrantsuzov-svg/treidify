@@ -127,7 +127,7 @@ export default async function Macro({ searchParams }: { searchParams: Promise<{ 
 
       <SectionHead id="drivers" icon={<CalendarClock />} title="This week's drivers" sub="High-impact scheduled events in the next 7 days." />
       <div className="dcard dcard-pad">
-        {!cal.ok ? <p className="text-[13px] text-ink-2">{cal.message}{cal.needs?.length ? ` Needs: ${cal.needs.join(", ")}.` : ""}</p> : upcoming.length === 0 ? <p className="text-[13px] text-ink-3">No high-impact events in the next 7 days.</p> : (
+        {!cal.ok ? <p className="text-[13px] text-ink-2">The economic calendar is not available right now.</p> : upcoming.length === 0 ? <p className="text-[13px] text-ink-3">No high-impact events in the next 7 days.</p> : (
           <ul className="divide-y divide-[var(--border)]">
             {upcoming.slice(0, 8).map((e) => (
               <li key={e.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">

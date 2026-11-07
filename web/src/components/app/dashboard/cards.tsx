@@ -263,7 +263,7 @@ export interface TradeRow { id: string; symbol: string; side: string; net: numbe
 const dp = (sym: string) => (sym.includes("JPY") || sym === "DXY" ? 3 : /US30|NAS|SPX/.test(sym) ? 0 : sym.startsWith("XA") ? 2 : 5);
 
 export function PositionsCard({ rows: serverRows, currency, sample, connected }: { rows: PositionRow[]; currency: string; sample: boolean; connected: boolean }) {
-  // For a real account the rows follow the live refresh (every 30 s while open); otherwise the server rows.
+  // For a real account the rows follow the live refresh (hourly sync, config/sync.ts); otherwise the server rows.
   const live = useLiveAccount()?.live;
   const rows = live ? live.positions : serverRows;
   return (

@@ -6,6 +6,7 @@ import { INSTRUMENT_LIST } from "@/lib/markets/registry";
 import { reportError } from "@/lib/monitoring";
 import { rateLimit } from "@/lib/rate-limit";
 import { aiStatus, explainHeadline } from "../ai/claude";
+import { requireFeature } from "../entitlements";
 import type { NewsBrief } from "../ai/schema";
 import { latestHeadlines } from "../news/service";
 import { requireUser } from "../session";
@@ -23,7 +24,9 @@ const cachedBrief = unstable_cache(
  */
 export async function explainNews(id: string): Promise<BriefResult> {
   const s = await requireUser();
-  if (!aiStatus().configured) return { ok: false, error: "AI explanations are not connected yet (ANTHROPIC_API_KEY is not set)." };
+  const gate = await requireFeature(s.user.id, "news.global");
+  if (!gate.ok) return { ok: false, error: gate.error };
+  if (!aiStatus().configured) return { ok: false, error: "AI explanations are not available right now." };
   if (!rateLimit(`news-brief:${s.user.id}`, 30, 3600_000).ok) return { ok: false, error: "Hourly limit for AI explanations reached. Try again later." };
   const feed = await latestHeadlines(80);
   if (!feed.ok) return { ok: false, error: feed.message };

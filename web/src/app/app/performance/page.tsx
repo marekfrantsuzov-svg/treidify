@@ -4,6 +4,7 @@ import { DrawdownChart, GroupTable, MonthBars, Panel, Tile, money0 } from "@/com
 import { EquityChart } from "@/components/charts/equity-chart";
 import { ConnectStrip } from "@/components/app/status";
 import { SampleBadge } from "@/components/ui/pill";
+import { healthScore, healthStatus } from "@/lib/analytics/health";
 import { byMonth, bySessionOpened, bySide, bySymbol, byWeekday, drawdownSeries, equitySeries, holdingHours, inRange, performanceMetrics, periodRange } from "@/lib/analytics";
 import { fmtNumber, fmtPct, fmtSignedMoney } from "@/lib/format";
 import { PERIOD_NAMES, readPeriod } from "@/lib/period-param";
@@ -31,6 +32,8 @@ export default async function Performance({ searchParams }: { searchParams: Prom
   const startEq = series[0]?.equity ?? 0;
   const months = byMonth(allTrades, tz).slice(-12);
   const nz = (v: string, zero: string) => (!o && v === "—" ? zero : v);
+  const health = healthScore(allTrades, o?.startingEquity ?? 0);
+  const status = healthStatus(health.score);
   const tone = (v: number | null) => (v === null || v === 0 ? undefined : v > 0 ? "up" : "down");
 
   return (
@@ -74,6 +77,39 @@ export default async function Performance({ searchParams }: { searchParams: Prom
           <Panel title="By weekday" note={`Opened, ${tz}`}><GroupTable groups={byWeekday(trades, tz)} currency={c} first="Day" /></Panel>
           <Panel title="Long vs short"><GroupTable groups={bySide(trades)} currency={c} first="Direction" /></Panel>
         </div>
+
+        <section id="health-method" className="scroll-mt-24">
+          <Panel title="How Account Health is scored" note="Computed from all closed trades of this account. Needs at least 20 closed trades.">
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+              <div className="text-[13.5px] leading-relaxed text-ink-2">
+                <p>The score is the sum of five parts, 100 points in total. Each part is scaled between a weak and a strong value and capped, so one great number cannot hide a weak one.</p>
+                <p className="mt-2"><b className="text-ink">Strong</b> is 80 or more, <b className="text-ink">Moderate</b> 50 to 79, <b className="text-ink">At risk</b> under 50.</p>
+                <p className="mt-2">{health.score === null ? health.reason : <>This account: <b className="text-ink">{health.score}/100</b>{status ? `, ${status}` : ""}.</>}</p>
+              </div>
+              <table className="w-full text-left text-[13px]">
+                <thead className="text-ink-3"><tr><th className="py-1.5 font-medium">Part</th><th className="py-1.5 font-medium">How it is measured</th><th className="py-1.5 text-right font-medium">Points</th></tr></thead>
+                <tbody className="num">
+                  {[
+                    ["drawdown", "Drawdown control", "Max drawdown from peak trading equity; full points at 0%, none at 20% or worse", 30],
+                    ["profitFactor", "Profit factor", "Gross profit ÷ gross loss; none at 0.8, full at 2.0", 25],
+                    ["expectancy", "Expectancy", "Average result per trade relative to the average loser", 20],
+                    ["sizing", "Sizing consistency", "Variation of lot sizes; full points up to 0.25, none at 1.0", 15],
+                    ["streak", "Loss streaks", "Longest losing streak; full points up to 3, none at 10", 10],
+                  ].map(([key, label, how, max]) => {
+                    const part = health.components.find((x) => x.key === key);
+                    return (
+                      <tr key={key as string} className="border-t border-line align-top">
+                        <td className="py-2 pr-3 font-medium text-ink">{label}</td>
+                        <td className="py-2 pr-3 text-ink-2">{how}{part ? <span className="block text-[12px] text-ink-3">{part.detail}</span> : null}</td>
+                        <td className="py-2 text-right text-ink">{part ? `${part.points} / ${max}` : `– / ${max}`}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Panel>
+        </section>
       </div>
     </>
   );
