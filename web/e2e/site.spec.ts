@@ -7,6 +7,14 @@ test("homepage hero, product showcase sections, pricing and FAQ", async ({ page 
   await expect(page.getByRole("link", { name: /Start 3-day trial/ }).first()).toHaveAttribute("href", "/signup");
   await expect(page.getByText(/Illustrative preview with example figures/).first()).toBeVisible();
 
+  // The hero shows the animated desktop app, never a phone mockup; its steps can be chosen directly.
+  const demo = page.getByRole("group", { name: "Illustrative Treidify product demonstration" });
+  await expect(demo).toBeVisible();
+  await expect(page.locator(".lx-phone")).toHaveCount(0);
+  await demo.getByRole("button", { name: "Bearish 1H" }).click();
+  await expect(demo.getByRole("button", { name: "Bearish 1H" })).toHaveAttribute("aria-pressed", "true");
+  await expect(demo.locator(".sx-layer.is-on").getByText("XAUUSD · BEARISH 1H")).toBeAttached();
+
   for (const h of ["Numbers you can hold the product to.", "Your account, read the way a risk manager would.", "Analysis that changes with the timeframe.", "Every trading day, accounted for.", "A coach that has read every trade you took.", "The forces behind gold, in one desk.", "Nine tools. One account, one set of risk rules.", "Three steps to a clearer view.", "One workspace for the chart, the macro and your own account.", "Two plans. One honest trial.", "Straight answers.", "Trade with more clarity. Start today."]) {
     await expect(page.getByRole("heading", { name: h })).toBeVisible();
   }

@@ -29,7 +29,7 @@ export interface TfScene {
 }
 
 /** mulberry32: tiny deterministic PRNG so server and client render identical candles. */
-function rng(seed: number) {
+export function rng(seed: number) {
   let a = seed >>> 0;
   return () => {
     a = (a + 0x6d2b79f5) >>> 0;
@@ -41,7 +41,7 @@ function rng(seed: number) {
 }
 
 /** Candles that follow a scripted path through `anchors`, with seeded noise and wicks. */
-function candlesFrom(anchors: number[], n: number, noise: number, wick: number, seed: number): Candle[] {
+export function candlesFrom(anchors: number[], n: number, noise: number, wick: number, seed: number): Candle[] {
   const r = rng(seed);
   const out: Candle[] = [];
   const seg = (n - 1) / (anchors.length - 1);

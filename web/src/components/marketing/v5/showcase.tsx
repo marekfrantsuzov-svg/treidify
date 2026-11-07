@@ -3,7 +3,7 @@
 import { motion, useReducedMotion, useScroll, useSpring, useTransform } from "motion/react";
 import { Activity, CalendarClock, ShieldCheck, Target } from "lucide-react";
 import { useRef } from "react";
-import { DesktopMock, PhoneMock } from "../lx/mocks";
+import { DesktopMock } from "../lx/mocks";
 
 const NOTES = [
   { icon: Target, k: "Sell zone · 1H", v: "4,125.34 – 4,120.06", cls: "sc-n1" },
@@ -14,8 +14,8 @@ const NOTES = [
 
 /**
  * Product showcase (#product): the full dashboard grows into place as it scrolls in (scale and lift, scroll-linked,
- * no scroll-jacking) and four notes about what you are looking at arrive one after another. Phones get their own
- * composition: the phone app, upright, with the notes as a list. Example figures, labelled as such.
+ * no scroll-jacking) and four notes about what you are looking at arrive one after another. Phones see the same desktop
+ * app, zoomed past the sidebar onto the dashboard, with the notes as a list. Example figures, labelled as such.
  */
 export function ProductShowcase() {
   const ref = useRef<HTMLDivElement>(null);
@@ -38,7 +38,6 @@ export function ProductShowcase() {
         <motion.div className="sc-desk" style={{ scale, rotateX, y }}>
           <DesktopMock />
         </motion.div>
-        <div className="sc-phone"><PhoneMock /></div>
         <ul className="sc-notes">
           {NOTES.map((n, i) => (
             <motion.li key={n.k} className={`sc-note glass ${n.cls}`}
