@@ -1,9 +1,10 @@
 "use client";
 
-import { Link2 } from "lucide-react";
+import { Gauge, Link2, Percent, Scale, Wallet, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { healthScore, inRange, performanceMetrics, periodRange } from "@/lib/analytics";
+import { zonedMidnight } from "@/lib/analytics/periods";
 import { cn } from "@/lib/cn";
 import { fmtMoney, fmtNumber, fmtSignedMoney } from "@/lib/format";
 import { CountUp } from "@/components/ui/count-up";
@@ -46,13 +47,19 @@ function ScoreBars({ score }: { score: number | null }) {
 }
 
 /** One figure in the metrics panel: a quiet label over a tabular number. The first figure (balance) leads. */
-function Metric({ label, value, tone, primary }: { label: string; value: React.ReactNode; tone?: "up" | "down" | "muted"; primary?: boolean }) {
+function Metric({ label, value, tone, primary, icon: Icon, sub }: { label: string; value: React.ReactNode; tone?: "up" | "down" | "muted"; primary?: boolean; icon: LucideIcon; sub?: React.ReactNode }) {
   return (
     <div className={cn("d-metric", primary && "is-primary")}>
-      <span className="d-metric-label truncate">{label}</span>
+      <span className="d-metric-label truncate"><span className="d-metric-icon" aria-hidden><Icon /></span>{label}</span>
       <span className={cn("d-metric-value num truncate", tone === "up" ? "text-up-ink" : tone === "down" ? "text-down-ink" : tone === "muted" ? "text-ink-3" : "text-ink")}>{value}</span>
+      {sub && <span className="d-metric-sub num truncate">{sub}</span>}
     </div>
   );
+}
+
+/** "+$120.00" in profit green, "−$80.00" in loss red, for the small today / all-time lines. */
+function Signed({ v, currency }: { v: number; currency: string }) {
+  return <span className={v > 0 ? "text-up-ink" : v < 0 ? "text-down-ink" : "text-ink-2"}>{fmtSignedMoney(v, currency)}</span>;
 }
 
 /**
@@ -69,6 +76,11 @@ export function HealthStrip(props: AccountOverviewProps) {
   const m = useMemo(() => performanceMetrics(inPeriod), [inPeriod]);
   const all = useMemo(() => performanceMetrics(p.trades, p.startingEquity || null), [p.trades, p.startingEquity]);
   const health = useMemo(() => healthScore(p.trades, p.startingEquity, all), [p.trades, p.startingEquity, all]);
+  // Today in the person's own time zone, from the same closed trades as every other figure.
+  const today = useMemo(() => {
+    const [y, mo, d] = new Intl.DateTimeFormat("en-CA", { timeZone: p.timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now).split("-").map(Number);
+    return performanceMetrics(p.trades.filter((t) => inRange(t, { from: zonedMidnight(y!, mo!, d!, p.timezone), to: Math.floor(now.getTime() / 1000) + 1 })));
+  }, [p.trades, p.timezone, now]);
   const money = (v: number) => fmtMoney(v, p.currency, 2);
   const sample = p.state === "sample";
   const periodLabel = p.period === "CUSTOM" ? "range" : p.period === "ALL" ? "all" : p.period;
@@ -82,7 +94,7 @@ export function HealthStrip(props: AccountOverviewProps) {
         <ScoreRing score={none ? null : health.score} size={narrowRing ? 80 : 104} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 id="health-title" className="whitespace-nowrap text-[17px] font-semibold sm:text-[19px] tracking-[-0.02em] text-ink sm:text-[20px]">Account Health</h2>
+            <h2 id="health-title" className="title-grad whitespace-nowrap text-[17px] font-semibold tracking-[-0.02em] sm:text-[20px]">Account Health</h2>
             {health.grade && !none && <span className={cn("rounded-lg px-2 py-0.5 text-[12.5px] font-semibold", GRADE_CLS[health.grade])}>{health.grade}</span>}
             {sample && <span className="rounded-lg bg-warn-soft px-2 py-0.5 text-[12px] font-semibold text-warn">Sample</span>}
           </div>
@@ -96,11 +108,15 @@ export function HealthStrip(props: AccountOverviewProps) {
       </section>
 
       <div className="d-metrics dcard" role="group" aria-label="Account metrics">
-        <Metric primary label="Balance" tone={none ? "muted" : undefined} value={none || p.balance === null ? dash : <CountUp value={p.balance} format={money} />} />
-        <Metric label={`P&L (${periodLabel})`} tone={none ? "muted" : m.netProfit < 0 ? "down" : "up"}
-          value={none ? dash : <CountUp value={m.netProfit} format={(v) => fmtSignedMoney(v, p.currency)} />} />
-        <Metric label="Win rate" tone={none ? "muted" : undefined} value={none || m.winRate === null ? dash : <CountUp value={m.winRate * 100} format={(v) => `${v.toFixed(1)}%`} />} />
-        <Metric label="Profit factor" tone={none ? "muted" : undefined} value={none || m.profitFactor === null ? dash : fmtNumber(m.profitFactor)} />
+        <Metric primary icon={Wallet} label="Balance" tone={none ? "muted" : undefined} value={none || p.balance === null ? dash : <CountUp value={p.balance} format={money} />}
+          sub={none ? undefined : <>Overall P&L <Signed v={all.netProfit} currency={p.currency} /></>} />
+        <Metric icon={Gauge} label={`P&L (${periodLabel})`} tone={none ? "muted" : m.netProfit < 0 ? "down" : "up"}
+          value={none ? dash : <CountUp value={m.netProfit} format={(v) => fmtSignedMoney(v, p.currency)} />}
+          sub={none ? undefined : <>Today <Signed v={today.netProfit} currency={p.currency} /></>} />
+        <Metric icon={Percent} label="Win rate" tone={none ? "muted" : undefined} value={none || m.winRate === null ? dash : <CountUp value={m.winRate * 100} format={(v) => `${v.toFixed(1)}%`} />}
+          sub={none ? undefined : `${m.wins} of ${m.tradeCount} trades`} />
+        <Metric icon={Scale} label="Profit factor" tone={none ? "muted" : undefined} value={none || m.profitFactor === null ? dash : fmtNumber(m.profitFactor)}
+          sub={none ? undefined : p.state === "connected" ? <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-up" />MT5 connected</span> : p.state === "sample" ? "Sample account" : "MT5 connecting"} />
       </div>
     </>
   );

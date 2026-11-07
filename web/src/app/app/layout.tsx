@@ -28,6 +28,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       timezone={s.profile.timezone}
       greeting={greetingFor(s.profile.timezone)}
       unread={n}
+      theme={s.profile.dashboardPrefs.theme ?? null}
     >
       {children}
     </AppShell>

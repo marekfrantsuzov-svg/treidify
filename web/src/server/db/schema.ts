@@ -116,7 +116,11 @@ export interface DashboardPrefs {
   defaultTimeframe: "4H" | "1H" | "15M";
   showSessions: boolean;
   startPage: "dashboard" | "markets" | "journal";
+  /** The person's explicit theme choice, synced across devices. Absent until they pick one (dark is the default). */
+  theme?: ThemeChoice;
 }
+
+export type ThemeChoice = "dark" | "light" | "system";
 
 /** Public-visibility toggles. Everything sensitive defaults to private. Separate from verification. */
 export const privacySettings = pgTable("privacy_settings", {

@@ -1,0 +1,104 @@
+/* ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   Homepage, dark-glass layer (2026-11-07). Loaded after ed.css by the homepage only. Copy, structure and order are
+   unchanged; this file restores light, glass and depth on top of the editorial layout: brand silk in the hero, a
+   floating product stage, gradient accents on the key phrase of each heading, glass tiles and soft light pools that
+   mark the transitions between scenes.
+   ───────────────────────────────────────────────────────────────────────────────────────────────────────────── */
+
+/* ── Hero ── */
+.gx-hero { position: relative; isolation: isolate; }
+.gx-silk { position: absolute; z-index: -1; left: 0; right: 0; top: -96px; height: min(980px, 120vh); pointer-events: none; overflow: hidden; -webkit-mask: linear-gradient(180deg, transparent 0, rgba(0, 0, 0, 0.35) 18%, rgba(0, 0, 0, 0.6) 48%, #000 62%, transparent 100%); mask: linear-gradient(180deg, transparent 0, rgba(0, 0, 0, 0.35) 18%, rgba(0, 0, 0, 0.6) 48%, #000 62%, transparent 100%); }
+.gx-silk svg { width: 100%; height: 100%; }
+.gx-silk-a { transform-origin: 50% 50%; animation: gx-sway 26s ease-in-out infinite alternate; }
+.gx-silk-glow { animation: gx-sway 34s ease-in-out -8s infinite alternate; }
+.gx-silk-pulse path { animation: gx-travel 9s linear infinite; }
+.gx-silk-pulse path + path { animation-duration: 13s; animation-delay: -5s; }
+.gx-silk svg.is-paused * { animation-play-state: paused; }
+@keyframes gx-sway { from { transform: translate3d(0, 0, 0) scaleY(1); } to { transform: translate3d(-30px, 18px, 0) scaleY(1.06); } }
+@keyframes gx-travel { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+:root[data-theme="light"] .gx-silk { opacity: 0.55; }
+:root[data-theme="light"] .gx-silk-pulse { display: none; }
+
+.gx-kicker { display: inline-flex; align-items: center; gap: 10px; padding: 6px 14px 6px 10px; border-radius: 18px; background: var(--surface-top); border: 1px solid var(--border); box-shadow: var(--shadow); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); color: var(--text-2); }
+.gx-kicker-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--logo-grad); box-shadow: 0 0 12px rgba(196, 63, 228, 0.8); }
+.gx-hero-accent { background: linear-gradient(100deg in oklab, #a58bff 0%, #c86cf2 45%, #fb8bf3 100%); -webkit-background-clip: text; background-clip: text; color: transparent; padding-bottom: 0.08em; }
+:root[data-theme="light"] .gx-hero-accent { background: linear-gradient(100deg in oklab, #4b2fd6 0%, #8a3ee2 50%, #d23fc4 100%); -webkit-background-clip: text; background-clip: text; }
+.gx-cta { position: relative; overflow: hidden; }
+.gx-cta::after { content: "" !important; display: block !important; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.35) 50%, transparent 70%); transform: translateX(-120%); transition: transform 700ms var(--ease-glass); }
+.gx-cta:hover::after { transform: translateX(120%); }
+
+.gx-stage-persp { perspective: 1600px; }
+.gx-stage { position: relative; transform-style: preserve-3d; transform-origin: 50% 0%; will-change: transform; }
+.gx-stage-glow { position: absolute; z-index: 0; inset: 8% 6% -6%; border-radius: 40%; pointer-events: none; background: radial-gradient(50% 50% at 50% 50%, rgba(124, 92, 255, 0.45), rgba(242, 73, 237, 0.16) 55%, transparent 75%); filter: blur(30px); transform: translateZ(-1px); }
+:root[data-theme="light"] .gx-stage-glow { background: radial-gradient(50% 50% at 50% 50%, rgba(124, 92, 255, 0.25), rgba(242, 73, 237, 0.12) 55%, transparent 75%); }
+.ed-root .gx-frame .lx-desk { border-color: rgba(255, 255, 255, 0.12); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04), 0 60px 120px -40px rgba(0, 0, 0, 0.9), 0 40px 90px -50px rgba(124, 92, 255, 0.7); }
+:root[data-theme="light"] .ed-root .gx-frame .lx-desk { border-color: rgba(40, 26, 100, 0.1); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.8), 0 60px 120px -50px rgba(60, 40, 150, 0.45); }
+.ed-root .gx-phone .lx-phone { box-shadow: 0 50px 90px -30px rgba(0, 0, 0, 0.75), 0 30px 60px -40px rgba(242, 73, 237, 0.55); }
+
+.gx-chip { display: flex; align-items: center; gap: 12px; padding: 10px 16px 10px 10px; border-radius: 18px; white-space: nowrap; background: color-mix(in oklab, var(--surface-strong) 82%, transparent); border: 1px solid var(--border-strong); box-shadow: var(--shadow-lg), inset 0 1px 0 var(--highlight); -webkit-backdrop-filter: blur(20px) saturate(160%); backdrop-filter: blur(20px) saturate(160%); animation: gx-bob 8s ease-in-out infinite; }
+.lx-float-b .gx-chip { animation-delay: -2.6s; }
+.lx-float-c .gx-chip { animation-delay: -5.2s; }
+.gx-chip b { display: block; font-size: 13.5px; font-weight: 600; letter-spacing: -0.01em; color: var(--text); }
+.gx-chip small { display: block; font-size: 12px; color: var(--text-3); }
+.gx-chip-ico { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 11px; color: #fff; background: var(--logo-grad); box-shadow: 0 8px 18px -8px rgba(196, 63, 228, 0.8); }
+.gx-chip-ico svg { width: 17px; height: 17px; }
+.gx-chip-ico.is-up { background: linear-gradient(135deg, #22c38a, #129968); box-shadow: 0 8px 18px -8px rgba(34, 195, 138, 0.7); }
+.gx-chip-ico.is-down { background: linear-gradient(135deg, #ff6b78, #e0394a); box-shadow: 0 8px 18px -8px rgba(255, 93, 108, 0.7); }
+@keyframes gx-bob { 0%, 100% { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(0, -8px, 0); } }
+
+/* ── Scenes: light pools between sections, glass tiles, gradient accents ── */
+.ed-root > section { position: relative; }
+.ed-root > section + section::before { content: ""; position: absolute; left: 50%; top: 0; width: min(1100px, 90vw); height: 1px; transform: translateX(-50%); background: linear-gradient(90deg, transparent, rgba(157, 134, 243, 0.35), rgba(242, 123, 233, 0.3), transparent); opacity: 0.6; }
+:root[data-theme="light"] .ed-root > section + section::before { background: linear-gradient(90deg, transparent, rgba(91, 63, 230, 0.2), rgba(196, 63, 208, 0.18), transparent); }
+.ed-root > section:nth-of-type(odd)::after { content: ""; position: absolute; z-index: -1; right: -10vw; top: 10%; width: 55vw; height: 60%; pointer-events: none; background: radial-gradient(closest-side, rgba(124, 92, 255, 0.12), transparent 70%); }
+.ed-root > section:nth-of-type(even)::after { content: ""; position: absolute; z-index: -1; left: -10vw; top: 20%; width: 50vw; height: 60%; pointer-events: none; background: radial-gradient(closest-side, rgba(242, 73, 237, 0.08), transparent 70%); }
+.ed-root > section.gx-hero::after { display: none; }
+
+/* The quiet second phrase of each heading becomes the brand accent. */
+.ed-root .lx-grad-text, .ed-root .ed-quiet, .ed-root .ed-head-title em { background: linear-gradient(100deg in oklab, #a58bff 0%, #c86cf2 50%, #fb8bf3 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+:root[data-theme="light"] .ed-root :is(.lx-grad-text, .ed-quiet) { background: linear-gradient(100deg in oklab, #4b2fd6, #8a3ee2 50%, #d23fc4); -webkit-background-clip: text; background-clip: text; }
+.ed-root .ed-kicker:not(.gx-kicker), .ed-root .lx-eyebrow { color: var(--accent); font-weight: 600; }
+
+/* Figures: large numbers in a soft vertical light. */
+.ed-root .ed-figure-value { background: var(--figure-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.ed-root .ed-figure-grid { border-top-color: transparent; gap: 12px; }
+@media (min-width: 640px) { .ed-root .ed-figure-grid { gap: 16px; } }
+.ed-root .ed-figure { position: relative; padding: 24px; border: 1px solid var(--border) !important; border-radius: var(--r-card); background: linear-gradient(180deg, var(--surface-top), var(--surface) 50%); box-shadow: var(--shadow); -webkit-backdrop-filter: blur(var(--glass-blur)); backdrop-filter: blur(var(--glass-blur)); transition: border-color 240ms linear, transform 320ms var(--ease-glass); }
+.ed-root .ed-figure:hover { border-color: color-mix(in oklab, var(--accent) 30%, var(--border)) !important; transform: translateY(-3px); }
+.ed-root .ed-figure-unit { -webkit-text-fill-color: var(--text-3); }
+
+/* Glass tiles and stats. */
+.ed-root :is(.lx-tile, .lx-node) { background: linear-gradient(180deg, var(--surface-top), var(--surface) 50%); border: 1px solid var(--border); box-shadow: var(--shadow); -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat)); backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat)); transition: border-color 240ms linear, transform 320ms var(--ease-glass), box-shadow 320ms var(--ease-glass); }
+@media (hover: hover) { .ed-root .lx-tile:hover { border-color: color-mix(in oklab, var(--accent) 28%, var(--border)); transform: translateY(-3px); box-shadow: var(--shadow), 0 30px 60px -36px var(--accent-glow); } }
+.ed-root .ed-panel { border-radius: var(--r-card); }
+
+/* Timeframe story: the active step lights in the brand gradient. */
+.ed-root .lx-step.is-active .lx-step-tf { color: #fff; background: var(--logo-grad); box-shadow: 0 10px 24px -10px rgba(196, 63, 228, 0.7); }
+.ed-root .lx-step.is-active .lx-step-btn { border-top-color: transparent; border-image: linear-gradient(90deg, #7b5cff, #f27be9) 1; border-top-width: 1px; border-top-style: solid; }
+
+/* Coach scene: a deep glass panel lit from within. */
+.ed-root .lx-coach, :root[data-theme="dark"] .ed-root .lx-coach { position: relative; overflow: hidden; background: radial-gradient(80% 70% at 85% 0%, rgba(124, 92, 255, 0.28), transparent 60%), radial-gradient(60% 60% at 0% 100%, rgba(242, 73, 237, 0.14), transparent 60%), #0e0b18; border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 50px 100px -50px rgba(0, 0, 0, 0.9); }
+.ed-root .lx-coach .lx-grad-text { background: linear-gradient(100deg, #a58bff, #fb8bf3); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.ed-root .lx-chat { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+.ed-root .lx-coach-ico { background: var(--logo-grad); }
+
+/* Tool index: rows glow softly on hover. */
+.ed-root .ed-index-row { border-radius: 14px; }
+@media (hover: hover) { .ed-root .ed-index-row:hover { background: linear-gradient(90deg, var(--accent-soft), transparent 80%); } }
+.ed-root .ed-step-n { display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; color: #fff; font-weight: 600; background: var(--logo-grad); box-shadow: 0 10px 24px -12px rgba(196, 63, 228, 0.8); }
+.ed-root .ed-step { border-top: 0; padding: 24px; border-radius: var(--r-card); background: linear-gradient(180deg, var(--surface-top), var(--surface) 50%); border: 1px solid var(--border); box-shadow: var(--shadow); -webkit-backdrop-filter: blur(var(--glass-blur)); backdrop-filter: blur(var(--glass-blur)); }
+@media (max-width: 899.98px) { .ed-root .ed-steps { gap: 12px; } }
+
+/* Closing scene: a large pool of brand light behind the final call to action. */
+.ed-root .ed-final { position: relative; }
+.ed-root .ed-final-inner { position: relative; border-top: 0; padding: 48px 28px; border-radius: 32px; overflow: hidden; background: radial-gradient(70% 90% at 80% 10%, rgba(124, 92, 255, 0.3), transparent 60%), radial-gradient(60% 80% at 10% 100%, rgba(242, 73, 237, 0.16), transparent 60%), linear-gradient(180deg, var(--surface-top), var(--surface)); border: 1px solid var(--border); box-shadow: var(--shadow-lg); }
+@media (min-width: 1024px) { .ed-root .ed-final-inner { padding: 72px 64px; } }
+:root[data-theme="light"] .ed-root .ed-final-inner { background: radial-gradient(70% 90% at 80% 10%, rgba(124, 92, 255, 0.16), transparent 60%), radial-gradient(60% 80% at 10% 100%, rgba(242, 73, 237, 0.1), transparent 60%), linear-gradient(180deg, var(--surface-top), var(--surface)); }
+.ed-root .appstore { -webkit-backdrop-filter: blur(var(--glass-blur)); backdrop-filter: blur(var(--glass-blur)); }
+
+@media (prefers-reduced-motion: reduce) {
+  .gx-silk *, .gx-chip { animation: none !important; }
+  .gx-cta::after { display: none !important; }
+  .ed-root .ed-figure:hover, .ed-root .lx-tile:hover { transform: none; }
+}
+.ed-root { overflow-x: clip; }

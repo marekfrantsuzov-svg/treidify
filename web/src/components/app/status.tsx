@@ -37,7 +37,7 @@ export function PageHeader({ title, subtitle, children, icon }: { title: string;
       <div className="flex min-w-0 items-center gap-3.5">
         {Icon && <span className="page-icon" aria-hidden><Icon /></span>}
         <div className="min-w-0">
-          <h1 className="text-[24px] font-semibold leading-[30px] tracking-[-0.03em] text-ink sm:text-[28px] sm:leading-[34px]">{title}</h1>
+          <h1 className="page-title text-[24px] font-semibold leading-[30px] tracking-[-0.03em] sm:text-[28px] sm:leading-[34px]">{title}</h1>
           {subtitle && <p className="mt-0.5 text-[14px] leading-snug text-ink-2 sm:text-[15px]">{subtitle}</p>}
         </div>
       </div>

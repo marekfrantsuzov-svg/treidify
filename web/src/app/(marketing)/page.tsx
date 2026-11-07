@@ -11,6 +11,7 @@ import { EdFigures } from "@/components/marketing/ed/figures";
 import { EdAccount } from "@/components/marketing/ed/account";
 import { EdFinal, EdSteps, EdTools } from "@/components/marketing/ed/index-sections";
 import "@/components/marketing/ed/ed.css";
+import "@/components/marketing/ed/glass-landing.css";
 import { AppStoreSoon } from "@/components/marketing/v3/app-store";
 import { providerStatus } from "@/server/providers";
 

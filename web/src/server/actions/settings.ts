@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import sharp from "sharp";
@@ -10,7 +10,7 @@ import { audit } from "../audit";
 import { auth } from "../auth";
 import { db, schema } from "../db";
 import { startTrial } from "../entitlements";
-import { requireUser } from "../session";
+import { getSession, requireUser } from "../session";
 import { isTimeZone, usernameSchema } from "@/lib/validation";
 
 export type ActionResult = { ok: true; message?: string } | { ok: false; error: string };
@@ -110,9 +110,25 @@ export async function updatePreferences(input: z.input<typeof prefsSchema>): Pro
   if (!p.success) return fail(first(p.error));
   const { timezone, instruments, aiConsent, ...dashboardPrefs } = p.data;
   const [cur] = await db.select({ ai: schema.profile.aiConsentAt }).from(schema.profile).where(eq(schema.profile.userId, s.user.id));
-  await db.update(schema.profile).set({ timezone, instruments: [...new Set(instruments)], dashboardPrefs, aiConsentAt: aiConsent ? (cur?.ai ?? new Date()) : null }).where(eq(schema.profile.userId, s.user.id));
+  // Merge, so keys this form does not edit (the synced theme choice) survive a save.
+  await db.update(schema.profile).set({ timezone, instruments: [...new Set(instruments)], dashboardPrefs: sql`${schema.profile.dashboardPrefs} || ${JSON.stringify(dashboardPrefs)}::jsonb`, aiConsentAt: aiConsent ? (cur?.ai ?? new Date()) : null }).where(eq(schema.profile.userId, s.user.id));
   revalidatePath("/app", "layout");
   return { ok: true, message: "Preferences saved." };
+}
+
+const themeSchema = z.enum(["dark", "light", "system"]);
+
+/**
+ * Stores the theme the person picked so it follows them to every device. Signed-out visitors keep the choice in this
+ * browser only (next-themes' localStorage), so this quietly does nothing without a session.
+ */
+export async function saveThemePreference(input: string): Promise<ActionResult> {
+  const t = themeSchema.safeParse(input);
+  if (!t.success) return fail("Unknown theme.");
+  const s = await getSession();
+  if (!s) return { ok: true };
+  await db.update(schema.profile).set({ dashboardPrefs: sql`${schema.profile.dashboardPrefs} || jsonb_build_object('theme', ${t.data}::text)` }).where(eq(schema.profile.userId, s.user.id));
+  return { ok: true };
 }
 
 export async function beginTrial(): Promise<ActionResult> {

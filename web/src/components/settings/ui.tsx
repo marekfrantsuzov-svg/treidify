@@ -6,7 +6,7 @@ import { Glass } from "@/components/ui/glass";
 export function Section({ title, description, children, className }: { title: string; description?: React.ReactNode; children: React.ReactNode; className?: string }) {
   return (
     <Glass as="section" className={cn("p-5 sm:p-6", className)}>
-      <h2 className="text-[17px] font-semibold tracking-[-0.01em] text-ink">{title}</h2>
+      <h2 className="title-grad w-fit text-[17px] font-semibold tracking-[-0.01em]">{title}</h2>
       {description && <p className="mt-1 text-sm text-ink-2">{description}</p>}
       <div className="mt-5">{children}</div>
     </Glass>

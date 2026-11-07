@@ -55,7 +55,7 @@ export async function saveOnboardingStep(input: StepInput): Promise<StepResult> 
     case 4: await db.update(P).set({ timezone: d.timezone }).where(eq(P.userId, uid)); break;
     case 5: {
       const { step: _s, ...prefs } = d;
-      await db.update(P).set({ dashboardPrefs: prefs }).where(eq(P.userId, uid));
+      await db.update(P).set({ dashboardPrefs: sql`${P.dashboardPrefs} || ${JSON.stringify(prefs)}::jsonb` }).where(eq(P.userId, uid));
       break;
     }
     case 6: break;
