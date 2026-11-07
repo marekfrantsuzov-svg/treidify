@@ -57,9 +57,9 @@ export function Ambient() {
       <svg width="0" height="0" aria-hidden focusable="false" style={{ position: "absolute" }}>
         <defs>
           <linearGradient id="tdy-stroke" gradientUnits="userSpaceOnUse" x1="2" y1="3" x2="22" y2="21">
-            <stop offset="0" stopColor="#8f78ff" />
-            <stop offset="0.55" stopColor="#b84ef0" />
-            <stop offset="1" stopColor="#f27be9" />
+            <stop offset="0" stopColor="#4f6bff" />
+            <stop offset="0.55" stopColor="#8a4cf0" />
+            <stop offset="1" stopColor="#e36fd5" />
           </linearGradient>
         </defs>
       </svg>

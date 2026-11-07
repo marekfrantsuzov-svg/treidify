@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import "./system.css";
 import "./glass.css";
+import "./v5.css";
 import { site } from "@/config/site";
 import { Providers } from "@/components/providers/providers";
 import { GlassIconDefs } from "@/components/icons/glass-icon";

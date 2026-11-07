@@ -18,10 +18,9 @@ export const productNav = [
 
 export const mainNav = [
   { href: "/features", title: "Features" },
-  { href: "/how-it-works", title: "How it works" },
   { href: "/pricing", title: "Pricing" },
+  { href: "/help", title: "Learn" },
   { href: "/community", title: "Community" },
-  { href: "/help", title: "Help" },
 ] as const;
 
 export const footerNav = [

@@ -1,0 +1,115 @@
+/* v5 landing (master spec §4–5). Imported only by the homepage. Prefix v5-. */
+
+/* ── Entrance sequence: CSS only, starts at first paint ── */
+@keyframes v5-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes v5-rise { from { opacity: 0; transform: translate3d(0, 18px, 0); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes v5-line { from { transform: translate3d(0, 105%, 0); } to { transform: none; } }
+@keyframes v5-nav { from { opacity: 0; transform: translate3d(0, -10px, 0); } to { opacity: 1; transform: none; } }
+@keyframes v5-stage {
+  from { opacity: 0; transform: perspective(1800px) translate3d(60px, 40px, -220px) rotateY(-12deg); filter: blur(10px); }
+  60% { opacity: 1; filter: blur(0); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+@keyframes v5-float { 0%, 100% { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(0, -7px, 0); } }
+@keyframes v5-horizon { from { opacity: 0; transform: scaleX(0.6); } to { opacity: 1; transform: none; } }
+
+body:has(.v5-hero) .ambient { animation: v5-fade 700ms linear both; }
+body:has(.v5-hero) .mk-header .mk-bar { animation: v5-nav 600ms var(--ease-out-expo) 90ms both; }
+.v5-in { animation: v5-rise 820ms var(--ease-out-expo) var(--d, 0ms) both; }
+.v5-line { display: block; overflow: hidden; padding-bottom: 0.08em; margin-bottom: -0.08em; }
+.v5-in-line { display: inline-block; animation: v5-line 900ms var(--ease-out-expo) var(--d, 0ms) both; }
+.v5-in-stage { animation: v5-stage 1500ms var(--ease-out-expo) 560ms both; }
+
+/* ── Layout ── */
+.v5-hero { position: relative; isolation: isolate; overflow: clip; padding: clamp(20px, 3vw, 40px) 0 clamp(40px, 6vw, 80px); }
+.v5-hero-inner { position: relative; display: grid; gap: 48px; width: 100%; max-width: 1440px; margin: 0 auto; padding: 0 20px; }
+@media (min-width: 640px) { .v5-hero-inner { padding: 0 32px; } }
+@media (min-width: 1100px) {
+  .v5-hero-inner { grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr); align-items: center; gap: 24px; padding: 0 0 0 clamp(32px, 4.4vw, 72px); min-height: min(740px, calc(100svh - 96px)); }
+}
+
+.v5-kicker { font-size: 12px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-3); }
+.v5-title { margin-top: 22px; font-size: clamp(46px, 7.4vw, 104px); line-height: 0.98; font-weight: 700; letter-spacing: -0.045em; color: var(--text); }
+@media (min-width: 1100px) { .v5-title { font-size: clamp(64px, 5.6vw, 96px); } }
+.v5-title-dim { color: color-mix(in oklab, var(--text) 52%, transparent); }
+.v5-lead { margin-top: 26px; max-width: 34ch; font-size: clamp(17px, 1.35vw, 20px); line-height: 1.55; color: var(--text-2); text-wrap: pretty; }
+.v5-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 22px; margin-top: 34px; }
+.v5-cta { height: 58px !important; padding: 0 30px !important; border-radius: 999px !important; font-size: 17px !important; color: #fff !important; }
+.v5-play { display: inline-flex; align-items: center; gap: 12px; font-size: 16px; font-weight: 500; color: var(--text); }
+.v5-play-dot { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface-inset); transition: transform var(--m-base) var(--ease-glass), border-color var(--m-base) linear, background-color var(--m-base) linear; }
+.v5-play-dot svg { width: 14px; height: 14px; margin-left: 2px; fill: currentColor; }
+.v5-play:hover .v5-play-dot { transform: scale(1.06); border-color: color-mix(in oklab, var(--accent) 50%, var(--border)); background: var(--accent-soft); }
+.v5-trust { display: flex; flex-wrap: wrap; gap: 10px 22px; margin-top: 30px; font-size: 14px; color: var(--text-2); }
+.v5-trust li { display: inline-flex; align-items: center; gap: 8px; }
+.v5-trust svg { width: 16px; height: 16px; color: var(--text-3); }
+@media (max-width: 639.98px) {
+  .v5-actions { flex-direction: column; align-items: stretch; }
+  .v5-cta { width: 100%; justify-content: center; }
+  .v5-play { justify-content: center; }
+  .v5-trust { gap: 8px 16px; font-size: 13px; }
+}
+
+/* ── Product stage: perspective device on a lit pedestal ── */
+.v5-stage { position: relative; perspective: 1900px; perspective-origin: 30% 40%; }
+.v5-device-wrap { position: relative; transform-style: preserve-3d; transform-origin: 20% 50%; will-change: transform; }
+.v5-device { position: relative; overflow: hidden; border-radius: 26px; padding: 10px; }
+.v5-device .lx-desk { font-size: calc(var(--dw) / 75); border-radius: 18px; }
+.v5-device::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: linear-gradient(115deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0) 28%, rgba(255, 255, 255, 0) 70%, rgba(255, 255, 255, 0.03) 100%); }
+.v5-device-phone { position: absolute; display: none; }
+.v5-pedestal { position: absolute; z-index: -1; left: 2%; right: -8%; bottom: -9%; height: 16%; border-radius: 50%; background: radial-gradient(60% 70% at 45% 40%, rgba(124, 65, 237, 0.34), rgba(47, 91, 255, 0.16) 45%, transparent 75%); filter: blur(18px); transform: translateZ(0); }
+:root[data-theme="light"] .v5-pedestal { background: radial-gradient(60% 70% at 45% 40%, rgba(124, 65, 237, 0.18), rgba(47, 91, 255, 0.1) 45%, transparent 75%); }
+
+.v5-chip-pos { position: absolute; z-index: 3; }
+.v5-chip { display: flex; align-items: center; gap: 10px; padding: 10px 14px 10px 10px; border-radius: 16px; background: var(--surface-strong); border: 1px solid var(--border); box-shadow: var(--shadow-lg); -webkit-backdrop-filter: blur(20px) saturate(160%); backdrop-filter: blur(20px) saturate(160%); }
+.v5-chip > span:last-child { display: grid; }
+.v5-chip b { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; }
+.v5-chip small { font-size: 11.5px; color: var(--text-3); white-space: nowrap; }
+.v5-chip-ico { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); }
+.v5-chip-ico.is-down { background: color-mix(in oklab, var(--down) 16%, transparent); color: var(--down); }
+.v5-chip-ico svg { width: 16px; height: 16px; }
+.v5-chip-a { left: -4%; bottom: 14%; }
+.v5-chip-b { right: 36%; top: -7%; }
+.v5-chip-a .v5-chip { animation: v5-float 7s ease-in-out 2.2s infinite; }
+.v5-chip-b .v5-chip { animation: v5-float 8s ease-in-out 2.8s infinite; }
+
+/* Desktop: the device bleeds off the right edge like the reference. */
+@media (min-width: 1100px) {
+  .v5-stage { --dw: min(980px, 62vw); width: var(--dw); }
+  .v5-device { width: var(--dw); }
+}
+/* Tablet and phone: flatter presentation, phone mock in front so the UI stays legible. */
+@media (max-width: 1099.98px) {
+  .v5-stage { --dw: min(860px, calc(100vw - 40px)); width: var(--dw); margin: 0 auto; perspective: 1400px; perspective-origin: 50% 0; }
+  .v5-device { width: var(--dw); padding: 6px; border-radius: 18px; }
+  .v5-device .lx-desk { border-radius: 13px; }
+  .v5-device-wrap { transform-origin: 50% 0; }
+  .v5-chip-b { right: 4%; top: -5%; }
+}
+@media (max-width: 639.98px) {
+  .v5-stage { --dw: min(300px, 78vw); perspective: 1200px; }
+  .v5-device { display: none; }
+  .v5-device-phone { position: relative; display: block; z-index: 2; width: var(--dw); margin: 0 auto; }
+  .v5-device-phone .lx-phone { font-size: calc(var(--dw) / 26); }
+  .v5-chip-a { left: -10%; bottom: 18%; }
+  .v5-chip-b { display: none; }
+  .v5-pedestal { bottom: -6%; left: -10%; right: -10%; }
+}
+
+/* ── Light floor: perspective grid and horizon, flattening on scroll ── */
+.v5-floor { position: absolute; inset: auto 0 0; height: 24%; z-index: -1; pointer-events: none; perspective: 600px; perspective-origin: 50% 0; }
+.v5-floor-grid { position: absolute; inset: 0 -30%; transform-origin: 50% 0; will-change: transform, opacity;
+  background:
+    linear-gradient(90deg, rgba(120, 130, 255, 0.11) 1px, transparent 1px) 0 0 / 64px 64px,
+    linear-gradient(0deg, rgba(120, 130, 255, 0.09) 1px, transparent 1px) 0 0 / 64px 64px;
+  -webkit-mask: linear-gradient(180deg, transparent 0%, #000 30%, #000 60%, transparent 100%);
+  mask: linear-gradient(180deg, transparent 0%, #000 30%, #000 60%, transparent 100%);
+}
+.v5-floor-grid { transform: rotateX(62deg); }
+.v5-horizon { position: absolute; left: 8%; right: 8%; top: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(76, 86, 252, 0.7), rgba(227, 111, 213, 0.7), transparent); box-shadow: 0 0 24px 4px rgba(124, 65, 237, 0.35); animation: v5-horizon 1400ms var(--ease-out-expo) 900ms both; }
+:root[data-theme="light"] .v5-floor-grid { opacity: 0.6; }
+
+.v5-caption { margin: 56px auto 0; padding: 0 20px; max-width: 70ch; text-align: center; font-size: 12px; color: var(--text-3); }
+
+@media (prefers-reduced-motion: reduce) {
+  .v5-in, .v5-in-line, .v5-in-stage, .v5-horizon, .v5-chip, body:has(.v5-hero) .ambient, body:has(.v5-hero) .mk-header .mk-bar { animation: none !important; }
+}
