@@ -1,5 +1,6 @@
 import { createHmac } from "node:crypto";
 import { expect, type Page } from "@playwright/test";
+import postgres from "postgres";
 
 export const uniqueEmail = (tag: string) => `e2e-${tag}-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;
 
@@ -44,7 +45,7 @@ export async function signUp(page: Page, tag: string) {
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password", { exact: true }).fill("a-long-test-passphrase-42");
   await page.getByRole("checkbox").check();
-  await page.getByRole("button", { name: "Create free account" }).click();
+  await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.getByRole("heading", { name: "Check your inbox" })).toBeVisible({ timeout: 30_000 });
   await page.goto(await linkFromOutbox(page, email, "/api/auth/verify-email"));
   await page.getByLabel("Username").fill(`t_${Date.now().toString(36)}${tag[0]}`);
@@ -55,5 +56,21 @@ export async function signUp(page: Page, tag: string) {
   await page.getByRole("checkbox", { name: /I understand the risks/ }).click();
   await page.getByRole("button", { name: /Enter my dashboard/ }).click();
   await expect(page).toHaveURL(/\/app/, { timeout: 30_000 });
+  await grantPlan(email);
+  return email;
 }
 
+
+/**
+ * Gives the account a plan the way an admin grant would (billing has no test keys in CI), so the paid sections can be
+ * exercised. Free accounts see the plan gate instead; that is covered separately.
+ */
+export async function grantPlan(email: string, plan: "essential" | "premium" = "premium") {
+  const sql = postgres(process.env.DATABASE_URL ?? "postgres://treidify:treidify@localhost:5432/treidify_e2e", { max: 1 });
+  try {
+    const until = new Date(Date.now() + 7 * 864e5);
+    await sql`insert into entitlement (user_id, plan, source, premium_until)
+      select id, ${plan}, 'grant', ${until} from "user" where email = ${email.toLowerCase()}
+      on conflict (user_id) do update set plan = excluded.plan, source = 'grant', premium_until = excluded.premium_until`;
+  } finally { await sql.end(); }
+}

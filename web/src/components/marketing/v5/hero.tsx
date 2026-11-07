@@ -40,9 +40,9 @@ export function V5Hero() {
         <div className="v5-copy">
           <p className="v5-kicker v5-in" style={d(120)}>Trading intelligence for gold, the dollar and your own account</p>
           <h1 id="hero-title" className="v5-title">
-            <span className="v5-line"><span className="v5-in-line" style={d(150)}>Know where</span></span>
-            <span className="v5-line"><span className="v5-in-line" style={d(230)}>gold reacts.</span></span>
-            <span className="v5-line v5-title-dim"><span className="v5-in-line" style={d(310)}>Understand why</span></span>
+            <span className="v5-line"><span className="v5-in-line" style={d(150)}>Know where</span></span>{" "}
+            <span className="v5-line"><span className="v5-in-line" style={d(230)}>gold reacts.</span></span>{" "}
+            <span className="v5-line v5-title-dim"><span className="v5-in-line" style={d(310)}>Understand why</span></span>{" "}
             <span className="v5-line v5-title-dim"><span className="v5-in-line" style={d(370)}>it moves.</span></span>
           </h1>
           <p className="v5-lead v5-in" style={d(350)}>

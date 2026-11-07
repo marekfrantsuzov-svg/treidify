@@ -21,7 +21,7 @@ test("timeframes, journal search/detail/screenshots, AI coach, news and account 
 
   // News without a provider: an honest "not connected" state, never example headlines.
   await page.goto("/app/news");
-  await expect(page.getByText(/The news feed is not connected/)).toBeVisible();
+  await expect(page.getByText(/is not available right now/).first()).toBeVisible();
 
   // Coach without trades explains what is unavailable.
   await page.goto("/app/coach");
@@ -59,7 +59,7 @@ test("timeframes, journal search/detail/screenshots, AI coach, news and account 
   // Coach on the demo account: real period numbers and computed patterns; AI reviews say they need a key.
   await page.goto("/app/coach");
   for (const h of ["Daily review", "Weekly summary", "Monthly report", "Patterns across all synced trades"]) await expect(page.getByRole("heading", { name: h })).toBeVisible();
-  await expect(page.getByText(/AI reviews switch on when ANTHROPIC_API_KEY is set/).first()).toBeVisible();
+  await expect(page.getByText(/AI reviews are not available right now/).first()).toBeVisible();
 
   // Health reports provider state without exposing values.
   const health = await (await page.request.get("/api/health")).json();
