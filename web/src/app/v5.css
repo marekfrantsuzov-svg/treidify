@@ -336,3 +336,61 @@ html { background-color: var(--bg-0); }
   [role="tablist"] > button[role="tab"]::after { content: ""; position: absolute; inset: -7px -2px; }
   [role="tablist"][aria-label="Timeframe"] > button[role="tab"] { min-height: 40px; }
 }
+
+/* ═══ v6.1 tone pass (Marek, 2026-11-07 18:12): on his Mac the dashboard read too bright and mauve, with visible
+   banding; his phone photo of the same screen is the target: near-black canvas, one deep blue-violet light from the
+   lower left, darker glass. The backdrop is drawn by the browser at native resolution (no upscaled bitmap, so no
+   compression blocks on Retina/P3 screens) and dithered with fine noise so long gradients cannot band. ═══ */
+:root:not([data-theme="light"]) {
+  --bg-0: #060509;
+  --bg-primary: #060509;
+  --chrome-tint: #060509;
+  --amb-base: #060509;
+  --surface-glass: rgba(20, 15, 34, 0.62);
+  --surface: rgba(20, 15, 34, 0.62);
+  --surface-top: rgba(46, 32, 80, 0.3);
+  --glass-card-bg: linear-gradient(145deg, rgba(44, 30, 78, 0.34) 0%, rgba(16, 11, 30, 0.72) 52%, rgba(9, 7, 17, 0.84) 100%);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --g1-bg: rgba(6, 5, 11, 0.74);
+  --g3-bg: rgba(11, 8, 21, 0.76);
+  --g3-top: rgba(40, 26, 74, 0.46);
+  --bar-bg: rgba(8, 6, 14, 0.8);
+  --nav-glass: rgba(12, 9, 22, 0.72);
+  /* the old drifting orbs added a lavender haze over everything; keep only a faint movement */
+  --amb-1: rgba(70, 32, 180, 0.1);
+  --amb-2: rgba(120, 40, 170, 0.05);
+  --amb-3: rgba(60, 26, 160, 0.1);
+  --amb-4: rgba(0, 0, 0, 0);
+  --amb-5: rgba(0, 0, 0, 0);
+}
+:root:not([data-theme="light"]) .ambient::before {
+  background:
+    radial-gradient(56% 66% at 15% 68% in oklab, rgba(86, 36, 220, 0.82), rgba(58, 24, 165, 0.32) 46%, transparent 78%),
+    radial-gradient(42% 48% at 72% 46% in oklab, rgba(84, 38, 200, 0.34), transparent 74%),
+    radial-gradient(80% 42% at 46% 108% in oklab, rgba(36, 12, 104, 0.5), transparent 72%),
+    radial-gradient(34% 30% at 92% 8% in oklab, rgba(150, 60, 200, 0.1), transparent 70%),
+    #060509;
+}
+@media (max-aspect-ratio: 1/1) {
+  :root:not([data-theme="light"]) .ambient::before {
+    background:
+      radial-gradient(90% 46% at 10% 62% in oklab, rgba(78, 34, 205, 0.5), rgba(52, 22, 150, 0.18) 50%, transparent 78%),
+      radial-gradient(90% 40% at 70% 108% in oklab, rgba(36, 12, 104, 0.5), transparent 72%),
+      #060509;
+  }
+}
+/* Dither: fine monochrome noise at a level the eye does not see as texture, enough to break 8-bit steps. */
+:root:not([data-theme="light"]) .amb-grain { opacity: 0.06; mix-blend-mode: soft-light; }
+:root:not([data-theme="light"]) .ambient::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0.022;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='128' height='128'><filter id='d'><feTurbulence type='fractalNoise' baseFrequency='1.6' numOctaves='1' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1 0'/></filter><rect width='100%' height='100%' filter='url(%23d)'/></svg>");
+}
+:root:not([data-theme="light"]) .amb-vignette { background: linear-gradient(180deg, var(--chrome-tint) 0, rgba(6, 5, 9, 0.6) 9%, transparent 22%), radial-gradient(120% 90% at 40% 45%, transparent 50%, rgba(0, 0, 0, 0.6) 100%); }
+:root:not([data-theme="light"]) .m-main::before { background: none !important; }
+/* Glass picks up less colour from behind: saturate boosted the violet into mauve on wide-gamut screens. */
+:root:not([data-theme="light"]) :is(.dcard, .glass-card, .side-premium, .ed-panel, .lx-card) { -webkit-backdrop-filter: blur(22px) saturate(112%); backdrop-filter: blur(22px) saturate(112%); }
+:root:not([data-theme="light"]) :is(.g3, .d-chart, .d-ai) { -webkit-backdrop-filter: blur(var(--g3-blur)) saturate(115%); backdrop-filter: blur(var(--g3-blur)) saturate(115%); }
+:root:not([data-theme="light"]) .side-panel { -webkit-backdrop-filter: blur(var(--g1-blur)) saturate(110%); backdrop-filter: blur(var(--g1-blur)) saturate(110%); }
+@media (max-width: 639px) {
+  :root:not([data-theme="light"]) :is(.dcard, .glass-card) { -webkit-backdrop-filter: blur(14px) saturate(112%); backdrop-filter: blur(14px) saturate(112%); }
+}
