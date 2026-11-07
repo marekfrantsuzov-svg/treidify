@@ -57,7 +57,7 @@ jobs:
       - run: npm ci
       - run: npm run db:migrate
       # Database tests (MetaApi sync with a scripted MetaApi: owner/investor rules, isolation, P&L; shared market cache).
-      - run: npx vitest run src/server/sync/sync.db.test.ts src/server/market/saved-copy.db.test.ts
+      - run: npx vitest run --no-file-parallelism src/server/sync/sync.db.test.ts src/server/market/saved-copy.db.test.ts src/server/membership/membership.db.test.ts
       - run: npx playwright install --with-deps chromium
       # The journeys run against `next dev`, which compiles each route on its first visit. Compile the routes the
       # journeys use up front so a test's 5-second navigation waits measure the app, not the compiler.

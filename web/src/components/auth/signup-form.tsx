@@ -16,12 +16,12 @@ function strength(pw: string) {
   return Math.min(4, s);
 }
 
-export function SignupForm({ providers, trial }: { providers: { google: boolean; apple: boolean }; trial: boolean }) {
+export function SignupForm({ providers, plan }: { providers: { google: boolean; apple: boolean }; plan: "essential" | "premium" | null }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [pw, setPw] = useState("");
-  const callbackURL = trial ? "/onboarding?trial=1" : "/onboarding";
+  const callbackURL = plan ? `/onboarding?plan=${plan}` : "/onboarding";
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

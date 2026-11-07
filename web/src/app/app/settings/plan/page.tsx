@@ -16,7 +16,7 @@ export default async function Plan({ searchParams }: { searchParams: Promise<{ c
   ]);
   const notice = sp.checkout === "success" ? "Thank you. Your plan is being activated; this page updates within a few seconds." : sp.checkout === "cancelled" ? "Checkout was cancelled. Nothing was charged." : sp.start ? "Pick a plan to start your 3-day trial." : null;
   return (
-    <PlanPanel plan={p.plan} source={p.source} trialEndsAt={p.trialEndsAt?.toISOString() ?? null}
+    <PlanPanel plan={p.plan} source={p.source} trialEndsAt={p.trialEndsAt?.toISOString() ?? null} accessEndsAt={p.accessEndsAt?.toISOString() ?? null}
       renewsAt={sub?.currentPeriodEnd?.toISOString() ?? null} cancelAtPeriodEnd={sub?.cancelAtPeriodEnd ?? false}
       billing={stripeStatus().configured} timezone={s.profile.timezone} notice={notice} />
   );

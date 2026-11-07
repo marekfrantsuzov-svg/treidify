@@ -11,15 +11,20 @@ export const settingsNav = [
   { href: "/app/accounts", label: "Trading accounts" },
   { href: "/app/settings/security", label: "Security" },
   { href: "/app/settings/plan", label: "Plan" },
+  { href: "/app/settings/feedback", label: "Send feedback" },
 ] as const;
 
-export function SettingsNav() {
+/** Shown only to the owner and admins; the page and every action check the role again on the server. */
+const staffNav = [{ href: "/app/settings/members", label: "Members (Admin Panel)" }] as const;
+
+export function SettingsNav({ staff = false }: { staff?: boolean }) {
   const path = usePathname();
+  const items = staff ? [...settingsNav, ...staffNav] : settingsNav;
   return (
     <nav aria-label="Settings" className="inset relative mb-5 flex max-w-full gap-1 overflow-x-auto rounded-full p-1 [scrollbar-width:none]">
       <SlidingPill watch={path} className="rounded-full bg-[var(--surface-strong)] shadow-[var(--shadow),0_0_0_1px_color-mix(in_oklab,var(--accent)_14%,transparent)]" />
-      {settingsNav.map((n) => (
-        <Link key={n.href} href={n.href} data-active={path === n.href} aria-current={path === n.href ? "page" : undefined} className={cn("relative z-[1] shrink-0 rounded-full px-4 py-2 text-sm text-ink-2 transition-[color,transform] duration-200 hover:text-ink active:scale-[0.97]", path === n.href && "font-medium text-accent")}>
+      {items.map((n) => (
+        <Link key={n.href} href={n.href} data-active={path === n.href || path.startsWith(`${n.href}/`)} aria-current={path === n.href ? "page" : undefined} className={cn("relative z-[1] shrink-0 rounded-full px-4 py-2 text-sm text-ink-2 transition-[color,transform] duration-200 hover:text-ink active:scale-[0.97]", (path === n.href || path.startsWith(`${n.href}/`)) && "font-medium text-accent")}>
           {n.label}
         </Link>
       ))}

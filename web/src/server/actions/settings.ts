@@ -9,7 +9,7 @@ import { instrumentChoices } from "@/config/onboarding";
 import { audit } from "../audit";
 import { auth } from "../auth";
 import { db, schema } from "../db";
-import { getSession, requireUser } from "../session";
+import { getSession, requireMember } from "../session";
 import { isTimeZone, usernameSchema } from "@/lib/validation";
 
 export type ActionResult = { ok: true; message?: string } | { ok: false; error: string };
@@ -24,7 +24,7 @@ const profileSchema = z.object({
 });
 
 export async function updateProfile(input: z.input<typeof profileSchema>): Promise<ActionResult> {
-  const s = await requireUser();
+  const s = await requireMember();
   const p = profileSchema.safeParse(input);
   if (!p.success) return fail(first(p.error));
   const { name, username, bio, country } = p.data;
@@ -42,7 +42,7 @@ const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 
 /** Re-encodes every upload (strips metadata such as GPS, defeats polyglot files) to a 256px WebP. */
 export async function uploadAvatar(form: FormData): Promise<ActionResult> {
-  const s = await requireUser();
+  const s = await requireMember();
   const file = form.get("avatar");
   if (!(file instanceof File) || file.size === 0) return fail("Choose an image.");
   if (file.size > MAX_AVATAR_BYTES) return fail("Images must be 5 MB or smaller.");
@@ -60,7 +60,7 @@ export async function uploadAvatar(form: FormData): Promise<ActionResult> {
 }
 
 export async function removeAvatar(): Promise<ActionResult> {
-  const s = await requireUser();
+  const s = await requireMember();
   await db.update(schema.profile).set({ avatar: null }).where(eq(schema.profile.userId, s.user.id));
   revalidatePath("/app", "layout");
   return { ok: true, message: "Photo removed." };
@@ -80,7 +80,7 @@ const privacySchema = z.object({
 export type PrivacyInput = z.infer<typeof privacySchema>;
 
 export async function updatePrivacy(input: PrivacyInput): Promise<ActionResult> {
-  const s = await requireUser();
+  const s = await requireMember();
   const p = privacySchema.safeParse(input);
   if (!p.success) return fail(first(p.error));
   // Details of open positions are meaningless without the positions themselves; keep the toggles coherent.
@@ -104,7 +104,7 @@ const prefsSchema = z.object({
 });
 
 export async function updatePreferences(input: z.input<typeof prefsSchema>): Promise<ActionResult> {
-  const s = await requireUser();
+  const s = await requireMember();
   const p = prefsSchema.safeParse(input);
   if (!p.success) return fail(first(p.error));
   const { timezone, instruments, aiConsent, ...dashboardPrefs } = p.data;

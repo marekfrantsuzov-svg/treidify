@@ -9,7 +9,7 @@ import { aiStatus, explainHeadline } from "../ai/claude";
 import { requireFeature } from "../entitlements";
 import type { NewsBrief } from "../ai/schema";
 import { latestHeadlines } from "../news/service";
-import { requireUser } from "../session";
+import { requireMember } from "../session";
 
 export type BriefResult = { ok: true; brief: NewsBrief; generatedAt: string } | { ok: false; error: string };
 
@@ -23,7 +23,7 @@ const cachedBrief = unstable_cache(
  * model only ever sees text the provider published, never text sent from the browser. Cached per story for 24 hours.
  */
 export async function explainNews(id: string): Promise<BriefResult> {
-  const s = await requireUser();
+  const s = await requireMember();
   const gate = await requireFeature(s.user.id, "news.global");
   if (!gate.ok) return { ok: false, error: gate.error };
   if (!aiStatus().configured) return { ok: false, error: "AI explanations are not available right now." };

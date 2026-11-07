@@ -2,7 +2,7 @@ import { NextResponse, after } from "next/server";
 import { z } from "zod";
 import { MANUAL_REFRESH_MIN_MS } from "@/config/sync";
 import { rateLimit } from "@/lib/rate-limit";
-import { getSession } from "@/server/session";
+import { apiMember } from "@/server/session";
 import { liveRefresh, ownedConnection, syncConnection } from "@/server/sync/service";
 
 export const dynamic = "force-dynamic";
@@ -11,8 +11,10 @@ export const maxDuration = 60;
 const Id = z.string().uuid();
 
 async function respond(req: Request, manual: boolean) {
-  const s = await getSession();
-  if (!s) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Signed in AND a member with current access (pending, expired and suspended accounts get 403).
+  const m = await apiMember();
+  if (!m.ok) return NextResponse.json({ error: m.error }, { status: m.status });
+  const s = m.session;
   const id = Id.safeParse(new URL(req.url).searchParams.get("account"));
   if (!id.success) return NextResponse.json({ error: "Bad request" }, { status: 400 });
   if (!rateLimit(`live:${s.user.id}`, 30, 60_000).ok) return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": "30" } });

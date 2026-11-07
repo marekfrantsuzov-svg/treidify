@@ -4,7 +4,7 @@
  */
 
 /** Paths that belong to the app host: the platform, onboarding, admin and the sign-in flow. */
-const APP_PREFIXES = ["/app", "/onboarding", "/admin", "/login", "/signup", "/forgot-password", "/reset-password", "/goodbye"];
+const APP_PREFIXES = ["/app", "/onboarding", "/waitlist", "/admin", "/login", "/signup", "/forgot-password", "/reset-password", "/goodbye"];
 /** Paths every host may serve directly. */
 const SHARED_PREFIXES = ["/api", "/_next", "/dev", "/favicon", "/icon", "/apple-icon", "/opengraph-image", "/twitter-image", "/robots.txt", "/sitemap.xml", "/manifest.webmanifest"];
 
@@ -37,4 +37,4 @@ export function hostRedirect(cfg: HostConfig, host: string, pathname: string, se
   return null;
 }
 
-export const isProtectedPath = (path: string) => starts(path, ["/app", "/onboarding", "/admin"]);
+export const isProtectedPath = (path: string) => starts(path, ["/app", "/onboarding", "/waitlist", "/admin"]);

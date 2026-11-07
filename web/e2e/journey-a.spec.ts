@@ -2,17 +2,16 @@ import { expect, test } from "@playwright/test";
 import { grantPlan, linkFromOutbox, totp, uniqueEmail } from "./helpers";
 
 /**
- * Journey A: a new visitor creates an account with email, verifies it, completes onboarding and is sent to choose a
- * plan (3-day trial, card required), meets the server-side plan gate while on Free, then (with a plan) reaches the
- * dashboard led by Market Intelligence, edits their profile, protects the account with two-step sign-in, and signs
- * back in with it.
+ * Journey A: a new visitor creates an account with email, verifies it, completes onboarding and joins the waitlist
+ * (no trial starts, no app access, APIs refuse), then once approved reaches the dashboard led by Market
+ * Intelligence, edits their profile, protects the account with two-step sign-in, and signs back in with it.
  */
 test("sign up, verify, onboard, dashboard, profile, two-step sign-in", async ({ page }, info) => {
   const email = uniqueEmail(info.project.name);
   const password = "a-long-test-passphrase-42";
   const username = `e2e_${Date.now().toString(36)}${info.project.name[0]}`;
 
-  await page.goto("/signup?trial=1");
+  await page.goto("/signup?plan=premium");
   await page.getByLabel("Name").fill("Journey Tester");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password", { exact: true }).fill(password);
@@ -46,18 +45,26 @@ test("sign up, verify, onboard, dashboard, profile, two-step sign-in", async ({ 
   await expect(page.getByRole("heading", { name: /Connect your trading account/ })).toBeVisible();
   await page.getByRole("button", { name: "Continue without connecting" }).click();
 
-  await expect(page.getByRole("heading", { name: "You’re ready" })).toBeVisible();
-  const enter = page.getByRole("button", { name: /Enter my dashboard/ });
+  await expect(page.getByRole("heading", { name: "Almost there" })).toBeVisible();
+  const enter = page.getByRole("button", { name: /Join the waitlist/ });
   await expect(enter).toBeDisabled();
   await page.getByRole("checkbox", { name: /I understand the risks/ }).click();
-  await expect(page.getByRole("checkbox", { name: /3-day trial next/ })).toHaveAttribute("aria-checked", "true");
+  // The plan from the pricing link is pre-selected; it is recorded as intent only.
+  await expect(page.getByRole("radio", { name: /Premium · \$49/ })).toHaveAttribute("aria-checked", "true");
   await enter.click();
 
-  // The trial starts at checkout (card required), never on its own: the account is on Free until then.
-  await expect(page).toHaveURL(/\/app\/settings\/plan\?start=premium/, { timeout: 30_000 });
-  await page.goto("/app/coach");
-  await expect(page.getByRole("link", { name: /Start 3-day trial/ })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Daily review" })).toHaveCount(0);
+  // Registrations wait for approval: the waitlist screen, no trial, no dashboard, no data APIs.
+  await expect(page).toHaveURL(/\/waitlist/, { timeout: 30_000 });
+  await expect(page.getByRole("heading", { name: "You're on the Treidify Waitlist" })).toBeVisible();
+  await expect(page.getByText(email)).toBeVisible();
+  await expect(page.getByRole("link", { name: "Back to Homepage" })).toBeVisible();
+  for (const path of ["/app", "/app/coach", "/app/journal", "/app/settings/plan", "/app/settings/members"]) {
+    await page.goto(path);
+    await expect(page).toHaveURL(/\/waitlist/);
+  }
+  expect((await page.request.get("/api/market/candles?symbol=XAUUSD&tf=1H")).status()).toBe(403);
+  await page.goto("/onboarding");
+  await expect(page).toHaveURL(/\/waitlist/);
 
   await grantPlan(email);
   await page.goto("/app?welcome=1");
@@ -135,7 +142,7 @@ test("sign up, verify, onboard, dashboard, profile, two-step sign-in", async ({ 
   await expect(page.getByRole("switch", { name: "Public profile" })).toHaveAttribute("aria-checked", "false");
 
   await page.goto("/app/settings/plan");
-  await expect(page.getByText("Access granted by Treidify.")).toBeVisible();
+  await expect(page.getByRole("main").getByText(/Complimentary access from Treidify until/)).toBeVisible();
 
   await page.goto("/app/settings/security");
   await page.getByRole("button", { name: "Set up" }).click();

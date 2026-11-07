@@ -9,6 +9,9 @@ import { audit } from "../audit";
 import { auth } from "../auth";
 import { db, schema } from "../db";
 import { requireUser } from "../session";
+import { loadAccess } from "../membership/access";
+import { joinWaitlist } from "../membership/service";
+import { isCountryName } from "@/lib/countries";
 
 const instrumentIds = instrumentChoices.map((i) => i.id) as [string, ...string[]];
 const experienceIds = experienceChoices.map((e) => e.id) as [(typeof experienceChoices)[number]["id"], ...(typeof experienceChoices)[number]["id"][]];
@@ -18,14 +21,14 @@ const stepSchema = z.discriminatedUnion("step", [
   z.object({ step: z.literal(1), name: z.string().trim().min(1, "Enter your name.").max(60), username: usernameSchema }),
   z.object({ step: z.literal(2), experience: z.enum(experienceIds) }),
   z.object({ step: z.literal(3), instruments: z.array(z.enum(instrumentIds)).min(1, "Choose at least one market.").max(instrumentIds.length) }),
-  z.object({ step: z.literal(4), timezone: z.string().refine(isTimeZone, "Unknown time zone.") }),
+  z.object({ step: z.literal(4), timezone: z.string().refine(isTimeZone, "Unknown time zone."), country: z.string().refine(isCountryName, "Choose a country from the list.").nullable().optional() }),
   z.object({ step: z.literal(5), density: z.enum(["comfortable", "compact"]), defaultTimeframe: z.enum(["4H", "1H", "15M"]), showSessions: z.boolean(), startPage: z.enum(["dashboard", "markets", "journal"]) }),
   z.object({ step: z.literal(6), choice: z.literal("later") }),
-  z.object({ step: z.literal(7), riskAcknowledged: z.literal(true, { error: "Please confirm the risk acknowledgement." }), aiConsent: z.boolean(), startTrial: z.boolean() }),
+  z.object({ step: z.literal(7), riskAcknowledged: z.literal(true, { error: "Please confirm the risk acknowledgement." }), aiConsent: z.boolean(), selectedPlan: z.enum(["essential", "premium"]).nullable() }),
 ]);
 
 export type StepInput = z.input<typeof stepSchema>;
-export type StepResult = { ok: true; next: number; done?: boolean } | { ok: false; error: string; field?: string };
+export type StepResult = { ok: true; next: number; done?: boolean; waitlist?: boolean } | { ok: false; error: string; field?: string };
 
 export async function saveOnboardingStep(input: StepInput): Promise<StepResult> {
   const s = await requireUser("/onboarding");
@@ -51,7 +54,7 @@ export async function saveOnboardingStep(input: StepInput): Promise<StepResult> 
     }
     case 2: await db.update(P).set({ experience: d.experience }).where(eq(P.userId, uid)); break;
     case 3: await db.update(P).set({ instruments: [...new Set(d.instruments)] }).where(eq(P.userId, uid)); break;
-    case 4: await db.update(P).set({ timezone: d.timezone }).where(eq(P.userId, uid)); break;
+    case 4: await db.update(P).set({ timezone: d.timezone, ...(d.country !== undefined ? { country: d.country } : {}) }).where(eq(P.userId, uid)); break;
     case 5: {
       const { step: _s, ...prefs } = d;
       await db.update(P).set({ dashboardPrefs: sql`${P.dashboardPrefs} || ${JSON.stringify(prefs)}::jsonb` }).where(eq(P.userId, uid));
@@ -61,8 +64,12 @@ export async function saveOnboardingStep(input: StepInput): Promise<StepResult> 
     case 7: {
       const now = new Date();
       await db.update(P).set({ riskAcknowledgedAt: now, aiConsentAt: d.aiConsent ? now : null, onboardedAt: now, onboardingStep: ONBOARDING_STEPS }).where(eq(P.userId, uid));
-      await audit("onboarding.completed", { actorId: uid, targetType: "user", targetId: uid, meta: { aiConsent: d.aiConsent, trial: d.startTrial } });
-      return { ok: true, next: ONBOARDING_STEPS, done: true };
+      // The selected plan is recorded as intent only; it grants nothing. Non-members join the waitlist (pending) and
+      // get the confirmation email; no trial starts until the owner approves them.
+      await joinWaitlist({ id: uid, email: s.user.email, name: s.user.name }, d.selectedPlan);
+      await audit("onboarding.completed", { actorId: uid, targetType: "user", targetId: uid, meta: { aiConsent: d.aiConsent, selectedPlan: d.selectedPlan } });
+      const access = await loadAccess(uid);
+      return { ok: true, next: ONBOARDING_STEPS, done: true, waitlist: !access.allowed };
     }
   }
   await advance(d.step);

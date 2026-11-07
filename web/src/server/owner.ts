@@ -1,20 +1,20 @@
 /**
- * The Treidify owner: the one account allowed to connect MetaTrader with a master password (still read-only use).
+ * The Treidify owner: full administrative control (Members admin panel) and the one account allowed to connect
+ * MetaTrader with a master password (still read-only use).
  *
- * Rule (pure, unit tested here; the database binding lives in owner-binding.ts):
- * - The owner email is fixed on the server (OWNER_EMAIL, overridable only by the server variable TREIDIFY_OWNER_EMAIL).
- * - A user can be the owner only if their email, as stored in Treidify's database, equals it AND is verified (by the
- *   emailed link or by Google), and the session is not an admin impersonation.
- * - The first such user is bound to the owner slot by their immutable user ID. From then on only that user ID is the
- *   owner, so a later account can never take the role over, and nobody can grant it to themselves.
- * - TREIDIFY_OWNER_USER_ID, if set, pins the owner ID explicitly and takes precedence over the binding.
- * The id, email and verification always come from the database, never from anything the browser sends.
+ * Rule (pure, unit tested; the database side lives in owner-binding.ts):
+ * - The owner is a backend role: the single owner_binding row, holding one immutable user ID. No API, form or
+ *   request can write it. It is set once by a database migration or by scripts/assign-owner.ts (database access only).
+ * - TREIDIFY_OWNER_USER_ID, a server variable, may pin the owner ID explicitly and takes precedence.
+ * - Email addresses never make anyone the owner at runtime, and registering first means nothing.
+ * - The owner account must be verified, and an admin impersonation session never carries owner rights.
+ * OWNER_EMAIL remains only to tell that mailbox how to finish verification, and for the one-time bootstrap.
  * Kept free of "server-only" so it can be unit tested; only server code imports it.
  */
 export const OWNER_EMAIL = "marekfrantsuzov@gmail.com";
 
 export interface OwnerCandidate { id: string; email: string; emailVerified: boolean; impersonated?: boolean }
-export type OwnerDecision = "owner" | "not_owner" | "claim";
+export type OwnerDecision = "owner" | "not_owner";
 type Env = Record<string, string | undefined>;
 
 /** Canonical mailbox: lower case; for Gmail also without dots and +tags (Google delivers those to the same inbox). */
@@ -43,14 +43,12 @@ export function isOwnerEmail(email: string | null | undefined, env: Env = proces
 }
 
 /**
- * @param boundOwnerId the user ID currently bound to the owner slot, or null when nobody is bound yet.
- * Returns "claim" when this user qualifies and the slot is still free; the caller binds it atomically.
+ * @param boundOwnerId the user ID held by the owner slot, or null when nobody is bound.
+ * Only that user ID (or the pinned TREIDIFY_OWNER_USER_ID) is the owner; there is no runtime claim.
  */
 export function ownerDecision(u: OwnerCandidate | null | undefined, boundOwnerId: string | null, env: Env = process.env): OwnerDecision {
-  if (!u || u.impersonated) return "not_owner";
-  if (u.emailVerified !== true || !isOwnerEmail(u.email, env)) return "not_owner";
+  if (!u || u.impersonated || u.emailVerified !== true) return "not_owner";
   const c = ownerConfig(env);
-  if (c.id) return u.id === c.id ? "owner" : "not_owner";
-  if (boundOwnerId) return u.id === boundOwnerId ? "owner" : "not_owner";
-  return "claim";
+  const ownerId = c.id ?? boundOwnerId;
+  return ownerId && u.id === ownerId ? "owner" : "not_owner";
 }

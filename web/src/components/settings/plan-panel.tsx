@@ -11,12 +11,12 @@ import { Section } from "./ui";
 
 const NAME: Record<PlanId, string> = { free: "No plan", essential: "Essential", premium: "Premium" };
 
-export function PlanPanel({ plan, source, trialEndsAt, renewsAt, cancelAtPeriodEnd, billing, timezone, notice }: {
-  plan: PlanId; source: string; trialEndsAt: string | null; renewsAt: string | null; cancelAtPeriodEnd: boolean; billing: boolean; timezone: string; notice: string | null;
+export function PlanPanel({ plan, source, trialEndsAt, accessEndsAt = null, renewsAt, cancelAtPeriodEnd, billing, timezone, notice }: {
+  plan: PlanId; source: string; trialEndsAt: string | null; accessEndsAt?: string | null; renewsAt: string | null; cancelAtPeriodEnd: boolean; billing: boolean; timezone: string; notice: string | null;
 }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const fmt = (iso: string) => new Date(iso).toLocaleString("en-GB", { timeZone: timezone, day: "numeric", month: "short", year: "numeric" });
+  const fmt = (iso: string) => new Date(iso).toLocaleString("en-GB", { timeZone: timezone, day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
   const go = async (path: string, body?: unknown, key = path) => {
     setErr(null); setBusy(key);
@@ -40,10 +40,10 @@ export function PlanPanel({ plan, source, trialEndsAt, renewsAt, cancelAtPeriodE
         </div>
         <p className="mt-2 text-sm text-ink-2">
           {plan === "free" && "Choose Essential or Premium below. Each starts with a 3-day trial."}
-          {source === "trial" && trialEndsAt && <>Your introductory trial ends {fmt(trialEndsAt)}. After that, choose a plan to keep paid features.</>}
+          {source === "trial" && trialEndsAt && <>Your free trial ends {fmt(trialEndsAt)}. No card was taken and nothing is charged.</>}
           {source === "stripe" && trialEndsAt && <>Trial until {fmt(trialEndsAt)}. {cancelAtPeriodEnd ? "It will not renew." : "Your card is charged then, unless you cancel before."}</>}
           {source === "stripe" && !trialEndsAt && renewsAt && <>{cancelAtPeriodEnd ? `Ends ${fmt(renewsAt)} and will not renew.` : `Renews ${fmt(renewsAt)}.`}</>}
-          {source === "grant" && "Access granted by Treidify."}
+          {source === "grant" && (accessEndsAt ? <>Complimentary access from Treidify until {fmt(accessEndsAt)}. No payment is taken.</> : "Complimentary access from Treidify, with no end date. No payment is taken.")}
         </p>
         {source === "stripe" && (
           <div className="mt-4">

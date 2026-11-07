@@ -6,7 +6,7 @@ import { DESK_SLOTS, INSTRUMENTS, isSymbol } from "@/lib/markets/registry";
 import { coverageMap } from "../market/coverage";
 import { marketDataStatus } from "../market/service";
 import { marketPrefs, saveMarketPrefs } from "../market/prefs";
-import { requireUser } from "../session";
+import { requireMember } from "../session";
 
 export type MarketActionResult = { ok: true; desk: string[]; favorites: string[] } | { ok: false; error: string };
 
@@ -17,7 +17,7 @@ const slotSchema = z.object({ slot: z.number().int().min(0).max(DESK_SLOTS - 1),
  * two slots swap, so the desk always shows three different instruments.
  */
 export async function setDeskInstrument(input: z.input<typeof slotSchema>): Promise<MarketActionResult> {
-  const s = await requireUser();
+  const s = await requireMember();
   const p = slotSchema.safeParse(input);
   if (!p.success || !isSymbol(p.data.symbol)) return { ok: false, error: "Unknown instrument." };
   const { slot, symbol } = p.data;
@@ -38,7 +38,7 @@ export async function setDeskInstrument(input: z.input<typeof slotSchema>): Prom
 }
 
 export async function toggleFavorite(symbol: string): Promise<MarketActionResult> {
-  const s = await requireUser();
+  const s = await requireMember();
   if (typeof symbol !== "string" || !isSymbol(symbol)) return { ok: false, error: "Unknown instrument." };
   const cur = await marketPrefs(s.user.id);
   const favorites = cur.favorites.includes(symbol) ? cur.favorites.filter((x) => x !== symbol) : [...cur.favorites, symbol];

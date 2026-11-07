@@ -4,7 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db, schema } from "../db";
-import { requireUser } from "../session";
+import { requireMember } from "../session";
 import type { ActionResult } from "./settings";
 
 const S = schema;
@@ -19,7 +19,7 @@ const entrySchema = z.object({
 
 /** Saves the user's own notes and tags for one of their own closed trades. */
 export async function saveJournalEntry(input: z.input<typeof entrySchema>): Promise<ActionResult> {
-  const s = await requireUser();
+  const s = await requireMember();
   const p = entrySchema.safeParse(input);
   if (!p.success) return { ok: false, error: p.error.issues[0]?.message ?? "Please check the entry." };
   const { tradeId, notes, lessons, setupTags, mistakeTags } = p.data;
@@ -48,7 +48,7 @@ async function ownTrade(userId: string, tradeId: string) {
 
 /** Attaches a screenshot to one of the user's trades. Re-encoded to WebP (max 1600 px, metadata stripped) before storing. */
 export async function uploadJournalScreenshot(form: FormData): Promise<ActionResult> {
-  const s = await requireUser();
+  const s = await requireMember();
   const tradeId = String(form.get("tradeId") ?? "");
   const f = form.get("file");
   if (!z.string().uuid().safeParse(tradeId).success) return { ok: false, error: "Trade not found." };
@@ -70,7 +70,7 @@ export async function uploadJournalScreenshot(form: FormData): Promise<ActionRes
 }
 
 export async function deleteJournalScreenshot(id: string): Promise<ActionResult> {
-  const s = await requireUser();
+  const s = await requireMember();
   if (!z.string().uuid().safeParse(id).success) return { ok: false, error: "Not found." };
   const r = await db.delete(S.journalScreenshot).where(and(eq(S.journalScreenshot.id, id), eq(S.journalScreenshot.userId, s.user.id))).returning({ id: S.journalScreenshot.id });
   if (!r.length) return { ok: false, error: "Not found." };

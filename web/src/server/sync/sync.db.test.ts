@@ -100,7 +100,9 @@ run("MetaApi sync (database)", () => {
     svc._setMetaApiClient(fake.api);
     const { inArray } = await import("drizzle-orm");
     await db.delete(schema.tradingAccount).where(inArray(schema.tradingAccount.userId, ids));
-    await db.delete(schema.ownerBinding).where(inArray(schema.ownerBinding.userId, ids));
+    // The owner is a backend binding (set by migration or script), so the test binds it directly.
+    await db.delete(schema.ownerBinding);
+    await db.insert(schema.ownerBinding).values({ slot: "owner", userId: OWNER.id, email: OWNER.email });
   });
 
   const connect = (u: typeof ALICE, login: string, password: string, credential: "investor" | "master" = "investor", server = "Demo-Server") =>
@@ -167,7 +169,7 @@ run("MetaApi sync (database)", () => {
     expect(await conn(r.accountId)).toMatchObject({ accessMode: "master", credential: "master", status: "connected" });
   });
 
-  it("an unverified owner email does not get owner rights and cannot claim the owner slot", async () => {
+  it("an unverified owner account does not get owner rights", async () => {
     const { eq } = await import("drizzle-orm");
     const ob = await import("../owner-binding");
     await db.update(schema.user).set({ emailVerified: false }).where(eq(schema.user.id, OWNER.id));
@@ -175,32 +177,25 @@ run("MetaApi sync (database)", () => {
       const r = await connect({ ...OWNER, emailVerified: false }, "1004", "Master#4", "master");
       expect(r).toMatchObject({ ok: false, code: "credential" });
       expect((await ob.ownerForUserId(OWNER.id)).owner).toBe(false);
-      expect(await ob.boundOwnerId()).toBeNull();
     } finally {
       await db.update(schema.user).set({ emailVerified: true }).where(eq(schema.user.id, OWNER.id));
     }
   });
 
-  it("owner role binds automatically to one immutable user ID; nobody else can take or share it", async () => {
+  it("the owner is the one bound user ID; same-inbox twins, impersonation and normal users never get it", async () => {
     const ob = await import("../owner-binding");
-    // Normal users are never the owner and never bind the slot.
+    expect(await ob.boundOwnerId()).toBe(OWNER.id);
     expect((await ob.ownerForUserId(ALICE.id)).owner).toBe(false);
-    expect(await ob.boundOwnerId()).toBeNull();
-    // An admin impersonating the owner gets no owner rights and binds nothing.
+    expect((await ob.ownerForUserId(TWIN.id)).owner).toBe(false);
     expect((await ob.ownerForUserId(OWNER.id, { impersonatedBy: "some_admin" })).owner).toBe(false);
-    expect(await ob.boundOwnerId()).toBeNull();
-    // Two verified accounts on the same inbox race: exactly one wins, enforced by the database.
-    const [a, b] = await Promise.all([ob.ownerForUserId(OWNER.id), ob.ownerForUserId(TWIN.id)]);
-    expect([a.owner, b.owner].filter(Boolean)).toHaveLength(1);
-    const winner = a.owner ? OWNER : TWIN, loser = a.owner ? TWIN : OWNER;
-    expect(await ob.boundOwnerId()).toBe(winner.id);
-    // The loser stays a normal user: master refused before anything is sent.
-    expect(await connect(loser, "1004", "Master#4", "master")).toMatchObject({ ok: false, code: "credential" });
+    expect(await connect(TWIN, "1004", "Master#4", "master")).toMatchObject({ ok: false, code: "credential" });
     expect(fake.calls).not.toContain("createAccount");
     // The slot is a single row: a second binding is impossible at the database level.
-    await expect(db.insert(schema.ownerBinding).values({ slot: "owner", userId: loser.id, email: loser.email })).rejects.toThrow();
-    await expect(db.insert(schema.ownerBinding).values({ slot: "owner2", userId: loser.id, email: loser.email })).rejects.toThrow();
-    expect((await ob.ownerForUserId(winner.id)).owner).toBe(true);
+    await expect(db.insert(schema.ownerBinding).values({ slot: "owner", userId: TWIN.id, email: TWIN.email })).rejects.toThrow();
+    await expect(db.insert(schema.ownerBinding).values({ slot: "owner2", userId: TWIN.id, email: TWIN.email })).rejects.toThrow();
+    // Moving the slot needs an explicit replace (database access only).
+    await expect(ob.assignOwner(TWIN.id)).rejects.toThrow(/already bound/);
+    expect((await ob.ownerForUserId(OWNER.id)).owner).toBe(true);
   });
 
   it("a connection an interrupted request left at MetaApi is picked up, not duplicated, and only by the same user", async () => {
