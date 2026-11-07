@@ -2,6 +2,7 @@ import "server-only";
 import { eq } from "drizzle-orm";
 import { planById, type Feature, type PlanId } from "@/config/plans";
 import { db, schema } from "./db";
+import { ownerForUserId } from "./owner-binding";
 
 export type Entitlement = typeof schema.entitlement.$inferSelect;
 
@@ -38,9 +39,13 @@ export function planState(e: Entitlement | undefined, now = new Date()): PlanSta
   };
 }
 
-export async function getPlanState(userId: string, now = new Date()) {
+/** The verified owner always has Premium (it is their product); everyone else needs a subscription or grant. */
+export async function getPlanState(userId: string, now = new Date()): Promise<PlanState> {
   const [e] = await db.select().from(schema.entitlement).where(eq(schema.entitlement.userId, userId));
-  return planState(e, now);
+  const p = planState(e, now);
+  if (p.plan === "premium") return p;
+  if ((await ownerForUserId(userId)).owner) return { ...p, plan: "premium", source: "grant", trialEndsAt: null, trialRemainingMs: 0 };
+  return p;
 }
 
 export const planHas = (plan: PlanId, f: Feature) => planById(plan).features.includes(f);
