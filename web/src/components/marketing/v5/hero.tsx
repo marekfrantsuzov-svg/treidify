@@ -1,30 +1,23 @@
 "use client";
 
-import { motion, useScroll, useSpring, useTransform } from "motion/react";
 import { ArrowRight, CalendarCheck, Play, ShieldCheck, TrendingUp } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { ButtonLink } from "@/components/ui/button";
-import { DesktopMock, PhoneMock } from "../lx/mocks";
+import { LiveShowcase } from "../live/showcase";
 import { LightTrails } from "./light-trails";
 
 // Runs before the hero paints: a hero already seen in this tab (reload, back) skips the entrance.
 const SEEN = `try{if(sessionStorage.getItem("tdy-hero"))document.documentElement.dataset.heroSeen="1"}catch(e){}`;
 
 /**
- * v5 hero, composed after Marek's landing reference: copy on the left over a blurred night city interior, the product
- * as a large glass tablet in perspective standing on a dark marble plinth on the right.
+ * v5 hero, composed after Marek's landing reference: copy on the left over a blurred night city interior, and the
+ * product itself: the animated desktop showcase (../live/showcase.tsx), beside the copy on wide screens and under it
+ * on tablets and phones. Phones see the same desktop app, zoomed to the part each step is about, never a phone mockup.
  * The entrance is CSS keyframes (v5/landing.css) so it starts at first paint: background, navigation, kicker, headline
- * lines, copy, actions, then the tablet arriving in depth. After hydration one scroll value turns the tablet slightly
- * toward the viewer. Only transform and opacity animate; reduced motion turns all of it off.
+ * lines, copy, actions, then the showcase arriving. Only transform and opacity animate; reduced motion turns it off.
  */
 export function V5Hero() {
-  const stage = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({ target: stage, offset: ["start 0.6", "end start"] });
-  const p = useSpring(scrollYProgress, { stiffness: 120, damping: 28, mass: 0.4 });
-  const rotateY = useTransform(p, [0, 1], [0, 7]);
-  const y = useTransform(p, [0, 1], [0, -40]);
-
   const d = (ms: number) => ({ ["--d" as string]: `${ms}ms` }) as React.CSSProperties;
   // After the entrance has played once, remember it, so client-side back navigation does not replay it either.
   useEffect(() => {
@@ -61,17 +54,8 @@ export function V5Hero() {
           </ul>
         </div>
 
-        <div ref={stage} className="v5-stage" role="img" aria-label="Illustrative Treidify dashboard on a tablet">
-          <div className="v5-in-stage">
-            <motion.div className="v5-tilt" style={{ rotateY, y }}>
-              <div className="v5-tablet">
-                <div className="v5-screen"><DesktopMock /></div>
-              </div>
-              <div className="v5-tablet-shadow" aria-hidden />
-            </motion.div>
-            <div className="v5-phone-only"><PhoneMock /></div>
-          </div>
-          <div className="v5-plinth" aria-hidden />
+        <div className="v5-stage">
+          <div className="v5-in-stage"><LiveShowcase /></div>
         </div>
       </div>
       <p className="v5-caption">Illustrative preview with example figures, not live market or account data.</p>
