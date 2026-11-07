@@ -6,7 +6,7 @@ import { audit } from "../audit";
 import { db, schema } from "../db";
 import { resolveOwner } from "../owner-binding";
 import { credentialAllowed, decideAccess, redact, type Credential } from "./access";
-import { metaApi, MetaApiError, metaApiToken, tokenShape, type MetaAccountInfo, type MetaApiClient, type MetaPosition } from "./metaapi";
+import { metaApi, MetaApiError, metaApiToken, tokenShape, type MetaAccountInfo, type MetaApiClient, type MetaDeal, type MetaPosition } from "./metaapi";
 import { cashFlows, closedPositions, normaliseDeal } from "./reconstruct";
 
 /**
@@ -34,6 +34,10 @@ const ORDER_TYPE: Record<string, string> = { ORDER_TYPE_BUY_LIMIT: "Buy limit", 
 export const orderType = (t: string) => ORDER_TYPE[t] ?? t.replace(/^ORDER_TYPE_/, "").replace(/_/g, " ").toLowerCase();
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const HISTORY_DAYS = 730;
+/** First sync pulls this many recent days at once; older history follows in chunks within a time budget per sync. */
+const FIRST_WINDOW_DAYS = 30;
+const BACKFILL_CHUNK_DAYS = 90;
+const BACKFILL_BUDGET_MS = 20_000;
 
 /** Cost and abuse guards. Each MetaApi account is billed, so the totals are capped and configurable. */
 export function connectionLimits() {
@@ -142,7 +146,7 @@ export async function createConnection(user: ConnectUser, a: { platform: "mt4" |
   // If the region is still unknown, the first sync reads it from MetaApi and corrects it before any regional call.
   const externalId = `${region ?? "new-york"}:${created.id}`;
   if (adopted) await audit("account.connect_adopted", { actorId: user.id, targetType: "user", targetId: user.id });
-  const fresh = { externalId, status: "pending" as const, lastError: null, lastErrorAt: null, consecutiveFailures: 0, credential: a.credential, accessMode: null, accessVerifiedAt: null, lastLiveAt: null, secretCiphertext: null };
+  const fresh = { externalId, status: "pending" as const, lastError: null, lastErrorAt: null, consecutiveFailures: 0, credential: a.credential, accessMode: null, accessVerifiedAt: null, lastLiveAt: null, secretCiphertext: null, historyCursor: null };
   // Reconnecting the same login reuses its Treidify account, so synced history is never duplicated.
   if (existing) {
     if (existing.externalId && existing.externalId !== externalId) await api.remove(split(existing.externalId).id).catch(() => {});
@@ -234,10 +238,9 @@ export async function syncConnection(connectionId: string): Promise<SyncResult> 
     if (!access.ok) { await finish(false, access.reason); return { ok: false, phase: "refused", error: access.message }; }
 
     const now = new Date();
-    const from = conn.lastSyncAt ? new Date(conn.lastSyncAt.getTime() - 2 * 86_400_000) : conn.historyFrom ?? new Date(now.getTime() - HISTORY_DAYS * 86_400_000);
-    const [positions, rawDeals, orders] = await Promise.all([api.positions(region, id), api.deals(region, id, from, now), api.orders(region, id).catch(() => null)]);
-    const deals = rawDeals.map(normaliseDeal);
     const acctId = conn.tradingAccountId;
+    // 1. Live state first, so the account shows as connected with real balance and positions even while history loads.
+    const [positions, orders] = await Promise.all([api.positions(region, id), api.orders(region, id).catch(() => null)]);
     await db.transaction(async (tx) => {
       await tx.update(schema.tradingAccount).set({ currency: info.currency, broker: info.broker ?? null }).where(eq(schema.tradingAccount.id, acctId));
       await writeLive(tx, acctId, info, positions, now, true);
@@ -250,27 +253,32 @@ export async function syncConnection(connectionId: string): Promise<SyncResult> 
           stopLoss: o.stopLoss ?? null, takeProfit: o.takeProfit ?? null, placedAt: new Date(o.time),
         })));
       }
-      if (deals.length) {
-        const inserted = await tx.insert(schema.deal).values(deals.map((d) => ({ tradingAccountId: acctId, ...d }))).onConflictDoNothing().returning({ id: schema.deal.id, externalId: schema.deal.externalId });
-        const idOf = new Map(inserted.map((r) => [r.externalId, r.id]));
-        const flows = cashFlows(deals).filter((f) => idOf.has(f.externalId));
-        if (flows.length) await tx.insert(schema.cashFlow).values(flows.map((f) => ({ tradingAccountId: acctId, dealId: idOf.get(f.externalId)!, kind: f.kind, amount: f.amount, at: f.at })));
-        // Rebuild closed trades for every position touched, from ALL stored deals of those positions.
-        const pids = [...new Set(deals.map((d) => d.positionId).filter((p): p is string => !!p))];
-        if (pids.length) {
-          const all = await tx.select().from(schema.deal).where(and(eq(schema.deal.tradingAccountId, acctId), inArray(schema.deal.positionId, pids)));
-          const closed = closedPositions(all);
-          for (const c of closed) {
-            const net = c.profit + c.commission + c.swap + c.fee;
-            const usd = info.currency === "USD";
-            await tx.insert(schema.closedTrade).values({ tradingAccountId: acctId, ...c, netUsd: usd ? net : null, fxRateToUsd: usd ? 1 : null })
-              .onConflictDoUpdate({ target: [schema.closedTrade.tradingAccountId, schema.closedTrade.positionId], set: { closePrice: c.closePrice, closeTime: c.closeTime, profit: c.profit, commission: c.commission, swap: c.swap, fee: c.fee, volume: c.volume, stopLoss: c.stopLoss, takeProfit: c.takeProfit, netUsd: usd ? net : null } });
-          }
-        }
-      }
-      await tx.update(schema.providerConnection).set({ status: "connected", lastSyncAt: now, lastLiveAt: now, consecutiveFailures: 0, lastError: null }).where(eq(schema.providerConnection.id, connectionId));
+      await tx.update(schema.providerConnection).set({ status: "connected", lastLiveAt: now, consecutiveFailures: 0, lastError: null }).where(eq(schema.providerConnection.id, connectionId));
     });
-    await finish(true, undefined, deals.length);
+
+    // 2. History in bounded windows: recent deals first, then older history backwards in chunks, within a time budget.
+    // A large or slow history therefore never blocks the account; the next sync continues where this one stopped.
+    const started = Date.now();
+    const target = conn.historyFrom ?? new Date(now.getTime() - HISTORY_DAYS * 86_400_000);
+    let imported = 0;
+    let historyError: string | null = null;
+    try {
+      const recentFrom = conn.lastSyncAt ? new Date(conn.lastSyncAt.getTime() - 2 * 86_400_000) : new Date(now.getTime() - FIRST_WINDOW_DAYS * 86_400_000);
+      imported += await importDeals(acctId, info.currency, await api.deals(region, id, recentFrom, now));
+      await db.update(schema.providerConnection).set({ lastSyncAt: now, ...(conn.historyCursor ? {} : { historyCursor: recentFrom }) }).where(eq(schema.providerConnection.id, connectionId));
+      let cursor = conn.historyCursor ?? recentFrom;
+      while (cursor > target && Date.now() - started < BACKFILL_BUDGET_MS) {
+        const from = new Date(Math.max(target.getTime(), cursor.getTime() - BACKFILL_CHUNK_DAYS * 86_400_000));
+        imported += await importDeals(acctId, info.currency, await api.deals(region, id, from, cursor));
+        cursor = from;
+        await db.update(schema.providerConnection).set({ historyCursor: cursor }).where(eq(schema.providerConnection.id, connectionId));
+      }
+    } catch (e) {
+      historyError = redact(e instanceof Error ? e.message : String(e));
+      reportError(new Error(historyError), { where: "sync.history", extra: { connectionId } });
+      await db.update(schema.providerConnection).set({ lastError: "Trade history is still loading from MetaApi; it continues automatically.", lastErrorAt: new Date() }).where(eq(schema.providerConnection.id, connectionId));
+    }
+    await finish(!historyError, historyError ? `history: ${historyError}` : undefined, imported);
     return { ok: true, phase: "synced" };
   } catch (e) {
     const msg = redact(e instanceof MetaApiError ? e.message : `Sync failed: ${e instanceof Error ? e.message : String(e)}`);
@@ -282,6 +290,30 @@ export async function syncConnection(connectionId: string): Promise<SyncResult> 
 }
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/** Stores deals (deduped on broker id), their cash flows, and rebuilds the closed trades of every position they touch. */
+async function importDeals(acctId: string, currency: string, rawDeals: MetaDeal[]) {
+  const deals = rawDeals.map(normaliseDeal);
+  if (!deals.length) return 0;
+  return db.transaction(async (tx) => {
+    const inserted = await tx.insert(schema.deal).values(deals.map((d) => ({ tradingAccountId: acctId, ...d }))).onConflictDoNothing().returning({ id: schema.deal.id, externalId: schema.deal.externalId });
+    const idOf = new Map(inserted.map((r) => [r.externalId, r.id]));
+    const flows = cashFlows(deals).filter((f) => idOf.has(f.externalId));
+    if (flows.length) await tx.insert(schema.cashFlow).values(flows.map((f) => ({ tradingAccountId: acctId, dealId: idOf.get(f.externalId)!, kind: f.kind, amount: f.amount, at: f.at })));
+    // Rebuild closed trades for every position touched, from ALL stored deals of those positions.
+    const pids = [...new Set(deals.map((d) => d.positionId).filter((p): p is string => !!p))];
+    if (pids.length) {
+      const all = await tx.select().from(schema.deal).where(and(eq(schema.deal.tradingAccountId, acctId), inArray(schema.deal.positionId, pids)));
+      for (const c of closedPositions(all)) {
+        const net = c.profit + c.commission + c.swap + c.fee;
+        const usd = currency === "USD";
+        await tx.insert(schema.closedTrade).values({ tradingAccountId: acctId, ...c, netUsd: usd ? net : null, fxRateToUsd: usd ? 1 : null })
+          .onConflictDoUpdate({ target: [schema.closedTrade.tradingAccountId, schema.closedTrade.positionId], set: { closePrice: c.closePrice, closeTime: c.closeTime, profit: c.profit, commission: c.commission, swap: c.swap, fee: c.fee, volume: c.volume, stopLoss: c.stopLoss, takeProfit: c.takeProfit, netUsd: usd ? net : null } });
+      }
+    }
+    return inserted.length;
+  });
+}
 
 /** Replaces open positions and records a balance/equity snapshot (at most one new row per minute; otherwise the latest row is updated). */
 async function writeLive(tx: Tx | typeof db, acctId: string, info: MetaAccountInfo, positions: MetaPosition[], now: Date, forceRow = false) {

@@ -18,6 +18,7 @@ function fakeMetaApi() {
   const accounts = new Map<string, FakeAccount>();
   const removed: string[] = [];
   const calls: string[] = [];
+  const control = { historyDown: false };
   let seq = 0;
   // Regional calls only answer on the account's real region, like MetaApi's regional hosts.
   const at = (region: string) => { if (region !== "london") throw new MetaApiError("no answer within 15 s", 504); };
@@ -54,9 +55,13 @@ function fakeMetaApi() {
     async info(r, id) { calls.push("info"); at(r); return get(id).info; },
     async positions(r, id) { calls.push("positions"); at(r); return get(id).positions; },
     async orders() { calls.push("orders"); return []; },
-    async deals(r, id) { calls.push("deals"); at(r); return get(id).deals; },
+    async deals(r, id, from, to) {
+      calls.push("deals"); at(r);
+      if (control.historyDown) throw new MetaApiError("TimeoutError: history not ready", 504);
+      return get(id).deals.filter((d) => { const t = Date.parse(d.time); return t >= from.getTime() && t <= to.getTime(); });
+    },
   };
-  return { api, accounts, removed, calls };
+  return { api, accounts, removed, calls, control };
 }
 
 run("MetaApi sync (database)", () => {
@@ -224,6 +229,27 @@ run("MetaApi sync (database)", () => {
     await db.update(schema.providerConnection).set({ externalId: wrong }).where(eq(schema.providerConnection.id, c.id));
     expect(await syncOf(r.accountId)).toEqual({ ok: true, phase: "synced" });
     expect((await conn(r.accountId)).externalId).toMatch(/^london:/);
+  });
+
+  it("slow history never blocks the account: live data shows as connected, history follows on the next sync", async () => {
+    const r = await connect(ALICE, "1003", "Investor#3");
+    if (!r.ok) throw new Error(r.error);
+    fake.control.historyDown = true;
+    expect(await syncOf(r.accountId)).toEqual({ ok: true, phase: "synced" });
+    const { eq } = await import("drizzle-orm");
+    let c = await conn(r.accountId);
+    expect(c.status).toBe("connected");
+    expect(c.lastSyncAt).toBeNull();
+    const [snap] = await db.select().from(schema.accountSnapshot).where(eq(schema.accountSnapshot.tradingAccountId, r.accountId));
+    expect(snap).toMatchObject({ balance: 10_000, equity: 10_050 });
+    expect(await db.select().from(schema.closedTrade).where(eq(schema.closedTrade.tradingAccountId, r.accountId))).toHaveLength(0);
+    fake.control.historyDown = false;
+    expect(await syncOf(r.accountId)).toEqual({ ok: true, phase: "synced" });
+    c = await conn(r.accountId);
+    expect(c.lastSyncAt).not.toBeNull();
+    expect(c.historyCursor!.getTime()).toBe(c.historyFrom!.getTime());
+    expect(await db.select().from(schema.closedTrade).where(eq(schema.closedTrade.tradingAccountId, r.accountId))).toHaveLength(2);
+    expect(fake.calls.filter((x) => x === "deals").length).toBeGreaterThan(2); // recent window + backfill chunks
   });
 
   it("wrong password and wrong server are reported by code and store nothing", async () => {

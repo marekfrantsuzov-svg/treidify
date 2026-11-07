@@ -43,6 +43,13 @@
       "when": 1793637563751,
       "tag": "0005_owner_binding",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794058526589,
+      "tag": "0006_history_cursor",
+      "breakpoints": true
     }
   ]
 }
