@@ -167,6 +167,8 @@ export const providerConnection = pgTable("provider_connection", {
   lastError: text("last_error"),
   consecutiveFailures: integer("consecutive_failures").notNull().default(0),
   historyFrom: ts("history_from"),
+  /** Oldest point history has been imported back to; backfill continues from here toward historyFrom. */
+  historyCursor: ts("history_cursor"),
   /** AES-256-GCM ciphertext of the investor password, only if the provider requires us to hold it. Unused with MetaApi: always null. */
   secretCiphertext: text("secret_ciphertext"),
   /** What the user said they entered: "investor" (everyone) or "master" (only the verified owner may choose it). */

@@ -1,0 +1,1 @@
+ALTER TABLE "provider_connection" ADD COLUMN "history_cursor" timestamp with time zone;
