@@ -82,6 +82,35 @@ DATABASE_URL=postgres://…localhost… node signup.mjs   # once; then: npx tsx 
 node capture.mjs
 ```
 
+
+## v2 commercial (current): "Treidify · Trade with clarity"
+
+The 71.5 s narrated commercial replaced the first 56 s cut. It lives beside it in the same Remotion project:
+
+| | |
+| --- | --- |
+| Composition | `TreidifyCommercial` (`film/src/v2/`, timeline in `film/commercial.json`) |
+| Length | 71.5 s, 4290 frames at 60 fps, 1920×1080 (captures are 2×/3×, so `--scale=2` gives a sharp 4K) |
+| Narration | `film/public/vo/lineNN.wav` + word timings `lines.json` (Kokoro TTS, Apache-2.0, voice `af_heart` with British-English phonemes) |
+| Score + SFX | `tools/make_audio2.py` → `film/public/audio2/mix.wav` (+ `vo`, `music`, `sfx` stems), original synthesis + Treidify UI sounds |
+| Layers | `capture/capture-v2.mjs` (iPhone 393×852 @3×, light + dark, desktop chart overlay states) → `tools/crops2.py` → `film/public/v2` |
+| Text QA | `node qa.mjs 1` renders every frame and writes `out/qa-report.txt`: any two visible text boxes that intersect, and text outside a 40 px safe margin |
+
+```bash
+cd video-production/film
+python3 ../tools/make_audio2.py
+npx remotion render src/index.ts TreidifyCommercial out/v2-raw.mp4 --codec=h264 --crf=16
+ffmpeg -i out/v2-raw.mp4 -c:v copy -af loudnorm=I=-14:TP=-1:LRA=11 -c:a aac -b:a 320k -ar 48000 out/treidify-commercial-1080p60.mp4
+# 4K: add --scale=2 to the render
+```
+
+To re-voice with another engine (for example an ElevenLabs voice), replace `film/public/vo/lineNN.wav`, regenerate
+`lines.json` word timings (see the README section above for the script used) and adjust `film/commercial.json` → `vo` start frames.
+
+Honesty in v2: the MT5 scene shows only "MetaTrader 5" and "Treidify" (the MT5 tile is a neutral terminal glyph, not the
+MetaQuotes logo). "Secure, read-only connection" is not shown, because the read-only MetaApi link is coded but not yet
+verified live. Calendar events are the landing page's labelled "Example events"; the AI Coach card is labelled "Illustrative".
+
 ## Honesty rules the film follows
 
 - Every interface frame is a real screenshot of the Treidify web app (dashboard, Markets, Analysis, Macro Desk,

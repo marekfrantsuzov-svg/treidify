@@ -8,3 +8,5 @@ node_modules/
 capture/node_modules
 # local sign-in session for the capture (never commit)
 capture/state.json
+film/public/v2/
+film/public/audio2/

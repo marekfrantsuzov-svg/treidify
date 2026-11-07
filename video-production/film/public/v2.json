@@ -1,0 +1,467 @@
+{
+ "full-dash-light": {
+  "file": "v2/full-dash-light.jpg",
+  "w": 1920,
+  "h": 1080
+ },
+ "full-dash-dark": {
+  "file": "v2/full-dash-dark.jpg",
+  "w": 1920,
+  "h": 1080
+ },
+ "full-clean-light": {
+  "file": "v2/full-clean-light.jpg",
+  "w": 1920,
+  "h": 1080
+ },
+ "full-clean-dark": {
+  "file": "v2/full-clean-dark.jpg",
+  "w": 1920,
+  "h": 1080
+ },
+ "full-journal-light": {
+  "file": "v2/full-journal-light.jpg",
+  "w": 1920,
+  "h": 1080
+ },
+ "full-journal-dark": {
+  "file": "v2/full-journal-dark.jpg",
+  "w": 1920,
+  "h": 1080
+ },
+ "full-macro-light": {
+  "file": "v2/full-macro-light.jpg",
+  "w": 1920,
+  "h": 1080
+ },
+ "full-macro-dark": {
+  "file": "v2/full-macro-dark.jpg",
+  "w": 1920,
+  "h": 1080
+ },
+ "full-health-light": {
+  "file": "v2/full-health-light.jpg",
+  "w": 1920,
+  "h": 1080
+ },
+ "full-health-dark": {
+  "file": "v2/full-health-dark.jpg",
+  "w": 1920,
+  "h": 1080
+ },
+ "full-accounts-light": {
+  "file": "v2/full-accounts-light.jpg",
+  "w": 1920,
+  "h": 1080
+ },
+ "full-accounts-dark": {
+  "file": "v2/full-accounts-dark.jpg",
+  "w": 1920,
+  "h": 1080
+ },
+ "full-structliq-light": {
+  "file": "v2/full-structliq-light.jpg",
+  "w": 1920,
+  "h": 1080
+ },
+ "full-structliq-dark": {
+  "file": "v2/full-structliq-dark.jpg",
+  "w": 1920,
+  "h": 1080
+ },
+ "mob-dash-light": {
+  "file": "v2/mob-dash-light.jpg",
+  "w": 393,
+  "h": 852
+ },
+ "mob-dash-dark": {
+  "file": "v2/mob-dash-dark.jpg",
+  "w": 393,
+  "h": 852
+ },
+ "mob-markets-light": {
+  "file": "v2/mob-markets-light.jpg",
+  "w": 393,
+  "h": 852
+ },
+ "mob-markets-dark": {
+  "file": "v2/mob-markets-dark.jpg",
+  "w": 393,
+  "h": 852
+ },
+ "mob-journal-light": {
+  "file": "v2/mob-journal-light.jpg",
+  "w": 393,
+  "h": 852
+ },
+ "mob-journal-dark": {
+  "file": "v2/mob-journal-dark.jpg",
+  "w": 393,
+  "h": 852
+ },
+ "mob-health-light": {
+  "file": "v2/mob-health-light.jpg",
+  "w": 393,
+  "h": 852
+ },
+ "mob-health-dark": {
+  "file": "v2/mob-health-dark.jpg",
+  "w": 393,
+  "h": 852
+ },
+ "mob-accounts-light": {
+  "file": "v2/mob-accounts-light.jpg",
+  "w": 393,
+  "h": 852
+ },
+ "mob-accounts-dark": {
+  "file": "v2/mob-accounts-dark.jpg",
+  "w": 393,
+  "h": 852
+ },
+ "mob-macro-light": {
+  "file": "v2/mob-macro-light.jpg",
+  "w": 393,
+  "h": 852
+ },
+ "mob-macro-dark": {
+  "file": "v2/mob-macro-dark.jpg",
+  "w": 393,
+  "h": 852
+ },
+ "mob-dash-light-full": {
+  "file": "v2/mob-dash-light-full.jpg",
+  "w": 393,
+  "h": 5050
+ },
+ "chart-clean-light": {
+  "file": "v2/chart-clean-light.jpg",
+  "w": 1180,
+  "h": 662
+ },
+ "ov-liq-light": {
+  "file": "v2/ov-liq-light.png",
+  "w": 1180,
+  "h": 662
+ },
+ "chart-liq-light": {
+  "file": "v2/chart-liq-light.jpg",
+  "w": 1180,
+  "h": 662
+ },
+ "ov-zones-light": {
+  "file": "v2/ov-zones-light.png",
+  "w": 1180,
+  "h": 662
+ },
+ "chart-zones-light": {
+  "file": "v2/chart-zones-light.jpg",
+  "w": 1180,
+  "h": 662
+ },
+ "ov-fib-light": {
+  "file": "v2/ov-fib-light.png",
+  "w": 1180,
+  "h": 662
+ },
+ "chart-fib-light": {
+  "file": "v2/chart-fib-light.jpg",
+  "w": 1180,
+  "h": 662
+ },
+ "ov-struct-light": {
+  "file": "v2/ov-struct-light.png",
+  "w": 1180,
+  "h": 662
+ },
+ "chart-struct-light": {
+  "file": "v2/chart-struct-light.jpg",
+  "w": 1180,
+  "h": 662
+ },
+ "ov-structliq-light": {
+  "file": "v2/ov-structliq-light.png",
+  "w": 1180,
+  "h": 662
+ },
+ "chart-structliq-light": {
+  "file": "v2/chart-structliq-light.jpg",
+  "w": 1180,
+  "h": 662
+ },
+ "chart-clean-dark": {
+  "file": "v2/chart-clean-dark.jpg",
+  "w": 1180,
+  "h": 662
+ },
+ "ov-liq-dark": {
+  "file": "v2/ov-liq-dark.png",
+  "w": 1180,
+  "h": 662
+ },
+ "chart-liq-dark": {
+  "file": "v2/chart-liq-dark.jpg",
+  "w": 1180,
+  "h": 662
+ },
+ "ov-zones-dark": {
+  "file": "v2/ov-zones-dark.png",
+  "w": 1180,
+  "h": 662
+ },
+ "chart-zones-dark": {
+  "file": "v2/chart-zones-dark.jpg",
+  "w": 1180,
+  "h": 662
+ },
+ "ov-fib-dark": {
+  "file": "v2/ov-fib-dark.png",
+  "w": 1180,
+  "h": 662
+ },
+ "chart-fib-dark": {
+  "file": "v2/chart-fib-dark.jpg",
+  "w": 1180,
+  "h": 662
+ },
+ "ov-struct-dark": {
+  "file": "v2/ov-struct-dark.png",
+  "w": 1180,
+  "h": 662
+ },
+ "chart-struct-dark": {
+  "file": "v2/chart-struct-dark.jpg",
+  "w": 1180,
+  "h": 662
+ },
+ "ov-structliq-dark": {
+  "file": "v2/ov-structliq-dark.png",
+  "w": 1180,
+  "h": 662
+ },
+ "chart-structliq-dark": {
+  "file": "v2/chart-structliq-dark.jpg",
+  "w": 1180,
+  "h": 662
+ },
+ "d-health-light": {
+  "file": "v2/d-health-light.png",
+  "w": 527,
+  "h": 136
+ },
+ "d-balance-light": {
+  "file": "v2/d-balance-light.png",
+  "w": 296,
+  "h": 136
+ },
+ "d-pnl-light": {
+  "file": "v2/d-pnl-light.png",
+  "w": 246,
+  "h": 136
+ },
+ "d-win-light": {
+  "file": "v2/d-win-light.png",
+  "w": 246,
+  "h": 136
+ },
+ "d-pf-light": {
+  "file": "v2/d-pf-light.png",
+  "w": 246,
+  "h": 136
+ },
+ "d-chart-light": {
+  "file": "v2/d-chart-light.png",
+  "w": 868,
+  "h": 429
+ },
+ "d-ai-light": {
+  "file": "v2/d-ai-light.png",
+  "w": 323,
+  "h": 213
+ },
+ "d-macro-light": {
+  "file": "v2/d-macro-light.png",
+  "w": 323,
+  "h": 195
+ },
+ "d-health-dark": {
+  "file": "v2/d-health-dark.png",
+  "w": 527,
+  "h": 136
+ },
+ "d-balance-dark": {
+  "file": "v2/d-balance-dark.png",
+  "w": 296,
+  "h": 136
+ },
+ "d-pnl-dark": {
+  "file": "v2/d-pnl-dark.png",
+  "w": 246,
+  "h": 136
+ },
+ "d-win-dark": {
+  "file": "v2/d-win-dark.png",
+  "w": 246,
+  "h": 136
+ },
+ "d-pf-dark": {
+  "file": "v2/d-pf-dark.png",
+  "w": 246,
+  "h": 136
+ },
+ "d-chart-dark": {
+  "file": "v2/d-chart-dark.png",
+  "w": 868,
+  "h": 429
+ },
+ "d-ai-dark": {
+  "file": "v2/d-ai-dark.png",
+  "w": 323,
+  "h": 213
+ },
+ "d-macro-dark": {
+  "file": "v2/d-macro-dark.png",
+  "w": 323,
+  "h": 195
+ },
+ "m-gold-light": {
+  "file": "v2/m-gold-light.png",
+  "w": 528,
+  "h": 225
+ },
+ "m-dxy-light": {
+  "file": "v2/m-dxy-light.png",
+  "w": 529,
+  "h": 225
+ },
+ "m-silver-light": {
+  "file": "v2/m-silver-light.png",
+  "w": 528,
+  "h": 225
+ },
+ "m-rs-light": {
+  "file": "v2/m-rs-light.png",
+  "w": 667,
+  "h": 284
+ },
+ "m-dxygold-light": {
+  "file": "v2/m-dxygold-light.png",
+  "w": 935,
+  "h": 284
+ },
+ "m-gold-dark": {
+  "file": "v2/m-gold-dark.png",
+  "w": 528,
+  "h": 225
+ },
+ "m-dxy-dark": {
+  "file": "v2/m-dxy-dark.png",
+  "w": 529,
+  "h": 225
+ },
+ "m-silver-dark": {
+  "file": "v2/m-silver-dark.png",
+  "w": 528,
+  "h": 225
+ },
+ "m-rs-dark": {
+  "file": "v2/m-rs-dark.png",
+  "w": 667,
+  "h": 284
+ },
+ "m-dxygold-dark": {
+  "file": "v2/m-dxygold-dark.png",
+  "w": 935,
+  "h": 284
+ },
+ "h-kpis-light": {
+  "file": "v2/h-kpis-light.png",
+  "w": 1619,
+  "h": 214
+ },
+ "h-equity-light": {
+  "file": "v2/h-equity-light.png",
+  "w": 986,
+  "h": 336
+ },
+ "h-dd-light": {
+  "file": "v2/h-dd-light.png",
+  "w": 616,
+  "h": 336
+ },
+ "h-kpis-dark": {
+  "file": "v2/h-kpis-dark.png",
+  "w": 1619,
+  "h": 214
+ },
+ "h-equity-dark": {
+  "file": "v2/h-equity-dark.png",
+  "w": 986,
+  "h": 336
+ },
+ "h-dd-dark": {
+  "file": "v2/h-dd-dark.png",
+  "w": 616,
+  "h": 336
+ },
+ "j-cal-light": {
+  "file": "v2/j-cal-light.png",
+  "w": 1619,
+  "h": 816
+ },
+ "j-cal-dark": {
+  "file": "v2/j-cal-dark.png",
+  "w": 1619,
+  "h": 816
+ },
+ "ac-list-light": {
+  "file": "v2/ac-list-light.png",
+  "w": 704,
+  "h": 155
+ },
+ "ac-list-dark": {
+  "file": "v2/ac-list-dark.png",
+  "w": 704,
+  "h": 155
+ },
+ "lm-markets-light": {
+  "file": "v2/lm-markets-light.png",
+  "w": 373,
+  "h": 406
+ },
+ "lm-sessions-light": {
+  "file": "v2/lm-sessions-light.png",
+  "w": 466,
+  "h": 406
+ },
+ "lm-events-light": {
+  "file": "v2/lm-events-light.png",
+  "w": 371,
+  "h": 406
+ },
+ "lm-events-dark": {
+  "file": "v2/lm-events-dark.png",
+  "w": 371,
+  "h": 406
+ },
+ "lc-card-dark": {
+  "file": "v2/lc-card-dark.png",
+  "w": 524,
+  "h": 560
+ },
+ "lc-session-dark": {
+  "file": "v2/lc-session-dark.png",
+  "w": 282,
+  "h": 240
+ },
+ "lc-stops-dark": {
+  "file": "v2/lc-stops-dark.png",
+  "w": 282,
+  "h": 240
+ },
+ "t-512": {
+  "file": "v2/t-512.png",
+  "w": 512,
+  "h": 512
+ }
+}
