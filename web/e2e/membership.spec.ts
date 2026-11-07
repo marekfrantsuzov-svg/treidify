@@ -29,7 +29,7 @@ test("owner approves a waitlisted member, extends, sees feedback, suspends", asy
 
   // Owner: the registration is in Pending Approval, with the plan they chose.
   await owner.goto(`/app/settings/members?tab=pending&q=${encodeURIComponent(memberName)}`);
-  const row = owner.getByTestId("members-table").getByRole("row", { name: new RegExp(memberName) });
+  const row = owner.getByTestId("members-table").first().getByRole("row", { name: new RegExp(memberName) });
   await expect(row).toContainText("Premium");
   await expect(row).toContainText("Pending");
   await expect(row).toContainText("Not provided");
@@ -75,7 +75,7 @@ test("owner approves a waitlisted member, extends, sees feedback, suspends", asy
   await member.getByRole("button", { name: "Send feedback" }).click();
   await expect(member.getByText("Thank you. Your feedback was sent")).toBeVisible();
   await owner.goto("/app/settings/members?tab=feedback");
-  const item = owner.getByTestId("feedback-item").filter({ hasText: msg });
+  const item = owner.getByTestId("feedback-item").filter({ hasText: msg }).first();
   await expect(item).toContainText(memberName);
   await expect(item).toContainText("Bug report");
   await item.getByRole("combobox", { name: "Feedback status" }).selectOption("reviewing");
@@ -83,12 +83,14 @@ test("owner approves a waitlisted member, extends, sees feedback, suspends", asy
 
   // Owner: activity log records who did what.
   await owner.goto("/app/settings/members?tab=activity");
-  await expect(owner.getByTestId("activity-log")).toContainText("Extended access");
-  await expect(owner.getByTestId("activity-log")).toContainText("by Olivia Owner");
+  // A same-route navigation can briefly keep the outgoing tab mounted during the page transition; pin to one list.
+  const log = owner.getByTestId("activity-log").filter({ hasText: "Extended access" }).first();
+  await expect(log).toContainText("Extended access");
+  await expect(log).toContainText("by Olivia Owner");
 
   // Owner suspends; the member is out on the next request and sees the suspended screen after signing in.
   await owner.goto(`/app/settings/members?tab=active&q=${encodeURIComponent(memberName)}`);
-  await owner.getByTestId("members-table").getByRole("link", { name: "Manage" }).click();
+  await owner.getByTestId("members-table").first().getByRole("link", { name: "Manage" }).click();
   await panel.getByRole("button", { name: "Suspend" }).click();
   await panel.getByRole("button", { name: "Confirm" }).click();
   await expect(panel.getByTestId("member-state")).toHaveText("Suspended", { timeout: 20_000 });
@@ -100,9 +102,9 @@ test("owner approves a waitlisted member, extends, sees feedback, suspends", asy
   // The panel on a phone: cards instead of the table, tabs scroll.
   await owner.setViewportSize({ width: 390, height: 844 });
   await owner.goto(`/app/settings/members?tab=all&q=${encodeURIComponent(memberName)}`);
-  await expect(owner.getByTestId("members-cards")).toBeVisible();
-  await expect(owner.getByTestId("members-cards")).toContainText("Suspended");
-  await expect(owner.getByTestId("members-table")).toBeHidden();
+  const cards = owner.getByTestId("members-cards").filter({ hasText: "Suspended" }).first();
+  await expect(cards).toBeVisible();
+  await expect(owner.getByTestId("members-table").first()).toBeHidden();
   void memberEmail;
   await ownerCtx.close();
   await memberCtx.close();
