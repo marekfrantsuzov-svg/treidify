@@ -1,6 +1,6 @@
 # Treidify master spec: Phase A audit, plan and issue register
 
-Date: 2026-11-07. Branch: `claude/project-thread-ohhxfz`. Rollback point: `main` at `832a21e` (PR #23, live in production); tag `pre-master-spec-2026-11-07` on that commit.
+Date: 2026-11-07. Branch: `claude/project-thread-ohhxfz`. Rollback point: `main` at `832a21e` (PR #23, the current production deploy). Nothing on this branch reaches production until Marek approves; Vercel can also promote the previous deployment instantly.
 
 Method: read the whole `web/` codebase and git history, ran it locally (Postgres 16, a fresh account with the clearly labelled sample MT5 account), ran typecheck, unit tests and a production build, measured a production build (`next start`), inspected the live homepage from a real browser, and studied hybridtrader.ai's motion. What could not be checked from here is listed as such; nothing below is a guess presented as fact.
 
