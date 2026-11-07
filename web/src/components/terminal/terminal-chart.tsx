@@ -296,9 +296,9 @@ export function TerminalChart({
         {lead}
         <div className={cn("flex flex-wrap items-center gap-2", lead ? "ml-auto" : "")}>
           <div role="tablist" aria-label="Timeframe" className="inset relative flex rounded-full p-0.5">
-            <SlidingPill watch={tf} className="rounded-full bg-[var(--text)] shadow-[0_4px_12px_-6px_rgba(0,0,0,0.5)]" />
+            <SlidingPill watch={tf} className="tf-pill rounded-full" />
             {tfs.map((t) => (
-              <button key={t} role="tab" aria-selected={tf === t} data-active={tf === t} onClick={() => setTf(t)} className={cn("num relative z-[1] min-h-[30px] min-w-[38px] rounded-full px-2 py-1 text-[12.5px] font-semibold text-ink-2 transition-colors duration-150 hover:text-ink", tf === t && "text-[var(--bg-0)] hover:text-[var(--bg-0)]")}>{t}</button>
+              <button key={t} role="tab" aria-selected={tf === t} data-active={tf === t} onClick={() => setTf(t)} className={cn("num relative z-[1] min-h-[30px] min-w-[38px] rounded-full px-2 py-1 text-[12.5px] font-semibold text-ink-2 transition-colors duration-150 hover:text-ink", tf === t && "text-white hover:text-white")}>{t}</button>
             ))}
           </div>
           {actions}
@@ -365,7 +365,7 @@ export function TerminalChart({
 
       {state === "ready" && !sample && meta.lastBarAt && (
         <p className="mt-1.5 px-1 text-[11.5px] leading-snug text-ink-3" aria-live="polite">
-          {VENDOR_NAME[meta.vendor ?? ""] ?? meta.vendor ?? "Provider"}{meta.method === "computed-ice" ? " · computed from the six ICE pairs" : ""} · last bar {hhmm(meta.lastBarAt)} · {FRESH_TEXT[meta.freshness ?? ""] ?? "Unknown"}{meta.savedCopy && meta.fetchedAt ? ` · data plan limit reached, showing bars received at ${hhmm(meta.fetchedAt)}` : meta.plan === "free" && meta.refreshSeconds ? ` · free data plan, updates every ${Math.round(meta.refreshSeconds / 60)} min` : meta.fetchedAt ? ` · checked ${hhmm(meta.fetchedAt)}` : ""}
+          {VENDOR_NAME[meta.vendor ?? ""] ?? meta.vendor ?? "Provider"}{meta.method === "computed-ice" ? " · computed from the six ICE pairs" : ""} · last bar {hhmm(meta.lastBarAt)} · {FRESH_TEXT[meta.freshness ?? ""] ?? "Unknown"}{meta.savedCopy && meta.fetchedAt ? ` · bars received at ${hhmm(meta.fetchedAt)}` : ""}
           {refreshErr && <span className="text-down"> · Refresh failed, showing the last bars received</span>}
         </p>
       )}

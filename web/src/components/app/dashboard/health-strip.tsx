@@ -4,6 +4,7 @@ import { Gauge, Link2, Percent, Scale, Wallet, type LucideIcon } from "lucide-re
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { healthScore, inRange, performanceMetrics, periodRange } from "@/lib/analytics";
+import { healthStatus, type HealthStatus } from "@/lib/analytics/health";
 import { zonedMidnight } from "@/lib/analytics/periods";
 import { cn } from "@/lib/cn";
 import { fmtMoney, fmtNumber, fmtSignedMoney } from "@/lib/format";
@@ -11,22 +12,25 @@ import { CountUp } from "@/components/ui/count-up";
 import type { AccountOverviewProps } from "./account-overview";
 import { useLiveAccount } from "@/components/app/live/live-account";
 
-const GRADE_NOTE: Record<string, string> = {
+const STATUS_NOTE: Record<HealthStatus, string> = {
   Strong: "Consistent performance",
-  Stable: "Sound, with room to tighten",
-  "Needs attention": "Risk or consistency slipping",
+  Moderate: "Sound, with room to tighten",
   "At risk": "Drawdown or losses need action",
 };
-const GRADE_CLS: Record<string, string> = { Strong: "bg-up-soft text-up", Stable: "bg-accent-soft text-accent", "Needs attention": "bg-warn-soft text-warn", "At risk": "bg-down-soft text-down" };
+const STATUS_CLS: Record<HealthStatus, string> = { Strong: "bg-up-soft text-up", Moderate: "bg-accent-soft text-accent", "At risk": "bg-down-soft text-down" };
 
-/** Gradient ring, violet to pink, with the score and "/100" set in tabular figures. */
+/** Gradient ring, violet to lavender-pink, with the score and "/100" set in tabular figures. It fills once on first
+ * view (reduced motion: shown filled at once). */
 function ScoreRing({ score, size = 104 }: { score: number | null; size?: number }) {
-  const sw = size * 0.085, r = size / 2 - sw / 2 - 1, c = 2 * Math.PI * r, v = score ?? 0;
+  const sw = size * 0.085, r = size / 2 - sw / 2 - 1, c = 2 * Math.PI * r;
+  const [shown, setShown] = useState(false);
+  useEffect(() => { const id = requestAnimationFrame(() => setShown(true)); return () => cancelAnimationFrame(id); }, []);
+  const v = shown ? score ?? 0 : 0;
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={score === null ? "Health score not available yet" : `Health score ${score} out of 100`} className="shrink-0">
-      <defs><linearGradient id="ring-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="var(--grad-a, #6a3df5)" /><stop offset="1" stopColor="var(--grad-b, #fe85d0)" /></linearGradient></defs>
+      <defs><linearGradient id="ring-g" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stopColor="#a85af5" /><stop offset="0.6" stopColor="#d68af3" /><stop offset="1" stopColor="#f2a6f4" /></linearGradient></defs>
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--surface-inset)" strokeWidth={sw} />
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="url(#ring-g)" strokeWidth={sw} strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - v / 100)} transform={`rotate(-90 ${size / 2} ${size / 2})`} style={{ transition: "stroke-dashoffset 700ms var(--ease-spring)" }} />
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="url(#ring-g)" strokeWidth={sw} strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - v / 100)} transform={`rotate(-90 ${size / 2} ${size / 2})`} className="ring-anim" style={{ transition: "stroke-dashoffset 1100ms cubic-bezier(0.16, 1, 0.3, 1)" }} />
       <text x="50%" y="50%" dominantBaseline="central" textAnchor="middle" className="num" fill="var(--text)">
         <tspan fontSize={size * 0.27} fontWeight="700" letterSpacing="-0.02em">{score ?? "—"}</tspan>
         <tspan fontSize={size * 0.12} fontWeight="500" fill="var(--text-3)">/100</tspan>
@@ -49,7 +53,7 @@ function ScoreBars({ score }: { score: number | null }) {
 /** One figure in the metrics panel: a quiet label over a tabular number. The first figure (balance) leads. */
 function Metric({ label, value, tone, primary, icon: Icon, sub }: { label: string; value: React.ReactNode; tone?: "up" | "down" | "muted"; primary?: boolean; icon: LucideIcon; sub?: React.ReactNode }) {
   return (
-    <div className={cn("d-metric", primary && "is-primary")}>
+    <div className={cn("dcard d-metric", primary && "is-primary")}>
       <span className="d-metric-label truncate"><span className="d-metric-icon" aria-hidden><Icon /></span>{label}</span>
       <span className={cn("d-metric-value num truncate", tone === "up" ? "text-up-ink" : tone === "down" ? "text-down-ink" : tone === "muted" ? "text-ink-3" : "text-ink")}>{value}</span>
       {sub && <span className="d-metric-sub num truncate">{sub}</span>}
@@ -76,6 +80,7 @@ export function HealthStrip(props: AccountOverviewProps) {
   const m = useMemo(() => performanceMetrics(inPeriod), [inPeriod]);
   const all = useMemo(() => performanceMetrics(p.trades, p.startingEquity || null), [p.trades, p.startingEquity]);
   const health = useMemo(() => healthScore(p.trades, p.startingEquity, all), [p.trades, p.startingEquity, all]);
+  const status = healthStatus(health.score);
   // Today in the person's own time zone, from the same closed trades as every other figure.
   const today = useMemo(() => {
     const [y, mo, d] = new Intl.DateTimeFormat("en-CA", { timeZone: p.timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now).split("-").map(Number);
@@ -95,19 +100,19 @@ export function HealthStrip(props: AccountOverviewProps) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h2 id="health-title" className="title-grad whitespace-nowrap text-[17px] font-semibold tracking-[-0.02em] sm:text-[20px]">Account Health</h2>
-            {health.grade && !none && <span className={cn("rounded-lg px-2 py-0.5 text-[12.5px] font-semibold", GRADE_CLS[health.grade])}>{health.grade}</span>}
+            {status && !none && <span className={cn("health-chip", STATUS_CLS[status])}>{status}</span>}
             {sample && <span className="rounded-lg bg-warn-soft px-2 py-0.5 text-[12px] font-semibold text-warn">Sample</span>}
           </div>
           <p className="mt-1 text-[13px] leading-snug text-ink-2 sm:text-[14px]">
-            {none ? "Connect MetaTrader 4 or 5 to score your account." : health.grade ? GRADE_NOTE[health.grade] : health.reason}
+            {none ? "Connect MetaTrader 4 or 5 to score your account." : status ? STATUS_NOTE[status] : health.reason}
           </p>
           {none && <Link href="/app/accounts" className="press bg-brand mt-3 inline-flex h-9 items-center gap-1.5 rounded-full px-4 text-[13px] font-semibold text-white shadow-[0_10px_22px_-10px_var(--accent-glow)]"><Link2 className="h-4 w-4" />Connect MT4/MT5</Link>}
-          {!none && p.state !== "sample" && <p className="mt-1 truncate text-[12px] text-ink-3">{p.label}</p>}
+          {!none && <Link href="/app/performance#health-method" className="mt-1 inline-block text-[12px] font-medium text-ink-3 underline-offset-2 hover:text-ink hover:underline">How this is scored</Link>}
         </div>
         <span className="block max-[379px]:hidden lg:hidden min-[1600px]:block"><ScoreBars score={none ? null : health.score} /></span>
       </section>
 
-      <div className="d-metrics dcard" role="group" aria-label="Account metrics">
+      <div className="d-metrics" role="group" aria-label="Account metrics">
         <Metric primary icon={Wallet} label="Balance" tone={none ? "muted" : undefined} value={none || p.balance === null ? dash : <CountUp value={p.balance} format={money} />}
           sub={none ? undefined : <>Overall P&L <Signed v={all.netProfit} currency={p.currency} /></>} />
         <Metric icon={Gauge} label={`P&L (${periodLabel})`} tone={none ? "muted" : m.netProfit < 0 ? "down" : "up"}
@@ -116,7 +121,7 @@ export function HealthStrip(props: AccountOverviewProps) {
         <Metric icon={Percent} label="Win rate" tone={none ? "muted" : undefined} value={none || m.winRate === null ? dash : <CountUp value={m.winRate * 100} format={(v) => `${v.toFixed(1)}%`} />}
           sub={none ? undefined : `${m.wins} of ${m.tradeCount} trades`} />
         <Metric icon={Scale} label="Profit factor" tone={none ? "muted" : undefined} value={none || m.profitFactor === null ? dash : fmtNumber(m.profitFactor)}
-          sub={none ? undefined : p.state === "connected" ? <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-up" />MT5 connected</span> : p.state === "sample" ? "Sample account" : "MT5 connecting"} />
+          sub={none ? undefined : p.state === "connected" ? "Gross profit ÷ gross loss" : p.state === "sample" ? "Sample account" : "MT5 connecting"} />
       </div>
     </>
   );

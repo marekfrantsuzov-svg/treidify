@@ -52,7 +52,7 @@ function Spark({ data, up, sample }: { data: number[]; up: boolean | null; sampl
 }
 
 function TrendChip({ r }: { r: OverviewRow }) {
-  if (r.status === "unavailable" || r.trend === null) return <span className="trend-chip is-flat">Not connected</span>;
+  if (r.status === "unavailable" || r.trend === null) return <span className="trend-chip is-flat">Unavailable</span>;
   if (r.trend === "none") return <span className="trend-chip is-flat"><Minus className="h-3.5 w-3.5" />RANGE ({r.trendTf})</span>;
   const up = r.trend === "bullish";
   return <span className={cn("trend-chip", up ? "is-up" : "is-down")}>{up ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}{up ? "BULLISH" : "BEARISH"} ({r.trendTf})</span>;
@@ -77,7 +77,7 @@ function AssetCard({ r, open, onToggle }: { r: OverviewRow; open: boolean; onTog
           </span>
         </span>
         <div className="mo-spark">
-          {r.spark ? <Spark data={r.spark} up={up} sample={r.status === "sample"} /> : <div className="grid h-full place-items-center rounded-lg bg-[repeating-linear-gradient(90deg,var(--border)_0_6px,transparent_6px_12px)] bg-[length:100%_1px] bg-center bg-no-repeat"><span className="rounded-md bg-[var(--surface-strong)] px-2 text-[11px] text-ink-3">No provider data</span></div>}
+          {r.spark ? <Spark data={r.spark} up={up} sample={r.status === "sample"} /> : <div className="grid h-full place-items-center rounded-lg bg-[repeating-linear-gradient(90deg,var(--border)_0_6px,transparent_6px_12px)] bg-[length:100%_1px] bg-center bg-no-repeat"><span className="rounded-md bg-[var(--surface-strong)] px-2 text-[11px] text-ink-3">Not available right now</span></div>}
         </div>
         <div className="col-span-full flex items-center justify-between gap-2">
           <TrendChip r={r} />
@@ -134,7 +134,7 @@ export function OverviewCard({ rows }: { rows: OverviewRow[] }) {
       </div>
       <div className="mo-toolbar mt-3">
         <div role="tablist" aria-label="Category" className="relative flex min-w-0 flex-1 gap-1 overflow-x-auto [scrollbar-width:none]">
-          <SlidingPill watch={cat} className="rounded-full bg-accent shadow-[0_8px_18px_-10px_var(--accent-glow)]" />
+          <SlidingPill watch={cat} className="pill-violet rounded-full" />
           {CATS.map((c) => (
             <button key={c} role="tab" aria-selected={cat === c} data-active={cat === c} onClick={() => { setCat(c); setOpen(null); }} className={cn("relative z-[1] shrink-0 rounded-full px-3 py-1.5 text-[12.5px] font-medium transition-colors duration-150", cat === c ? "text-white" : "text-ink-2 hover:text-ink")}>{c}</button>
           ))}
@@ -149,7 +149,7 @@ export function OverviewCard({ rows }: { rows: OverviewRow[] }) {
           {shown.length === 0 && <li className="col-span-full py-4 text-center text-[13px] text-ink-3">No {cat.toLowerCase()} instruments tracked yet.</li>}
         </motion.ul>
       </LayoutGroup>
-      <p className="mt-auto pt-3 text-[11px] text-ink-3">Prices, change and sparklines come from the last 25 hourly bars the data provider returned. Trend = market structure on the timeframe shown.{anySample ? " Gold, Silver and DXY use labelled sample bars." : ""}</p>
+      <p className="mt-auto pt-3 text-[11px] text-ink-3">Change and sparklines from the last 25 hourly bars. Trend is market structure on the timeframe shown.{anySample ? " Items marked Sample use example bars." : ""}</p>
     </section>
   );
 }

@@ -46,8 +46,9 @@ export function PageHeader({ title, subtitle, children, icon }: { title: string;
   );
 }
 
-/** One empty / not-connected state for the whole app: icon, what is missing, the credentials it needs, the next step. */
-export function EmptyState({ icon: Icon = Inbox, title, children, needs, action, compact }: {
+/** One empty / not-connected state for the whole app: icon, what is missing and the next step. Configuration names
+ * (`needs`) are accepted for callers but never shown to members; operators see them in /api/health. */
+export function EmptyState({ icon: Icon = Inbox, title, children, action, compact }: {
   icon?: LucideIcon; title: string; children?: React.ReactNode; needs?: string[]; action?: { href: string; label: string }; compact?: boolean;
 }) {
   return (
@@ -55,7 +56,6 @@ export function EmptyState({ icon: Icon = Inbox, title, children, needs, action,
       <span className="empty-orb" aria-hidden><Icon /></span>
       <p className="text-[15px] font-semibold tracking-[-0.01em] text-ink">{title}</p>
       {children && <p className="mx-auto mt-1 max-w-[46ch] text-[13px] leading-snug text-ink-2">{children}</p>}
-      {needs?.length ? <div className="mt-2.5 flex flex-wrap justify-center gap-1.5">{needs.map((n) => <code key={n} className="rounded-md bg-[var(--surface-inset)] px-1.5 py-0.5 text-[11px] text-ink-2 ring-1 ring-[var(--border)]">{n}</code>)}</div> : null}
       {action && <Link href={action.href} className="press bg-brand mt-3.5 inline-flex h-9 items-center gap-1.5 rounded-full px-4 text-[13px] font-semibold text-white shadow-[0_10px_22px_-10px_var(--accent-glow)]">{action.label}<ArrowRight className="h-4 w-4" /></Link>}
     </div>
   );

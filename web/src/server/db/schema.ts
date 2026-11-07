@@ -545,7 +545,7 @@ export const notificationPref = pgTable("notification_pref", {
 
 export const entitlement = pgTable("entitlement", {
   userId: text("user_id").primaryKey().references(() => user.id, { onDelete: "cascade" }),
-  plan: text("plan").notNull().default("free"), // free | premium
+  plan: text("plan").notNull().default("free"), // free | essential | premium
   source: text("source").notNull().default("none"), // none | trial | stripe | grant
   trialStartedAt: ts("trial_started_at"),
   trialEndsAt: ts("trial_ends_at"),
@@ -559,7 +559,9 @@ export const subscription = pgTable("subscription", {
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id").unique(),
   status: text("status").notNull(),
+  tier: text("tier"), // essential | premium
   interval: text("interval"),
+  trialEnd: ts("trial_end"),
   currentPeriodEnd: ts("current_period_end"),
   cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
   createdAt: created(),

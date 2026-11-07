@@ -12,7 +12,7 @@ const imp = { high: "bg-down-soft text-down", medium: "bg-warn-soft text-warn", 
 const ago = (iso: string, now: number) => { const m = Math.max(0, Math.round((now - Date.parse(iso)) / 60000)); return m < 60 ? `${m}m ago` : m < 1440 ? `${Math.round(m / 60)}h ago` : `${Math.round(m / 1440)}d ago`; };
 
 function NotConnected({ what, needs }: { what: string; needs?: string[] }) {
-  return <EmptyState icon={Newspaper} title={`${what} is not connected`} needs={needs} compact>Nothing is shown here until it is. No example headlines are used.</EmptyState>;
+  return <EmptyState icon={Newspaper} title={`${what} is not available right now`} compact>Nothing is shown rather than example headlines.</EmptyState>;
 }
 
 export function HeadlineList({ r, limit = 6, nowMs, compact, explain = false, emptyText = "No headlines right now." }: { r: Result<Headline[]>; limit?: number; nowMs: number; compact?: boolean; explain?: boolean; emptyText?: string }) {

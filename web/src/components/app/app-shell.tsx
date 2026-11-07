@@ -18,7 +18,7 @@ import { LogoMark } from "@/components/brand/logo-mark";
 import { appNav, isActive, mobileTabBar, primaryNav, toolNav, type NavItem } from "./nav";
 
 export interface ShellUser { name: string; username: string | null; email: string; avatar: string | null; isAdmin: boolean }
-export interface ShellPlan { plan: "free" | "premium"; source: string; trialEndsAt: string | null }
+export interface ShellPlan { plan: "free" | "essential" | "premium"; source: string; trialEndsAt: string | null }
 export interface ShellAccount { label: string; status: string | null; sample: boolean }
 
 export function Avatar({ user, size = 36 }: { user: Pick<ShellUser, "name" | "avatar">; size?: number }) {
@@ -276,7 +276,7 @@ function UserMenu({ user, plan, size = 44, chevron = false }: { user: ShellUser;
           <div className="px-3 py-2">
             <div className="truncate text-sm font-semibold text-ink">{user.name}</div>
             <div className="truncate text-xs text-ink-3">{user.username ? `@${user.username}` : user.email}</div>
-            <div className="mt-1 text-xs font-medium text-accent">{plan.plan === "premium" ? (plan.source === "trial" ? "Premium trial" : "Premium") : "Free plan"}</div>
+            <div className="mt-1 text-xs font-medium text-accent">{plan.plan === "free" ? "No plan yet" : `${plan.plan === "premium" ? "Premium" : "Essential"}${plan.trialEndsAt ? " trial" : ""}`}</div>
           </div>
           <div className="my-1 h-px bg-[var(--border)]" />
           <Link role="menuitem" href="/app/settings/profile" onClick={() => setOpen(false)} className={item}><UserRound className="h-4 w-4" />Profile and privacy</Link>
@@ -381,16 +381,17 @@ function BottomNav({ path, search }: { path: string; search: string }) {
 }
 
 function PremiumCard({ plan }: { plan: ShellPlan }) {
-  const premium = plan.plan === "premium";
-  const trialLeft = plan.source === "trial" && plan.trialEndsAt ? Math.max(0, Math.round((Date.parse(plan.trialEndsAt) - Date.now()) / 3_600_000)) : null;
+  const name = plan.plan === "essential" ? "Treidify Essential" : "Treidify Premium";
+  const trialLeft = plan.trialEndsAt ? Math.max(0, Math.round((Date.parse(plan.trialEndsAt) - Date.now()) / 3_600_000)) : null;
+  const line = plan.plan === "free" ? "Start your 3-day trial" : trialLeft !== null ? `${plan.plan === "premium" ? "Full access" : "Trial"}, ${trialLeft} hours left` : plan.plan === "premium" ? "Full access" : "Upgrade to Premium";
   return (
-    <div className="side-premium">
-      <div className="flex items-center gap-2 text-[17px] font-semibold tracking-[-0.02em] text-ink"><Crown className="h-5 w-5 text-[#f5b301]" fill="currentColor" strokeWidth={1.5} />Treidify Premium</div>
-      <p className="mt-1.5 text-[13px] leading-snug text-ink-2">{premium ? (trialLeft !== null ? `Trial active, ${trialLeft} hours left. It ends on its own.` : "Active. Thank you for supporting Treidify.") : "Unlock advanced analysis, AI insights and more."}</p>
-      <Link href="/app/settings/plan" className="press mt-3 flex h-11 items-center justify-center gap-2 rounded-full bg-[#1b1530] text-[14px] font-semibold text-white shadow-[0_10px_22px_-12px_rgba(27,21,48,0.8)] hover:brightness-125 dark:bg-white dark:text-[#1b1530]">
-        {premium ? "Manage plan" : "Upgrade Now"}<ArrowRight className="h-4 w-4" />
-      </Link>
-    </div>
+    <Link href="/app/settings/plan" className="side-premium press flex items-center gap-3 px-4 py-3.5" suppressHydrationWarning>
+      <Crown className="h-6 w-6 shrink-0 text-[#f5b301]" fill="currentColor" strokeWidth={1.5} aria-hidden />
+      <span className="min-w-0 leading-tight">
+        <span className="block text-[15.5px] font-semibold tracking-[-0.015em] text-ink">{name}</span>
+        <span className="mt-0.5 block truncate text-[13px] text-ink-2" suppressHydrationWarning>{line}</span>
+      </span>
+    </Link>
   );
 }
 

@@ -62,7 +62,7 @@ export function CalendarView({ r, tz, now, range, cur, imp, reactions }: { r: Re
   if (!r.ok) {
     return (
       <div className="rounded-2xl border border-dashed border-line px-4 py-4 text-[13px] leading-relaxed text-ink-2">
-        {r.message}{r.needs?.length ? <span className="mt-1 block font-medium text-ink">Needs {r.needs.join(", ")}.</span> : null}
+        The economic calendar is not available right now.
         <span className="mt-1 block text-ink-3">No events are shown rather than invented ones.</span>
       </div>
     );

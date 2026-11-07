@@ -1,4 +1,5 @@
 import { and, count, desc, eq, isNull, ne, or } from "drizzle-orm";
+import { Suspense, cache } from "react";
 import { AccountOverview } from "@/components/app/dashboard/account-overview";
 import { HealthStrip } from "@/components/app/dashboard/health-strip";
 import { GoldDesk } from "@/components/app/dashboard/gold-desk";
@@ -8,7 +9,6 @@ import { PositionsCard, RecentTradesCard } from "@/components/app/dashboard/card
 import { Reveal, RevealItem } from "@/components/motion/reveal";
 import { AccountPicker } from "@/components/app/account-picker";
 import { Alert } from "@/components/auth/auth-ui";
-import { TRIAL_HOURS } from "@/config/plans";
 import { goldImpact } from "@/lib/intelligence";
 import { ANALYSTS } from "@/lib/community/analysts";
 import { greetingFor } from "@/lib/greeting";
@@ -18,7 +18,8 @@ import { liveRefresh } from "@/server/sync/service";
 import { LiveAccountProvider } from "@/components/app/live/live-account";
 import { ConnectionBar } from "@/components/app/live/connection-bar";
 import { db, schema } from "@/server/db";
-import { getPlanState } from "@/server/entitlements";
+import { getPlanState, planHas } from "@/server/entitlements";
+import Link from "next/link";
 import { loadIntel } from "@/server/market/load";
 import { marketOverview } from "@/server/market/overview";
 import { economicCalendar, latestHeadlines } from "@/server/news/service";
@@ -36,6 +37,75 @@ function macroTiles(m: Awaited<ReturnType<typeof macroIndicators>>): MacroTile[]
     { id: "inflation", label: "Inflation", value: m.inflation.value, note: m.inflation.ok ? `CPI y/y · ${m.inflation.period}` : m.inflation.message },
     { id: "gdp", label: "GDP", value: m.gdp.value, note: m.gdp.ok ? `Real GDP · ${m.gdp.period}` : m.gdp.message },
   ];
+}
+
+// Shared per request: every streamed section asks for what it needs and identical calls run once.
+const getIntel = cache(() => loadIntel());
+const getNews = cache(() => latestHeadlines(20));
+const getCal = cache((fromMs: number, toMs: number) => economicCalendar(new Date(fromMs), new Date(toMs)));
+const getMacro = cache(() => macroIndicators());
+const getOverview = cache(() => marketOverview());
+
+/** Premium-only card on a plan without it: the card keeps its place and says how to get it. */
+function Locked({ area, title }: { area: string; title: string }) {
+  return (
+    <section className={`dcard dcard-pad ${area} flex flex-col`} aria-label={`${title} (Premium)`}>
+      <h2 className="dcard-title">{title}</h2>
+      <p className="mt-3 text-[13px] leading-snug text-ink-2">Part of Premium.</p>
+      <Link href="/app/settings/plan" className="mt-auto pt-3 text-[13px] font-semibold text-accent">See plans</Link>
+    </section>
+  );
+}
+
+/** A placeholder with the section's own grid area and height, so nothing shifts when it streams in. */
+function Slot({ area, h }: { area: string; h: number }) {
+  return <div className={`dcard ${area} skeleton`} style={{ minHeight: h }} aria-busy="true" aria-label="Loading" />;
+}
+
+async function ChartSection() {
+  return <GoldDesk initial={await getIntel()} />;
+}
+
+async function NewsSection({ nowMs }: { nowMs: number }) {
+  const news = await getNews();
+  const feed: Feed<NewsItem> = news.ok ? { ok: true, vendor: news.vendor, data: news.data } : { ok: false, message: news.message, needs: news.needs };
+  return <NewsCard feed={feed} nowMs={nowMs} />;
+}
+
+async function ImpactSection({ nowMs, dayMs }: { nowMs: number; dayMs: number }) {
+  const [intel, news, cal, macro] = await Promise.all([getIntel(), getNews(), getCal(dayMs - DAY, dayMs + 4 * DAY), getMacro()]);
+  const now = new Date(nowMs);
+  const recentCal = cal.ok ? cal.data.filter((e) => Date.parse(e.at) >= nowMs - 2 * DAY) : [];
+  const impact = goldImpact(intel.gold, intel.dxy, news.ok ? news.data : [], recentCal, now, {
+    market: { mode: intel.mode, freshness: intel.freshness, vendor: intel.vendor, asOf: intel.asOf },
+    macro: macroEvidence(macro), macroOk: macro.rates.ok && macro.inflation.ok, newsOk: news.ok, calendarOk: cal.ok,
+  });
+  return <ImpactCard impact={impact} nowMs={nowMs} />;
+}
+
+async function MacroSection() {
+  return <MacroCard tiles={macroTiles(await getMacro())} />;
+}
+
+async function OverviewSection() {
+  return <OverviewCard rows={await getOverview()} />;
+}
+
+async function CalendarSection({ nowMs, dayMs, tz }: { nowMs: number; dayMs: number; tz: string }) {
+  const cal = await getCal(dayMs - DAY, dayMs + 4 * DAY);
+  const upcoming = cal.ok ? cal.data.filter((e) => Date.parse(e.at) >= nowMs - 60 * 60_000 && e.importance !== "low").sort((a, b) => Date.parse(a.at) - Date.parse(b.at)) : [];
+  const feed: Feed<CalItem> = cal.ok ? { ok: true, vendor: cal.vendor, data: upcoming.slice(0, 6) } : { ok: false, message: cal.message, needs: cal.needs };
+  return <CalendarCard feed={feed} tz={tz} nowMs={nowMs} />;
+}
+
+async function CommunitySection() {
+  const comm = await community();
+  return <CommunityCard members={comm.members} faces={comm.faces} />;
+}
+
+async function IntelNotice() {
+  const intel = await getIntel();
+  return intel.message ? <p className="mb-3 rounded-xl bg-warn-soft px-3 py-1.5 text-[11.5px] leading-snug text-ink-2 sm:px-3.5 sm:text-[12px]">{intel.message}</p> : null;
 }
 
 /** Members and the faces of recent posters (virtual analysts are drawn with their own clearly labelled colours). */
@@ -71,23 +141,8 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const nowMs = now.getTime();
   const nowIso = now.toISOString();
   const sample = overview?.account.source === "sample";
-  const [intel, news, cal, rows, comm, macro] = await Promise.all([
-    loadIntel(),
-    latestHeadlines(20),
-    economicCalendar(new Date(nowMs - DAY), new Date(nowMs + 4 * DAY)),
-    marketOverview(),
-    community(),
-    macroIndicators(),
-  ]);
-
-  const newsFeed: Feed<NewsItem> = news.ok ? { ok: true, vendor: news.vendor, data: news.data } : { ok: false, message: news.message, needs: news.needs };
-  const upcoming = cal.ok ? cal.data.filter((e) => Date.parse(e.at) >= nowMs - 60 * 60_000 && e.importance !== "low").sort((a, b) => Date.parse(a.at) - Date.parse(b.at)) : [];
-  const calFeed: Feed<CalItem> = cal.ok ? { ok: true, vendor: cal.vendor, data: upcoming.slice(0, 6) } : { ok: false, message: cal.message, needs: cal.needs };
-  const recentCal = cal.ok ? cal.data.filter((e) => Date.parse(e.at) >= nowMs - 2 * DAY) : [];
-  const impact = goldImpact(intel.gold, intel.dxy, news.ok ? news.data : [], recentCal, now, {
-    market: { mode: intel.mode, freshness: intel.freshness, vendor: intel.vendor, asOf: intel.asOf },
-    macro: macroEvidence(macro), macroOk: macro.rates.ok && macro.inflation.ok, newsOk: news.ok, calendarOk: cal.ok,
-  });
+  // The calendar window is keyed to the hour so the per-request cache and the provider cache line up.
+  const dayMs = Math.floor(nowMs / 3_600_000) * 3_600_000;
   const liveId = overview && overview.account.source === "provider" && overview.account.id !== ALL_ACCOUNTS ? overview.account.id : null;
   const initialLive = liveId ? await liveRefresh(s.user.id, liveId, now, false) : null;
   const state = !overview ? "none" : sample ? "sample" : overview.account.status === "connected" ? "connected" : "pending";
@@ -101,30 +156,30 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   return (
     <LiveAccountProvider accountId={liveId} initial={initialLive}>
       <MobileGreeting greeting={greetingFor(tz)} name={s.user.name.split(" ")[0] ?? ""} />
-      {liveId && <div className="mb-3"><ConnectionBar label={overview!.account.label} /></div>}
-      {(sp.welcome || intel.message || (accounts.length > 1 && overview)) && (
+      {liveId && <div className="mb-3"><ConnectionBar label={overview!.account.label} platform={overview!.account.platform} /></div>}
+      <Suspense fallback={null}><IntelNotice /></Suspense>
+      {(sp.welcome || (accounts.length > 1 && overview)) && (
         <div className="mb-3 grid gap-2">
           {sp.welcome && (
             <Alert tone="accent">
-              {sp.welcome === "trial" && plan.source === "trial"
-                ? `Welcome to Treidify. Your ${TRIAL_HOURS}-hour Premium trial is active and ends on its own, with nothing to cancel.`
+              {plan.trialEndsAt
+                ? `Welcome to Treidify. Your ${plan.plan === "premium" ? "Premium" : "Essential"} trial is active until ${plan.trialEndsAt.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}.`
                 : "Welcome to Treidify. Your account is ready."}
             </Alert>
           )}
-          {intel.message && <p className="rounded-xl bg-warn-soft px-3 py-1.5 text-[11.5px] leading-snug text-ink-2 sm:px-3.5 sm:text-[12px]">{intel.message}</p>}
           {accounts.length > 1 && overview && <div className="flex justify-end"><AccountPicker accounts={pickerOptions(accounts)} selected={overview.account.id} /></div>}
         </div>
       )}
 
       <div className="d-grid">
         <HealthStrip {...acct} />
-        <GoldDesk initial={intel} />
-        <NewsCard feed={newsFeed} nowMs={nowMs} />
-        <ImpactCard impact={impact} nowMs={nowMs} />
-        <MacroCard tiles={macroTiles(macro)} />
-        <OverviewCard rows={rows} />
-        <CalendarCard feed={calFeed} tz={tz} nowMs={nowMs} />
-        <CommunityCard members={comm.members} faces={comm.faces} />
+        <Suspense fallback={<><Slot area="d-chart" h={420} /><Slot area="d-ai" h={260} /></>}><ChartSection /></Suspense>
+        {planHas(plan.plan, "news.global") ? <Suspense fallback={<Slot area="d-news" h={260} />}><NewsSection nowMs={nowMs} /></Suspense> : <Locked area="d-news" title="Market News" />}
+        {planHas(plan.plan, "news.global") ? <Suspense fallback={<Slot area="d-impact" h={200} />}><ImpactSection nowMs={nowMs} dayMs={dayMs} /></Suspense> : <Locked area="d-impact" title="News Impact on Gold" />}
+        {planHas(plan.plan, "macro.advanced") ? <Suspense fallback={<Slot area="d-macro" h={200} />}><MacroSection /></Suspense> : <Locked area="d-macro" title="Macro Desk" />}
+        <Suspense fallback={<Slot area="d-overview" h={220} />}><OverviewSection /></Suspense>
+        <Suspense fallback={<Slot area="d-calendar" h={180} />}><CalendarSection nowMs={nowMs} dayMs={dayMs} tz={tz} /></Suspense>
+        <Suspense fallback={<Slot area="d-community" h={160} />}><CommunitySection /></Suspense>
       </div>
 
       <Reveal className="dash-grid d-lower">

@@ -8,7 +8,6 @@ import { experienceChoices, instrumentChoices, ONBOARDING_STEPS } from "@/config
 import { audit } from "../audit";
 import { auth } from "../auth";
 import { db, schema } from "../db";
-import { startTrial } from "../entitlements";
 import { requireUser } from "../session";
 
 const instrumentIds = instrumentChoices.map((i) => i.id) as [string, ...string[]];
@@ -62,7 +61,6 @@ export async function saveOnboardingStep(input: StepInput): Promise<StepResult> 
     case 7: {
       const now = new Date();
       await db.update(P).set({ riskAcknowledgedAt: now, aiConsentAt: d.aiConsent ? now : null, onboardedAt: now, onboardingStep: ONBOARDING_STEPS }).where(eq(P.userId, uid));
-      if (d.startTrial) await startTrial(uid);
       await audit("onboarding.completed", { actorId: uid, targetType: "user", targetId: uid, meta: { aiConsent: d.aiConsent, trial: d.startTrial } });
       return { ok: true, next: ONBOARDING_STEPS, done: true };
     }

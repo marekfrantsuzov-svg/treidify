@@ -1,6 +1,7 @@
 "use server";
 
 import { aiStatus, readChart } from "../ai/claude";
+import { requireFeature } from "../entitlements";
 import type { ChartReading } from "../ai/schema";
 import { requireUser } from "../session";
 import { reportError } from "@/lib/monitoring";
@@ -19,7 +20,9 @@ export async function analyseChart(form: FormData): Promise<AnalysisResult> {
   if (!(f instanceof File) || f.size === 0) return { ok: false, error: "Choose a chart screenshot first." };
   if (!(TYPES as readonly string[]).includes(f.type)) return { ok: false, error: "Use a PNG, JPG or WebP screenshot." };
   if (f.size > MAX) return { ok: false, error: "Screenshots must be 10 MB or smaller." };
-  if (!aiStatus().configured) return { ok: false, error: "AI chart analysis isn’t connected yet (ANTHROPIC_API_KEY is not set). Your screenshot was checked but not analysed or stored." };
+  const gate = await requireFeature(s.user.id, "charts.ai");
+  if (!gate.ok) return { ok: false, error: gate.error };
+  if (!aiStatus().configured) return { ok: false, error: "AI chart analysis is not available right now. Your screenshot was not analysed or stored." };
   if (!rateLimit(`chart:${s.user.id}`, 20, 3600_000).ok) return { ok: false, error: "You have reached the hourly limit for chart analyses. Try again later." };
   try {
     const r = await readChart({ base64: Buffer.from(await f.arrayBuffer()).toString("base64"), mime: f.type as (typeof TYPES)[number] }, question);

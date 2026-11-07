@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDownRight, ArrowRight, ArrowUpRight, CircleCheck, CircleDashed, Clock3, Expand, Hourglass, Minimize, Sparkles } from "lucide-react";
+import { ArrowDownRight, ArrowRight, ArrowUpRight, CircleCheck, CircleDashed, Clock3, Expand, Hourglass, Minimize, Sparkles, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { IntelSnapshot } from "@/server/market/intelligence";
@@ -116,7 +116,7 @@ export function GoldDesk({ initial }: { initial: IntelSnapshot }) {
               {setup.side === "buy" ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownRight className="h-4 w-4" />}{setup.side === "buy" ? "BUY SETUP" : "SELL SETUP"}
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1.5 rounded-xl bg-warn-soft px-2.5 py-1.5 text-[12px] font-bold tracking-[0.02em] text-warn"><Hourglass className="h-4 w-4 shrink-0" />WAIT · NO VALID SETUP</span>
+            <span className="wait-badge inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-[12.5px] font-bold tracking-[0.02em]"><TriangleAlert className="h-4 w-4 shrink-0" />WAIT – NO VALID SETUP</span>
           )}
         </div>
         {valid ? (

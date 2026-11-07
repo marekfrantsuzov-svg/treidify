@@ -1,4 +1,5 @@
 import "server-only";
+import { ACCOUNT_REFRESH_INTERVAL, MANUAL_REFRESH_MIN_MS, SETUP_SYNC_RETRY_MS } from "@/config/sync";
 import { randomUUID } from "node:crypto";
 import { and, count, desc, eq, inArray, isNotNull, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { reportError } from "@/lib/monitoring";
@@ -387,8 +388,8 @@ export async function ownedConnection(userId: string, accountId: string) {
   return row ?? null;
 }
 
-const LIVE_MIN_MS = 20_000;
-const FULL_SYNC_MS = 5 * 60_000;
+const LIVE_MIN_MS = ACCOUNT_REFRESH_INTERVAL;
+const FULL_SYNC_MS = ACCOUNT_REFRESH_INTERVAL;
 
 export interface LiveState {
   accountId: string; status: string; accessMode: string | null; currency: string | null;
@@ -398,18 +399,21 @@ export interface LiveState {
 }
 
 /**
- * On-view refresh for one owned account: balance, equity and open positions from MetaApi, at most every 20 s per account.
+ * Account refresh for one owned account: balance, equity and open positions from MetaApi, at most once per
+ * ACCOUNT_REFRESH_INTERVAL (an hour) per account, or every MANUAL_REFRESH_MIN_MS when the person asks (`manual`).
+ * The slot is claimed in the database first, so concurrent tabs, devices and requests never call MetaApi twice.
  * Re-checks read-only access each time. Returns the stored state (with its real timestamp) when MetaApi is not reachable.
  */
-export async function liveRefresh(userId: string, accountId: string, now = new Date(), remote = true): Promise<LiveState | null> {
+export async function liveRefresh(userId: string, accountId: string, now = new Date(), remote = true, manual = false): Promise<LiveState | null> {
   const row = await ownedConnection(userId, accountId);
   if (!row) return null;
   const { c, a } = row;
   let error: string | null = null;
-  if (remote && c.externalId && c.status === "connected" && c.accessMode && syncStatus().configured && (!c.lastLiveAt || now.getTime() - c.lastLiveAt.getTime() >= LIVE_MIN_MS)) {
+  const minGap = manual ? MANUAL_REFRESH_MIN_MS : LIVE_MIN_MS;
+  if (remote && c.externalId && c.status === "connected" && c.accessMode && syncStatus().configured && (!c.lastLiveAt || now.getTime() - c.lastLiveAt.getTime() >= minGap)) {
     // Claim the slot first so concurrent tabs do not all call MetaApi.
     const claimed = await db.update(schema.providerConnection).set({ lastLiveAt: now })
-      .where(and(eq(schema.providerConnection.id, c.id), or(isNull(schema.providerConnection.lastLiveAt), lt(schema.providerConnection.lastLiveAt, new Date(now.getTime() - LIVE_MIN_MS))))).returning({ id: schema.providerConnection.id });
+      .where(and(eq(schema.providerConnection.id, c.id), or(isNull(schema.providerConnection.lastLiveAt), lt(schema.providerConnection.lastLiveAt, new Date(now.getTime() - minGap))))).returning({ id: schema.providerConnection.id });
     if (claimed.length) {
       const api = client();
       const { region, id } = split(c.externalId);
@@ -434,7 +438,7 @@ export async function liveRefresh(userId: string, accountId: string, now = new D
     margin: snap?.margin ?? null, freeMargin: snap?.freeMargin ?? null,
     positions: positions.map((p) => ({ id: p.id, symbol: p.symbol, side: p.side, volume: p.volume, openPrice: p.openPrice, currentPrice: p.currentPrice, floatingPnl: p.floatingPnl, stopLoss: p.stopLoss, takeProfit: p.takeProfit })),
     asOf: snap?.at.toISOString() ?? null, lastSyncAt: fresh?.lastSyncAt?.toISOString() ?? null, error: error ?? (fresh?.status === "connected" ? null : fresh?.lastError ?? null),
-    needsFullSync: !!fresh?.externalId && fresh.status !== "disconnected" && (!fresh.lastSyncAt || now.getTime() - fresh.lastSyncAt.getTime() > FULL_SYNC_MS),
+    needsFullSync: !!fresh?.externalId && fresh.status !== "disconnected" && (!fresh.lastSyncAt || now.getTime() - fresh.lastSyncAt.getTime() > (manual ? MANUAL_REFRESH_MIN_MS : fresh.status === "connected" ? FULL_SYNC_MS : SETUP_SYNC_RETRY_MS)),
   };
 }
 

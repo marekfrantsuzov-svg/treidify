@@ -49,3 +49,10 @@ export function healthScore(trades: readonly ClosedTrade[], startingEquity: numb
   const grade = score >= 80 ? "Strong" : score >= 60 ? "Stable" : score >= 40 ? "Needs attention" : "At risk";
   return { score, grade, components, reason: null, algorithm: HEALTH_ALGORITHM };
 }
+
+/** The three-state status shown with the ring: Strong (80+), Moderate (50–79), At risk (under 50). */
+export type HealthStatus = "Strong" | "Moderate" | "At risk";
+export function healthStatus(score: number | null): HealthStatus | null {
+  if (score === null) return null;
+  return score >= 80 ? "Strong" : score >= 50 ? "Moderate" : "At risk";
+}

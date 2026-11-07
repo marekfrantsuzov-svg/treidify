@@ -333,20 +333,32 @@ run("MetaApi sync (database)", () => {
     expect(await conn(a.accountId)).toMatchObject({ status: "connected" });
   });
 
-  it("live refresh updates balance/equity/positions at most every 20 s and re-checks access", async () => {
+  it("account refresh calls MetaApi at most hourly (manual at most every 2 min) and re-checks access", async () => {
+    const { ACCOUNT_REFRESH_INTERVAL, MANUAL_REFRESH_MIN_MS } = await import("@/config/sync");
     const a = await connect(ALICE, "1001", "Investor#1");
     if (!a.ok) throw new Error();
     await syncOf(a.accountId);
-    const t0 = new Date(Date.now() + 60_000);
+    const t0 = new Date(Date.now() + ACCOUNT_REFRESH_INTERVAL + 60_000);
     for (const x of fake.accounts.values()) { x.info = { ...x.info, balance: 10_100, equity: 10_180 }; x.positions = []; }
     const l1 = await svc.liveRefresh(ALICE.id, a.accountId, t0);
     expect(l1).toMatchObject({ balance: 10_100, equity: 10_180, positions: [], accessMode: "investor" });
-    const infoCalls = fake.calls.filter((c) => c === "info").length;
-    await svc.liveRefresh(ALICE.id, a.accountId, new Date(t0.getTime() + 5_000));
-    expect(fake.calls.filter((c) => c === "info").length).toBe(infoCalls); // throttled
-    // If the account stops reporting investor mode, the live refresh removes it.
+    const infoCalls = () => fake.calls.filter((c) => c === "info").length;
+    const n1 = infoCalls();
+    // Opening pages again within the hour reads the stored state only.
+    await svc.liveRefresh(ALICE.id, a.accountId, new Date(t0.getTime() + 5 * 60_000));
+    await svc.liveRefresh(ALICE.id, a.accountId, new Date(t0.getTime() + 59 * 60_000));
+    expect(infoCalls()).toBe(n1);
+    // A manual refresh is allowed after the manual gap, and not twice inside it.
+    await svc.liveRefresh(ALICE.id, a.accountId, new Date(t0.getTime() + MANUAL_REFRESH_MIN_MS - 1000), true, true);
+    expect(infoCalls()).toBe(n1);
+    const tm = new Date(t0.getTime() + MANUAL_REFRESH_MIN_MS + 1000);
+    await svc.liveRefresh(ALICE.id, a.accountId, tm, true, true);
+    expect(infoCalls()).toBe(n1 + 1);
+    await svc.liveRefresh(ALICE.id, a.accountId, new Date(tm.getTime() + 30_000), true, true);
+    expect(infoCalls()).toBe(n1 + 1);
+    // If the account stops reporting investor mode, the next refresh removes it.
     for (const x of fake.accounts.values()) x.info = { ...x.info, investorMode: false };
-    const l3 = await svc.liveRefresh(ALICE.id, a.accountId, new Date(t0.getTime() + 30_000));
+    const l3 = await svc.liveRefresh(ALICE.id, a.accountId, new Date(tm.getTime() + ACCOUNT_REFRESH_INTERVAL + 1000));
     expect(l3?.error).toMatch(/master/);
     expect(await conn(a.accountId)).toMatchObject({ externalId: null, status: "error" });
   });
