@@ -13,7 +13,7 @@ interface FakeAccount { name: string; login: string; password: string; server: s
 
 function fakeMetaApi() {
   const brokers: Record<string, { login: string; master: string; investor: string }[]> = {
-    "Demo-Server": [{ login: "1001", master: "Master#1", investor: "Investor#1" }, { login: "1002", master: "Master#2", investor: "Investor#2" }, { login: "1003", master: "Master#3", investor: "Investor#3" }, { login: "1004", master: "Master#4", investor: "Investor#4" }],
+    "Demo-Server": [{ login: "1001", master: "Master#1", investor: "Investor#1" }, { login: "1002", master: "Master#2", investor: "Investor#2" }, { login: "1003", master: "Master#3", investor: "Investor#3" }, { login: "1004", master: "Master#4", investor: "Investor#4" }, { login: "1005", master: "Master#5", investor: "Investor#5" }],
   };
   const accounts = new Map<string, FakeAccount>();
   const removed: string[] = [];
@@ -250,6 +250,23 @@ run("MetaApi sync (database)", () => {
     expect(c.historyCursor!.getTime()).toBe(c.historyFrom!.getTime());
     expect(await db.select().from(schema.closedTrade).where(eq(schema.closedTrade.tradingAccountId, r.accountId))).toHaveLength(2);
     expect(fake.calls.filter((x) => x === "deals").length).toBeGreaterThan(2); // recent window + backfill chunks
+  });
+
+  it("without a cron secret, a background sync heals an errored connection, at most once every 10 minutes", async () => {
+    const r = await connect(ALICE, "1005", "Investor#5");
+    if (!r.ok) throw new Error(r.error);
+    const { eq } = await import("drizzle-orm");
+    const c0 = await conn(r.accountId);
+    await db.update(schema.providerConnection).set({ status: "error", lastSyncAt: null, lastError: "MetaApi: no answer within 15 s" }).where(eq(schema.providerConnection.id, c0.id));
+    await db.delete(schema.auditLog).where(eq(schema.auditLog.action, "sync.background"));
+    expect(await svc.backgroundSync()).toEqual({ ok: true, phase: "synced" });
+    const c = await conn(r.accountId);
+    expect(c.status).toBe("connected");
+    expect(c.lastError).toBeNull();
+    expect(c.lastSyncAt).not.toBeNull();
+    await db.update(schema.providerConnection).set({ lastSyncAt: null }).where(eq(schema.providerConnection.id, c0.id));
+    expect(await svc.backgroundSync()).toBeNull(); // slot already taken
+    await db.delete(schema.auditLog).where(eq(schema.auditLog.action, "sync.background"));
   });
 
   it("runs one sync per connection at a time", async () => {

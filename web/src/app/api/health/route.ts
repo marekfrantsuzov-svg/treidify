@@ -6,7 +6,7 @@ import { providerStatus } from "@/server/providers";
 import { enabledProviders } from "@/server/auth";
 import { boundOwnerId } from "@/server/owner-binding";
 import { metaApiToken } from "@/server/sync/metaapi";
-import { metaApiProbe, regionalProbe, syncDiagnostics } from "@/server/sync/service";
+import { backgroundSync, metaApiProbe, regionalProbe, syncDiagnostics } from "@/server/sync/service";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -21,7 +21,7 @@ export async function GET() {
     try { await db.execute(sql`select 1`); database = "up"; } catch { database = "down"; }
   }
   const ok = database === "up";
-  if (ok) after(() => regionalProbe().catch(() => {}));
+  if (ok) after(async () => { await backgroundSync().catch(() => {}); await regionalProbe().catch(() => {}); });
   return NextResponse.json(
     {
       ok,
