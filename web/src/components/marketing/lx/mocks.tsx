@@ -27,6 +27,16 @@ const METRICS = [
   { k: "Profit factor", v: "1.64" },
 ];
 
+/** Illustrative overview tiles (examples, shown only in the hero tablet). */
+const OVERVIEW = [
+  { s: "XAUUSD", v: "4,118.40", c: "+0.42%", up: true, k: [5, 6, 5, 7, 6, 8, 7, 9, 8, 10, 9, 11] },
+  { s: "XAGUSD", v: "48.21", c: "+0.34%", up: true, k: [4, 5, 4, 4, 6, 5, 7, 6, 8, 7, 8, 9] },
+  { s: "EURUSD", v: "1.0724", c: "+0.12%", up: true, k: [6, 5, 6, 7, 6, 7, 8, 7, 8, 9, 8, 9] },
+  { s: "GBPUSD", v: "1.2386", c: "-0.09%", up: false, k: [8, 9, 8, 7, 8, 7, 6, 7, 6, 5, 6, 5] },
+  { s: "NAS100", v: "20,421.80", c: "-0.32%", up: false, k: [9, 8, 9, 7, 8, 6, 7, 5, 6, 5, 4, 5] },
+];
+const spark = (k: number[]) => k.map((y, i) => `${i === 0 ? "M" : "L"}${(i / (k.length - 1)) * 60},${22 - y * 1.8}`).join(" ");
+
 function TfTabs({ active, onPick, className }: { active: number; onPick?: (i: number) => void; className?: string }) {
   return (
     <span className={cn("lx-tabs", className)} role={onPick ? "tablist" : undefined}>
@@ -117,6 +127,18 @@ export function DesktopMock({ className }: { className?: string }) {
                   <span key={tf} className={cn("lx-trend", SCENES[tf].structure === "Bullish" ? "is-up" : "is-down")}>{tf} · {SCENES[tf].structure.toUpperCase()}</span>
                 ))}
               </div>
+            </div>
+          </div>
+          <div className="lx-card lx-row3" aria-hidden>
+            <b><ChartLine />Market Overview</b>
+            <div className="lx-ov">
+              {OVERVIEW.map((o) => (
+                <span key={o.s} className="lx-ov-tile">
+                  <small>{o.s}</small>
+                  <span><b className="num">{o.v}</b><em className={cn("num", o.up ? "is-up" : "is-down")}>{o.c}</em></span>
+                  <svg viewBox="0 0 60 22" className={o.up ? "is-up" : "is-down"}><path d={spark(o.k)} /></svg>
+                </span>
+              ))}
             </div>
           </div>
         </div>

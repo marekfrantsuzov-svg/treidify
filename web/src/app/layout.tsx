@@ -22,6 +22,19 @@ const inter = localFont({
   fallback: ["-apple-system", "BlinkMacSystemFont", "Segoe UI", "system-ui", "sans-serif"],
 });
 
+/**
+ * Geist (OFL, Vercel) for display type: headlines, navigation and primary buttons. Chosen by glyph comparison with
+ * Marek's landing reference (closest open match; the reference resembles SF Pro Display, which may not be licensed
+ * for websites). Inter stays for body text and figures.
+ */
+const geist = localFont({
+  src: "../../node_modules/geist/dist/fonts/geist-sans/Geist-Variable.woff2",
+  weight: "100 900",
+  variable: "--font-display",
+  display: "swap",
+  fallback: ["-apple-system", "BlinkMacSystemFont", "Segoe UI", "system-ui", "sans-serif"],
+});
+
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
   title: { default: `${site.name}: ${site.tagline}`, template: `%s · ${site.name}` },
@@ -47,7 +60,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className={inter.variable}>
+    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${geist.variable}`}>
       <body className="min-h-dvh">
         <Providers>
           <Ambient />

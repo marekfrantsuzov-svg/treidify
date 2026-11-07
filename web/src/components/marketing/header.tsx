@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { ChevronDown, Menu, X } from "lucide-react";
+import { ArrowRight, ChevronDown, Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -38,8 +38,8 @@ export function Header() {
           "mk-bar mx-auto flex h-16 max-w-7xl items-center gap-3 px-1 sm:px-2",
         )}
       >
-        <Wordmark />
-        <nav aria-label="Main" className="ml-6 hidden items-center gap-1 lg:flex">
+        <Wordmark className="mk-logo" />
+        <nav aria-label="Main" className="mk-nav mx-auto hidden items-center gap-1 lg:flex">
           <div className="relative" onMouseEnter={() => setProductOpen(true)} onMouseLeave={() => setProductOpen(false)}>
             <button
               className="flex items-center gap-1 rounded-full px-3 py-2 text-sm text-ink-2 transition-colors hover:text-ink"
@@ -84,13 +84,12 @@ export function Header() {
             </Link>
           ))}
         </nav>
-        <div className="ml-auto flex items-center gap-2">
-          <ThemeToggle className="hidden md:inline-flex" />
-          <Link href="/login" className="hidden whitespace-nowrap rounded-full px-3 py-2 text-sm text-ink-2 hover:text-ink sm:block">
+        <div className="ml-auto flex items-center gap-3 lg:ml-0">
+          <Link href="/login" className="mk-login hidden whitespace-nowrap sm:inline-flex">
             Log in
           </Link>
-          <ButtonLink href="/signup" size="sm" className="ed-cta hidden whitespace-nowrap sm:inline-flex">
-            Start free trial
+          <ButtonLink href="/signup" size="sm" className="ed-cta mk-cta hidden whitespace-nowrap sm:inline-flex">
+            Create free account <ArrowRight className="h-4 w-4" />
           </ButtonLink>
           <button
             className="grid h-10 w-10 place-items-center rounded-full text-ink lg:hidden"
@@ -128,7 +127,7 @@ export function Header() {
                 <ThemeToggle />
                 <div className="flex gap-2">
                   <ButtonLink href="/login" variant="secondary" size="sm">Log in</ButtonLink>
-                  <ButtonLink href="/signup" size="sm" className="ed-cta">Start free trial</ButtonLink>
+                  <ButtonLink href="/signup" size="sm" className="ed-cta">Create free account</ButtonLink>
                 </div>
               </div>
             </nav>
