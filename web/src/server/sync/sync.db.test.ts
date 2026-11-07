@@ -9,7 +9,7 @@ import { MetaApiError, type MetaAccountInfo, type MetaApiClient, type MetaDeal, 
  */
 const run = process.env.DATABASE_URL ? describe : describe.skip;
 
-interface FakeAccount { login: string; password: string; server: string; investorMode: boolean | undefined; info: MetaAccountInfo; positions: MetaPosition[]; deals: MetaDeal[] }
+interface FakeAccount { name: string; login: string; password: string; server: string; investorMode: boolean | undefined; info: MetaAccountInfo; positions: MetaPosition[]; deals: MetaDeal[] }
 
 function fakeMetaApi() {
   const brokers: Record<string, { login: string; master: string; investor: string }[]> = {
@@ -19,6 +19,8 @@ function fakeMetaApi() {
   const removed: string[] = [];
   const calls: string[] = [];
   let seq = 0;
+  // Regional calls only answer on the account's real region, like MetaApi's regional hosts.
+  const at = (region: string) => { if (region !== "london") throw new MetaApiError("no answer within 15 s", 504); };
   const get = (id: string) => { const a = accounts.get(id); if (!a) throw new MetaApiError("Not found", 404); return a; };
   const api: MetaApiClient = {
     vendor: "metaapi",
@@ -31,7 +33,7 @@ function fakeMetaApi() {
       if (mode === null) throw new MetaApiError("Authentication failed", 400, undefined, "E_AUTH");
       const id = `acc${++seq}`;
       accounts.set(id, {
-        login: a.login, password: a.password, server: a.server, investorMode: mode,
+        name: a.name, login: a.login, password: a.password, server: a.server, investorMode: mode,
         info: { broker: "Demo Broker Ltd", currency: "USD", balance: 10_000, equity: 10_050, margin: 200, freeMargin: 9_850, investorMode: mode, tradeAllowed: !mode },
         positions: [{ id: "77", type: "POSITION_TYPE_BUY", symbol: "XAUUSD", openPrice: 4000, currentPrice: 4005, volume: 0.1, profit: 50, time: "2026-11-02T08:00:00Z", stopLoss: 3995, takeProfit: 4020 }],
         deals: [
@@ -47,11 +49,12 @@ function fakeMetaApi() {
     async account(id) { calls.push("account"); get(id); return { _id: id, state: "DEPLOYED", connectionStatus: "CONNECTED", region: "london" }; },
     async deploy() { calls.push("deploy"); },
     async probe() { calls.push("probe"); return []; },
+    async list() { calls.push("list"); return [...accounts].map(([id, x]) => ({ _id: id, name: x.name, login: x.login, server: x.server, platform: "mt5", state: "DEPLOYED", connectionStatus: "CONNECTED", region: "london" })); },
     async remove(id) { calls.push("remove"); removed.push(id); accounts.delete(id); },
-    async info(_r, id) { calls.push("info"); return get(id).info; },
-    async positions(_r, id) { calls.push("positions"); return get(id).positions; },
+    async info(r, id) { calls.push("info"); at(r); return get(id).info; },
+    async positions(r, id) { calls.push("positions"); at(r); return get(id).positions; },
     async orders() { calls.push("orders"); return []; },
-    async deals(_r, id) { calls.push("deals"); return get(id).deals; },
+    async deals(r, id) { calls.push("deals"); at(r); return get(id).deals; },
   };
   return { api, accounts, removed, calls };
 }
@@ -193,6 +196,34 @@ run("MetaApi sync (database)", () => {
     await expect(db.insert(schema.ownerBinding).values({ slot: "owner", userId: loser.id, email: loser.email })).rejects.toThrow();
     await expect(db.insert(schema.ownerBinding).values({ slot: "owner2", userId: loser.id, email: loser.email })).rejects.toThrow();
     expect((await ob.ownerForUserId(winner.id)).owner).toBe(true);
+  });
+
+  it("a connection an interrupted request left at MetaApi is picked up, not duplicated, and only by the same user", async () => {
+    // Simulate a connect that MetaApi completed after Treidify's request had already timed out.
+    const orphan = await fake.api.createAccount({ platform: "mt5", server: "Demo-Server", login: "1001", password: "Investor#1", name: `treidify-${ALICE.id.slice(0, 8)}-1001`, transactionId: "t0" });
+    fake.calls.length = 0;
+    // Another user with the same login cannot take it over: a fresh MetaApi account is created for them.
+    const b = await connect(BOB, "1001", "Investor#1");
+    if (!b.ok) throw new Error(b.error);
+    expect(fake.calls).toContain("createAccount");
+    expect((await conn(b.accountId)).externalId).not.toContain(orphan.id);
+    fake.calls.length = 0;
+    const r = await connect(ALICE, "1001", "Investor#1");
+    if (!r.ok) throw new Error(r.error);
+    expect(fake.calls).not.toContain("createAccount");
+    expect((await conn(r.accountId)).externalId).toBe(`london:${orphan.id}`);
+    expect(await syncOf(r.accountId)).toEqual({ ok: true, phase: "synced" });
+  });
+
+  it("corrects a wrong stored region from MetaApi before any regional call", async () => {
+    const r = await connect(ALICE, "1002", "Investor#2");
+    if (!r.ok) throw new Error(r.error);
+    const c = await conn(r.accountId);
+    const { eq } = await import("drizzle-orm");
+    const wrong = c.externalId!.replace(/^london:/, "new-york:");
+    await db.update(schema.providerConnection).set({ externalId: wrong }).where(eq(schema.providerConnection.id, c.id));
+    expect(await syncOf(r.accountId)).toEqual({ ok: true, phase: "synced" });
+    expect((await conn(r.accountId)).externalId).toMatch(/^london:/);
   });
 
   it("wrong password and wrong server are reported by code and store nothing", async () => {

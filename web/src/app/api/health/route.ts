@@ -6,7 +6,7 @@ import { providerStatus } from "@/server/providers";
 import { enabledProviders } from "@/server/auth";
 import { boundOwnerId } from "@/server/owner-binding";
 import { metaApiToken } from "@/server/sync/metaapi";
-import { metaApiProbe } from "@/server/sync/service";
+import { metaApiProbe, syncDiagnostics } from "@/server/sync/service";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +29,7 @@ export async function GET() {
       signIn: { email: true, ...enabledProviders },
       // Variable NAMES only (never values): which name the MetaApi token was found under, and whether the owner is set.
       // probe: a read-only MetaApi call (cached 5 min) with MetaApi's status/reason and non-secret token facts.
-      accountSync: { tokenVar: metaApiToken()?.name ?? null, ownerBound: Boolean(await boundOwnerId().catch(() => null)), probe: await metaApiProbe().catch(() => null) },
+      accountSync: { tokenVar: metaApiToken()?.name ?? null, ownerBound: Boolean(await boundOwnerId().catch(() => null)), probe: await metaApiProbe().catch(() => null), diagnostics: await syncDiagnostics().catch(() => null) },
       cron: Boolean(process.env.CRON_SECRET),
       encryption: Boolean(process.env.DATA_ENCRYPTION_KEY),
       commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null,
