@@ -132,6 +132,20 @@ export async function regionalProbe(now = Date.now()) {
   await audit("diag.regional", { meta: { storedRegion: region, accountRegion: acc?.region ?? null, state: acc?.state ?? null, connectionStatus: acc?.connectionStatus ?? null, investorMode: info?.investorMode ?? null, steps } });
 }
 
+/**
+ * Stand-in for the cron job while CRON_SECRET is not set: syncs the one most overdue connection, at most once every
+ * 10 minutes across all instances (the audit row is the claim). Read-only, like every sync.
+ */
+export async function backgroundSync(now = Date.now()) {
+  if (!syncStatus().configured) return null;
+  const [last] = await db.select({ at: schema.auditLog.createdAt }).from(schema.auditLog).where(eq(schema.auditLog.action, "sync.background")).orderBy(desc(schema.auditLog.createdAt)).limit(1);
+  if (last && now - last.at.getTime() < 10 * 60_000) return null;
+  const [due] = await dueConnections(5, 1);
+  if (!due) return null;
+  await audit("sync.background", { meta: { connection: due.id } });
+  return syncConnection(due.id);
+}
+
 /** Active = holds a MetaApi account (externalId set). Disconnected rows hold none and cost nothing. */
 async function activeCount(userId?: string) {
   const q = db.select({ n: count() }).from(schema.providerConnection)
@@ -447,5 +461,6 @@ export async function deleteConnectedAccount(userId: string, tradingAccountId: s
 export async function dueConnections(minutes = 5, limit = 25) {
   return db.select({ id: schema.providerConnection.id }).from(schema.providerConnection)
     .where(and(inArray(schema.providerConnection.status, ["pending", "connected", "synchronizing", "error", "reconnection_required"]), sql`${schema.providerConnection.externalId} is not null`, sql`(${schema.providerConnection.lastSyncAt} is null or ${schema.providerConnection.lastSyncAt} < now() - (${minutes} * interval '1 minute'))`, sql`${schema.providerConnection.consecutiveFailures} < 20`))
+    .orderBy(sql`${schema.providerConnection.lastSyncAt} asc nulls first`)
     .limit(limit);
 }
