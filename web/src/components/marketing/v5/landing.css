@@ -84,7 +84,7 @@ body:has(.v5-hero) .mk-header .mk-bar { animation: v5-nav 250ms var(--ease-out-e
 .v5-in-stage { position: relative; z-index: 1; }
 @media (min-width: 1280px) {
   /* Beside the copy, with room on its left for the floating panels and none over the headline. */
-  .v5-stage { position: absolute; top: clamp(-30px, -1.5vw, 0px); right: clamp(30px, 3.2vw, 70px); width: min(1060px, 55vw, calc(100vw - 640px)); max-width: none; margin: 0; }
+  .v5-stage { position: absolute; top: calc(clamp(-30px, -1.5vw, 0px) + 26px); right: clamp(30px, 3.2vw, 70px); width: min(1060px, 55vw, calc(100vw - 640px)); max-width: none; margin: 0; }
   .v5-in-stage { transform-origin: 100% 40%; }
 }
 @media (max-width: 1279.98px) { .v5-hero-inner { gap: 20px; } }
