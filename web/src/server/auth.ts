@@ -81,6 +81,8 @@ export const auth = betterAuth({
           await db.insert(schema.privacySettings).values({ userId: u.id }).onConflictDoNothing();
           await db.insert(schema.entitlement).values({ userId: u.id }).onConflictDoNothing();
           await db.insert(schema.communityMembership).values({ userId: u.id }).onConflictDoNothing();
+          // Every new registration starts on the waitlist; only the owner (or an admin) can approve it.
+          await db.insert(schema.membership).values({ userId: u.id, status: "pending" }).onConflictDoNothing();
           await audit("user.created", { actorId: u.id, targetType: "user", targetId: u.id });
         },
       },

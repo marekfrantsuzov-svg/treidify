@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { rateLimit } from "@/lib/rate-limit";
 import { db, schema } from "../db";
-import { requireUser } from "../session";
+import { requireMember } from "../session";
 import type { ActionResult } from "./settings";
 
 const body = z.string().trim().min(2, "Write a little more.").max(2000, "Keep it under 2,000 characters.");
@@ -13,7 +13,7 @@ const body = z.string().trim().min(2, "Write a little more.").max(2000, "Keep it
 const PROFIT_CLAIM = /\b(\+?\$?\d[\d,.]*\s?(k|usd|\$|dollars|pips)\b.*\b(profit|made|banked|won)\b|\b(profit|made|banked|won)\b.*\$\d)/i;
 
 export async function createPost(text: string): Promise<ActionResult> {
-  const s = await requireUser();
+  const s = await requireMember();
   const p = body.safeParse(text);
   if (!p.success) return { ok: false, error: p.error.issues[0]!.message };
   if (PROFIT_CLAIM.test(p.data)) return { ok: false, error: "Posts can’t include profit claims. Verified results come from a synced account." };
@@ -24,7 +24,7 @@ export async function createPost(text: string): Promise<ActionResult> {
 }
 
 export async function addComment(postId: string, text: string): Promise<ActionResult> {
-  const s = await requireUser();
+  const s = await requireMember();
   const p = body.safeParse(text);
   if (!p.success || !z.uuid().safeParse(postId).success) return { ok: false, error: p.success ? "Post not found." : p.error.issues[0]!.message };
   if (PROFIT_CLAIM.test(p.data)) return { ok: false, error: "Replies can’t include profit claims." };
@@ -37,7 +37,7 @@ export async function addComment(postId: string, text: string): Promise<ActionRe
 }
 
 export async function toggleLike(postId: string): Promise<ActionResult> {
-  const s = await requireUser();
+  const s = await requireMember();
   if (!z.uuid().safeParse(postId).success) return { ok: false, error: "Post not found." };
   const where = and(eq(schema.reaction.postId, postId), eq(schema.reaction.userId, s.user.id), eq(schema.reaction.kind, "like"));
   const [had] = await db.select().from(schema.reaction).where(where);

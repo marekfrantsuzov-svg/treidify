@@ -9,14 +9,17 @@ export const devOutboxEnabled = () => process.env.NODE_ENV !== "production" || p
 
 export const emailConfigured = () => Boolean(process.env.RESEND_API_KEY);
 
-export async function sendEmail(mail: Email) {
+/** What happened to a message: accepted by the provider (with its id), or kept in the development outbox. */
+export type SendResult = { accepted: true; providerId: string | null; dev?: false } | { accepted: false; dev: true };
+
+export async function sendEmail(mail: Email): Promise<SendResult> {
   const key = process.env.RESEND_API_KEY;
   if (!key) {
     if (devOutboxEnabled()) {
       outbox.push({ ...mail, at: new Date().toISOString() });
       if (outbox.length > 200) outbox.shift();
       console.info(`[email:dev] to=${mail.to} subject="${mail.subject}"\n${mail.text}`);
-      return;
+      return { accepted: false, dev: true };
     }
     throw new Error("Email sending is not configured (RESEND_API_KEY).");
   }
@@ -24,8 +27,11 @@ export async function sendEmail(mail: Email) {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
     body: JSON.stringify({ from: process.env.EMAIL_FROM ?? "Treidify <noreply@treidify.com>", to: [mail.to], subject: mail.subject, text: mail.text, html: mail.html }),
+    signal: AbortSignal.timeout(15_000),
   });
   if (!res.ok) throw new Error(`Email provider error ${res.status}`);
+  const body = (await res.json().catch(() => ({}))) as { id?: string };
+  return { accepted: true, providerId: body.id ?? null };
 }
 
 export function actionEmail(title: string, intro: string, url: string, cta: string) {

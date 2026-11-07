@@ -8,16 +8,16 @@ import { getSession } from "@/server/session";
 
 export const metadata: Metadata = { title: "Create your account", robots: { index: false } };
 
-export default async function Page({ searchParams }: { searchParams: Promise<{ trial?: string }> }) {
+export default async function Page({ searchParams }: { searchParams: Promise<{ plan?: string }> }) {
   if (await getSession()) redirect("/app");
-  const { trial } = await searchParams;
+  const { plan } = await searchParams;
   return (
     <AuthCard
       title="Create your account"
-      subtitle={trial ? "Then choose Essential or Premium and start your 3-day trial." : "Then choose a plan and start your 3-day trial."}
+      subtitle="Then answer a few short questions to request your place. Treidify is opening to members in stages."
       footer={<>Already have an account? <Link href="/login" className="font-medium text-accent hover:underline">Sign in</Link></>}
     >
-      <SignupForm providers={enabledProviders} trial={trial === "1"} />
+      <SignupForm providers={enabledProviders} plan={plan === "essential" || plan === "premium" ? plan : null} />
     </AuthCard>
   );
 }

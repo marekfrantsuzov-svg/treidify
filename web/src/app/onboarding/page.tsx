@@ -5,18 +5,18 @@ import { OnboardingFlow } from "@/components/onboarding/onboarding-flow";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Wordmark } from "@/components/ui/wordmark";
 import { db, schema } from "@/server/db";
-import { getPlanState } from "@/server/entitlements";
+import { loadAccess } from "@/server/membership/access";
 import { syncProviderConfigured } from "@/server/providers";
 import { requireUser } from "@/server/session";
 
 export const metadata: Metadata = { title: "Set up your account", robots: { index: false } };
 
-export default async function Page({ searchParams }: { searchParams: Promise<{ trial?: string }> }) {
+export default async function Page({ searchParams }: { searchParams: Promise<{ plan?: string }> }) {
   const s = await requireUser("/onboarding");
   const [p] = await db.select().from(schema.profile).where(eq(schema.profile.userId, s.user.id));
-  if (p?.onboardedAt) redirect("/app");
-  const plan = await getPlanState(s.user.id);
-  const { trial } = await searchParams;
+  const access = await loadAccess(s.user.id);
+  if (p?.onboardedAt) redirect(access.allowed ? "/app" : "/waitlist");
+  const { plan } = await searchParams;
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="flex items-center justify-between px-5 py-5 sm:px-8">
@@ -33,9 +33,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
             instruments: p?.instruments ?? [],
             timezone: p?.timezone ?? "UTC",
             prefs: p?.dashboardPrefs ?? { density: "comfortable", defaultTimeframe: "4H", showSessions: true, startPage: "dashboard" },
-            trialAvailable: plan.trialAvailable,
-            wantsTrial: trial === "1",
             syncAvailable: syncProviderConfigured(),
+            country: p?.country ?? null,
+            plan: plan === "essential" || plan === "premium" ? plan : null,
+            member: access.allowed,
           }}
         />
       </main>

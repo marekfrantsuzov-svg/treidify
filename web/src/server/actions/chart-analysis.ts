@@ -3,7 +3,7 @@
 import { aiStatus, readChart } from "../ai/claude";
 import { requireFeature } from "../entitlements";
 import type { ChartReading } from "../ai/schema";
-import { requireUser } from "../session";
+import { requireMember } from "../session";
 import { reportError } from "@/lib/monitoring";
 import { rateLimit } from "@/lib/rate-limit";
 
@@ -14,7 +14,7 @@ const MAX = 10 * 1024 * 1024;
 
 /** Reads a chart screenshot with Claude. The image is analysed in memory and not stored. */
 export async function analyseChart(form: FormData): Promise<AnalysisResult> {
-  const s = await requireUser();
+  const s = await requireMember();
   const f = form.get("chart");
   const question = typeof form.get("question") === "string" ? String(form.get("question")) : undefined;
   if (!(f instanceof File) || f.size === 0) return { ok: false, error: "Choose a chart screenshot first." };

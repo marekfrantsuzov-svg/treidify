@@ -2,7 +2,8 @@ import "server-only";
 import { eq } from "drizzle-orm";
 import { planById, type Feature, type PlanId } from "@/config/plans";
 import { db, schema } from "./db";
-import { ownerForUserId } from "./owner-binding";
+import { memberAccess } from "./membership/access";
+import type { AccessSource } from "./membership/rules";
 
 export type Entitlement = typeof schema.entitlement.$inferSelect;
 
@@ -15,6 +16,9 @@ export interface PlanState {
   trialEndsAt: Date | null;
   /** Milliseconds of trial left, 0 when not trialing. */
   trialRemainingMs: number;
+  /** When current access ends (manual grant or paid period); null when unlimited or none. */
+  accessEndsAt?: Date | null;
+  accessSource?: AccessSource;
 }
 
 const PAID = new Set(["essential", "premium"]);
@@ -22,7 +26,7 @@ const PAID = new Set(["essential", "premium"]);
 /**
  * The single source of truth for access, computed on the server from stored timestamps, never from the client.
  * Stripe webhooks keep the entitlement row current (plan, premiumUntil = paid-through or trial end); nothing else
- * grants paid access. A missing or expired row is "free", which unlocks no paid feature.
+ * grants paid access. A missing or expired row is "free", which unlocks no paid feature. Manual grants live in access_grant.
  */
 export function planState(e: Entitlement | undefined, now = new Date()): PlanState {
   if (!e) return { plan: "free", source: "none", trialAvailable: true, trialEndsAt: null, trialRemainingMs: 0 };
@@ -39,13 +43,25 @@ export function planState(e: Entitlement | undefined, now = new Date()): PlanSta
   };
 }
 
-/** The verified owner always has Premium (it is their product); everyone else needs a subscription or grant. */
+/**
+ * The person's effective plan, from membership access (owner, approved manual grant, paid subscription; see
+ * membership/rules.ts). Pending, expired, suspended and revoked accounts are "free", which unlocks no paid feature.
+ * Selecting a plan at registration never changes this.
+ */
 export async function getPlanState(userId: string, now = new Date()): Promise<PlanState> {
-  const [e] = await db.select().from(schema.entitlement).where(eq(schema.entitlement.userId, userId));
-  const p = planState(e, now);
-  if (p.plan === "premium") return p;
-  if ((await ownerForUserId(userId)).owner) return { ...p, plan: "premium", source: "grant", trialEndsAt: null, trialRemainingMs: 0 };
-  return p;
+  const a = await memberAccess(userId);
+  const base = planState(a.entitlement ?? undefined, now);
+  const trialish = a.source === "trial" || a.source === "legacy_trial";
+  const trialEndsAt = trialish ? a.endsAt : a.source === "subscription" ? base.trialEndsAt : null;
+  return {
+    plan: a.plan,
+    source: trialish ? "trial" : a.source === "subscription" ? "stripe" : a.source === "none" ? "none" : "grant",
+    trialAvailable: base.trialAvailable,
+    trialEndsAt,
+    trialRemainingMs: trialEndsAt ? Math.max(0, trialEndsAt.getTime() - now.getTime()) : 0,
+    accessEndsAt: a.endsAt,
+    accessSource: a.source,
+  };
 }
 
 export const planHas = (plan: PlanId, f: Feature) => planById(plan).features.includes(f);

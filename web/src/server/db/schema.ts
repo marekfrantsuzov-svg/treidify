@@ -607,7 +607,7 @@ export const auditLog = pgTable("audit_log", {
   meta: jsonb("meta"),
   ip: text("ip"),
   createdAt: created(),
-}, (t) => [index("audit_created_idx").on(t.createdAt), index("audit_actor_idx").on(t.actorId)]);
+}, (t) => [index("audit_created_idx").on(t.createdAt), index("audit_actor_idx").on(t.actorId), index("audit_target_idx").on(t.targetType, t.targetId, t.createdAt)]);
 
 /* ───────────────────────── Multi-asset: user market preferences and provider coverage ───────────────────────── */
 
@@ -648,3 +648,95 @@ export const marketSeriesCache = pgTable("market_series_cache", {
   candles: jsonb("candles").$type<{ t: number; o: number; h: number; l: number; c: number; v?: number }[]>().notNull(),
   fetchedAt: ts("fetched_at").notNull().defaultNow(),
 }, (t) => [primaryKey({ columns: [t.symbol, t.timeframe] })]);
+
+/* ───────────────────────── Membership: approval, access grants, notifications, feedback ───────────────────────── */
+
+/**
+ * One row per user: account approval (separate from billing and from feature entitlement).
+ * status: pending (waitlist) | approved | suspended (blocked, data kept) | revoked (entitlement removed, data kept).
+ * role: member | admin. The owner is not a role value: it is the single owner_binding row, which no API can write.
+ * selectedPlan is only the plan the person said they want; it never grants anything.
+ */
+export const membership = pgTable("membership", {
+  userId: text("user_id").primaryKey().references(() => user.id, { onDelete: "cascade" }),
+  status: text("status").notNull().default("pending"),
+  role: text("role").notNull().default("member"),
+  selectedPlan: text("selected_plan"),
+  requestedAt: ts("requested_at").notNull().defaultNow(),
+  approvedAt: ts("approved_at"),
+  approvedBy: text("approved_by"),
+  suspendedAt: ts("suspended_at"),
+  suspendedBy: text("suspended_by"),
+  suspendReason: text("suspend_reason"),
+  notes: text("notes"),
+  createdAt: created(),
+  updatedAt: updated(),
+}, (t) => [
+  index("membership_status_idx").on(t.status),
+  check("membership_status_ck", sql`${t.status} in ('pending','approved','suspended','revoked')`),
+  check("membership_role_ck", sql`${t.role} in ('member','admin')`),
+]);
+
+/**
+ * Manually granted access (no payment): a free trial or complimentary access, with an exact UTC window.
+ * endsAt null = unlimited. A grant is active while startsAt <= now < endsAt and endedAt is null; that is checked on
+ * every protected request, so expiry never depends on a scheduled job. At most one grant is active per user.
+ */
+export const accessGrant = pgTable("access_grant", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull(), // trial | complimentary
+  plan: text("plan").notNull().default("premium"), // essential | premium
+  startsAt: ts("starts_at").notNull().defaultNow(),
+  endsAt: ts("ends_at"),
+  grantedBy: text("granted_by"),
+  note: text("note"),
+  endedAt: ts("ended_at"),
+  endedBy: text("ended_by"),
+  endReason: text("end_reason"), // expired | revoked | replaced | ended | suspended
+  createdAt: created(),
+  updatedAt: updated(),
+}, (t) => [
+  index("access_grant_user_idx").on(t.userId, t.createdAt),
+  index("access_grant_open_idx").on(t.endsAt).where(sql`${t.endedAt} is null`),
+  uniqueIndex("access_grant_one_open_uq").on(t.userId).where(sql`${t.endedAt} is null`),
+  check("access_grant_kind_ck", sql`${t.kind} in ('trial','complimentary')`),
+  check("access_grant_plan_ck", sql`${t.plan} in ('essential','premium')`),
+]);
+
+/**
+ * Transactional email log. dedupeKey is unique, so the same notification is never queued twice.
+ * status: pending | sent (provider accepted it) | not_configured | failed. Nothing is "sent" without a provider id.
+ */
+export const emailNotification = pgTable("email_notification", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull(),
+  dedupeKey: text("dedupe_key").notNull().unique(),
+  toEmail: text("to_email").notNull(),
+  /** Template inputs (name, dates, plan), so a failed send can be retried with the same content. */
+  payload: jsonb("payload"),
+  status: text("status").notNull().default("pending"),
+  providerId: text("provider_id"),
+  error: text("error"),
+  attempts: integer("attempts").notNull().default(0),
+  createdAt: created(),
+  sentAt: ts("sent_at"),
+}, (t) => [index("email_notification_user_idx").on(t.userId, t.createdAt), index("email_notification_status_idx").on(t.status)]);
+
+/** Early-tester feedback. The screenshot is re-encoded to WebP on the server before it is stored. */
+export const feedback = pgTable("feedback", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  category: text("category").notNull(), // bug | feature | general
+  message: text("message").notNull(),
+  status: text("status").notNull().default("new"), // new | reviewing | resolved
+  screenshotMime: text("screenshot_mime"),
+  screenshot: bytea("screenshot"),
+  createdAt: created(),
+  updatedAt: updated(),
+}, (t) => [
+  index("feedback_created_idx").on(t.createdAt),
+  check("feedback_category_ck", sql`${t.category} in ('bug','feature','general')`),
+  check("feedback_status_ck", sql`${t.status} in ('new','reviewing','resolved')`),
+]);

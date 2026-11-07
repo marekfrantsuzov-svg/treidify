@@ -37,11 +37,11 @@ export function totp(secret: string, at = Date.now()) {
   return String((h.readUInt32BE(o) & 0x7fffffff) % 1_000_000).padStart(6, "0");
 }
 
-/** Signs up, verifies and finishes onboarding without connecting an account. */
-export async function signUp(page: Page, tag: string) {
+/** Signs up, verifies and finishes onboarding (joining the waitlist), then approves the account like the owner would. */
+export async function signUp(page: Page, tag: string, opts: { approve?: boolean; name?: string } = {}) {
   const email = uniqueEmail(tag);
-  await page.goto("/signup?trial=1");
-  await page.getByLabel("Name").fill("Terminal Tester");
+  await page.goto("/signup?plan=premium");
+  await page.getByLabel("Name").fill(opts.name ?? "Terminal Tester");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password", { exact: true }).fill("a-long-test-passphrase-42");
   await page.getByRole("checkbox").check();
@@ -54,23 +54,38 @@ export async function signUp(page: Page, tag: string) {
   for (let i = 0; i < 4; i++) await page.getByRole("button", { name: "Continue" }).click();
   await page.getByRole("button", { name: "Continue without connecting" }).click();
   await page.getByRole("checkbox", { name: /I understand the risks/ }).click();
-  await page.getByRole("button", { name: /Enter my dashboard/ }).click();
-  await expect(page).toHaveURL(/\/app/, { timeout: 30_000 });
-  await grantPlan(email);
+  await page.getByRole("button", { name: /Join the waitlist/ }).click();
+  await expect(page).toHaveURL(/\/waitlist/, { timeout: 30_000 });
+  if (opts.approve !== false) await grantPlan(email);
   return email;
 }
 
 
+const db = () => postgres(process.env.DATABASE_URL ?? "postgres://treidify:treidify@localhost:5432/treidify_e2e", { max: 1 });
+
 /**
- * Gives the account a plan the way an admin grant would (billing has no test keys in CI), so the paid sections can be
- * exercised. Free accounts see the plan gate instead; that is covered separately.
+ * Approves the account and gives it complimentary access, exactly the rows the owner's "Approve → grant" writes
+ * (billing has no test keys in CI). Accounts left pending see the waitlist instead; that is covered separately.
  */
-export async function grantPlan(email: string, plan: "essential" | "premium" = "premium") {
-  const sql = postgres(process.env.DATABASE_URL ?? "postgres://treidify:treidify@localhost:5432/treidify_e2e", { max: 1 });
+export async function grantPlan(email: string, plan: "essential" | "premium" = "premium", days = 7) {
+  const sql = db();
   try {
-    const until = new Date(Date.now() + 7 * 864e5);
-    await sql`insert into entitlement (user_id, plan, source, premium_until)
-      select id, ${plan}, 'grant', ${until} from "user" where email = ${email.toLowerCase()}
-      on conflict (user_id) do update set plan = excluded.plan, source = 'grant', premium_until = excluded.premium_until`;
+    const [u] = await sql<{ id: string }[]>`select id from "user" where email = ${email.toLowerCase()}`;
+    if (!u) throw new Error(`No user ${email}`);
+    await sql.begin(async (tx) => {
+      await tx`insert into membership (user_id, status, approved_at, approved_by) values (${u.id}, 'approved', now(), 'e2e')
+        on conflict (user_id) do update set status = 'approved', approved_at = coalesce(membership.approved_at, now())`;
+      await tx`update access_grant set ended_at = now(), end_reason = 'replaced' where user_id = ${u.id} and ended_at is null`;
+      await tx`insert into access_grant (user_id, kind, plan, starts_at, ends_at, granted_by) values (${u.id}, 'complimentary', ${plan}, now(), now() + make_interval(days => ${days}), 'e2e')`;
+    });
+  } finally { await sql.end(); }
+}
+
+/** Makes this (verified) account the owner, the way the migration or scripts/assign-owner.ts does in production. */
+export async function bindOwner(email: string) {
+  const sql = db();
+  try {
+    await sql`delete from owner_binding`;
+    await sql`insert into owner_binding (slot, user_id, email) select 'owner', id, email from "user" where email = ${email.toLowerCase()}`;
   } finally { await sql.end(); }
 }

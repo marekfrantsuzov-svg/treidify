@@ -4,7 +4,7 @@ import { ArrowLeft, Check, LineChart, Link2, ShieldCheck, Sparkles } from "lucid
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { experienceChoices, instrumentChoices, onboardingSteps } from "@/config/onboarding";
-import { TRIAL_DAYS } from "@/config/plans";
+import { countryNames } from "@/lib/countries";
 import { cn } from "@/lib/cn";
 import { SlidingPill } from "@/components/ui/sliding-pill";
 import { saveOnboardingStep, type StepInput } from "@/server/actions/onboarding";
@@ -20,9 +20,12 @@ export interface OnboardingInitial {
   instruments: string[];
   timezone: string;
   prefs: { density: "comfortable" | "compact"; defaultTimeframe: "4H" | "1H" | "15M"; showSessions: boolean; startPage: "dashboard" | "markets" | "journal" };
-  trialAvailable: boolean;
-  wantsTrial: boolean;
   syncAvailable: boolean;
+  country: string | null;
+  /** The plan picked on the pricing page, if any (intent only). */
+  plan: "essential" | "premium" | null;
+  /** The owner skips the waitlist; everyone else joins it. */
+  member: boolean;
 }
 
 export function Choice({ selected, onClick, title, note, multi }: { selected: boolean; onClick: () => void; title: string; note?: string; multi?: boolean }) {
@@ -78,17 +81,20 @@ export function OnboardingFlow({ initial }: { initial: OnboardingInitial }) {
   const [prefs, setPrefs] = useState(initial.prefs);
   const [risk, setRisk] = useState(false);
   const [ai, setAi] = useState(true);
-  const [trial, setTrial] = useState(initial.trialAvailable && initial.wantsTrial);
+  const [country, setCountry] = useState<string>(initial.country ?? "");
+  const [plan, setPlan] = useState<"essential" | "premium" | null>(initial.plan);
+  const countries = useMemo(() => countryNames(), []);
 
   const payload = (): StepInput | null => {
     switch (step) {
       case 1: return { step: 1, name, username };
       case 2: return experience ? { step: 2, experience: experience as "beginner" } : null;
       case 3: return { step: 3, instruments };
-      case 4: return { step: 4, timezone };
+      // Country is sent only when changed, so a value typed earlier in Settings is never erased.
+      case 4: return { step: 4, timezone, ...(country !== (initial.country ?? "") ? { country: country || null } : {}) };
       case 5: return { step: 5, ...prefs };
       case 6: return { step: 6, choice: "later" };
-      case 7: return { step: 7, riskAcknowledged: risk as true, aiConsent: ai, startTrial: trial };
+      case 7: return { step: 7, riskAcknowledged: risk as true, aiConsent: ai, selectedPlan: plan };
       default: return null;
     }
   };
@@ -100,7 +106,7 @@ export function OnboardingFlow({ initial }: { initial: OnboardingInitial }) {
     start(async () => {
       const r = await saveOnboardingStep(p);
       if (!r.ok) return setError(r.error);
-      if (r.done) { router.replace(trial ? "/app/settings/plan?start=premium" : "/app?welcome=1"); router.refresh(); return; }
+      if (r.done) { router.replace(r.waitlist ? "/waitlist" : "/app?welcome=1"); router.refresh(); return; }
       setStep(r.next);
       window.scrollTo({ top: 0 });
     });
@@ -113,7 +119,7 @@ export function OnboardingFlow({ initial }: { initial: OnboardingInitial }) {
     4: ["Confirm your time zone", "Sessions, daily reviews and event times use this zone."],
     5: ["Shape your dashboard", "You can change any of this later in Settings."],
     6: ["Connect your trading account", "Account Health, the journal and the coach are built from your real MetaTrader history."],
-    7: ["You’re ready", "Two last things before you enter your dashboard."],
+    7: initial.member ? ["You’re ready", "Two last things before you enter your dashboard."] : ["Almost there", "Choose the plan you’re interested in and confirm two last things."],
   };
   const [title, subtitle] = titles[step]!;
 
@@ -162,6 +168,13 @@ export function OnboardingFlow({ initial }: { initial: OnboardingInitial }) {
                 </select>
               </Field>
               <p className="text-sm text-ink-3">Detected from this device: {detected.replaceAll("_", " ")}. Local time now {new Intl.DateTimeFormat("en-GB", { timeZone: timezone, hour: "2-digit", minute: "2-digit" }).format(new Date())}.</p>
+              <Field label="Country (optional)">
+                <select value={country} onChange={(e) => setCountry(e.target.value)} className={cn(inputClass, "appearance-none")} aria-label="Country (optional)">
+                  <option value="">Prefer not to say</option>
+                  {initial.country && !countries.includes(initial.country) && <option value={initial.country}>{initial.country}</option>}
+                  {countries.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </Field>
             </>
           )}
 
@@ -191,10 +204,15 @@ export function OnboardingFlow({ initial }: { initial: OnboardingInitial }) {
             <>
               <Choice multi selected={risk} onClick={() => setRisk(!risk)} title="I understand the risks" note="Treidify is information and education, not investment advice. It never places trades. Trading involves risk, including loss of capital." />
               <Choice multi selected={ai} onClick={() => setAi(!ai)} title="Allow AI analysis of my trading data" note="Lets the coach and Macro Desk read your synced history to explain it. You can turn this off anytime." />
-              {initial.trialAvailable ? (
-                <Choice multi selected={trial} onClick={() => setTrial(!trial)} title={`Start my ${TRIAL_DAYS}-day trial next`} note="Choose Essential or Premium on the next screen. A card is required; nothing is charged for 3 days and you can cancel before then." />
-              ) : (
-                <p className="text-sm text-ink-3">Your Premium trial has already been used on this account.</p>
+              {!initial.member && (
+                <div role="radiogroup" aria-label="Plan you're interested in" className="grid gap-2.5">
+                  <span className="text-sm font-medium text-ink">Plan you’re interested in</span>
+                  <div className="grid gap-2.5 sm:grid-cols-2">
+                    <Choice selected={plan === "essential"} onClick={() => setPlan("essential")} title="Essential · $24/mo" note="1 trading account, analytics, journal and markets." />
+                    <Choice selected={plan === "premium"} onClick={() => setPlan("premium")} title="Premium · $49/mo" note="2 accounts, AI analysis, News and Macro Desk." />
+                  </div>
+                  <p className="text-[13px] text-ink-3">Nothing is charged and no card is needed now. We’ll email you when your place is ready.</p>
+                </div>
               )}
             </>
           )}
@@ -208,7 +226,7 @@ export function OnboardingFlow({ initial }: { initial: OnboardingInitial }) {
           )}
           <Button size="lg" className="ml-auto min-w-40" onClick={next} disabled={pending || (step === 7 && !risk)}>
             {pending && <Spinner />}
-            {step === 6 ? "Continue without connecting" : step === 7 ? <><Sparkles className="h-4 w-4" />Enter my dashboard</> : "Continue"}
+            {step === 6 ? "Continue without connecting" : step === 7 ? <><Sparkles className="h-4 w-4" />{initial.member ? "Enter my dashboard" : "Join the waitlist"}</> : "Continue"}
           </Button>
         </div>
       </Glass>

@@ -5,40 +5,35 @@ import { canonicalEmail, isOwnerEmail, OWNER_EMAIL, ownerConfig, ownerDecision }
 import { connectErrorMessage, credentialAllowed, decideAccess, freshness, redact } from "./access";
 import { errorDetails, metaApi, MetaApiError, metaApiToken, tokenShape } from "./metaapi";
 
-describe("owner identity (verified owner email, bound to one immutable user ID)", () => {
+describe("owner identity (a backend role bound to one immutable user ID, never claimed by email)", () => {
   const marek = { id: "usr_marek", email: "marekfrantsuzov@gmail.com", emailVerified: true };
-  it("the owner email is fixed on the server to Marek's verified Gmail", () => {
+  it("the owner mailbox constant is only used for verification hints and the one-time bootstrap", () => {
     expect(OWNER_EMAIL).toBe("marekfrantsuzov@gmail.com");
     expect(ownerConfig({})).toEqual({ id: null, email: "marekfrantsuzov@gmail.com" });
+    expect(isOwnerEmail("MAREKFRANTSUZOV@gmail.com", {})).toBe(true);
+    expect(canonicalEmail(" Marek.Frantsuzov+x@GoogleMail.com ")).toBe("marekfrantsuzov@gmail.com");
+    expect(canonicalEmail("a.b+c@example.com")).toBe("a.b+c@example.com");
   });
-  it("the verified owner email claims the free slot, then only that user ID is the owner", () => {
-    expect(ownerDecision(marek, null, {})).toBe("claim");
+  it("an unbound slot makes nobody the owner, not even the owner's verified email", () => {
+    expect(ownerDecision(marek, null, {})).toBe("not_owner");
+  });
+  it("only the bound user ID is the owner; email does not matter at runtime", () => {
     expect(ownerDecision(marek, "usr_marek", {})).toBe("owner");
+    expect(ownerDecision({ ...marek, email: "changed@example.com" }, "usr_marek", {})).toBe("owner");
     expect(ownerDecision({ ...marek, id: "usr_other" }, "usr_marek", {})).toBe("not_owner");
   });
-  it("Gmail spellings of the same inbox match; other mailboxes never do", () => {
-    expect(ownerDecision({ ...marek, email: " Marek.Frantsuzov+x@GoogleMail.com " }, "usr_marek", {})).toBe("owner");
-    expect(ownerDecision({ ...marek, email: "marekfrantsuzov@gamil.com" }, null, {})).toBe("not_owner");
-    expect(ownerDecision({ ...marek, email: "marekfrantsuzov@outlook.com" }, null, {})).toBe("not_owner");
-    expect(canonicalEmail("a.b+c@example.com")).toBe("a.b+c@example.com");
-    expect(isOwnerEmail("MAREKFRANTSUZOV@gmail.com", {})).toBe(true);
-  });
-  it("refuses an unverified email, an impersonated session, or no user", () => {
-    expect(ownerDecision({ ...marek, emailVerified: false }, null, {})).toBe("not_owner");
+  it("refuses an unverified account, an impersonated session, or no user", () => {
     expect(ownerDecision({ ...marek, emailVerified: false }, "usr_marek", {})).toBe("not_owner");
     expect(ownerDecision({ ...marek, impersonated: true }, "usr_marek", {})).toBe("not_owner");
     expect(ownerDecision(null, "usr_marek", {})).toBe("not_owner");
   });
-  it("the bound owner loses owner rights if their email stops matching", () => {
-    expect(ownerDecision({ ...marek, email: "someone@else.com" }, "usr_marek", {})).toBe("not_owner");
-  });
-  it("server variables can pin the owner ID or change the email, never the browser", () => {
-    const env = { TREIDIFY_OWNER_USER_ID: "usr_pinned", TREIDIFY_OWNER_EMAIL: "Owner@Example.com" };
+  it("a server variable can pin the owner ID, never the browser", () => {
+    const env = { TREIDIFY_OWNER_USER_ID: "usr_pinned" };
     const pinned = { id: "usr_pinned", email: "owner@example.com", emailVerified: true };
     expect(ownerDecision(pinned, null, env)).toBe("owner");
     expect(ownerDecision(pinned, "usr_someone_else", env)).toBe("owner");
     expect(ownerDecision({ ...pinned, id: "usr_attacker" }, null, env)).toBe("not_owner");
-    expect(ownerDecision(marek, null, env)).toBe("not_owner");
+    expect(ownerDecision(marek, "usr_marek", env)).toBe("not_owner");
   });
 });
 

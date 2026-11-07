@@ -3,10 +3,10 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db, schema } from "../db";
-import { requireUser } from "../session";
+import { requireMember } from "../session";
 
 export async function markAllRead() {
-  const s = await requireUser();
+  const s = await requireMember();
   await db.update(schema.notification).set({ readAt: new Date() }).where(and(eq(schema.notification.userId, s.user.id), isNull(schema.notification.readAt)));
   revalidatePath("/app", "layout");
 }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/server/session";
+import { apiMember } from "@/server/session";
 import { deskIntelligence, marketIntelligence } from "@/server/market/intelligence";
 import { isSymbol } from "@/lib/markets/registry";
 import { upcomingEvents } from "@/server/news/service";
@@ -12,8 +12,10 @@ export const dynamic = "force-dynamic";
  * ?symbols=EURUSD,BTCUSD returns the multi-asset snapshot for up to six registry instruments.
  */
 export async function GET(req: Request) {
-  const s = await getSession();
-  if (!s) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
+  // Signed in AND a member with current access (pending, expired and suspended accounts get 403).
+  const m = await apiMember();
+  if (!m.ok) return NextResponse.json({ error: m.error }, { status: m.status });
+  const s = m.session;
   if (!rateLimit(`intel:${s.user.id}`, 30, 60_000).ok) return NextResponse.json({ error: "Too many requests." }, { status: 429 });
   const raw = new URL(req.url).searchParams.get("symbols");
   if (raw !== null) {

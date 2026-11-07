@@ -3,6 +3,7 @@ import { z } from "zod";
 import { rateLimit } from "@/lib/rate-limit";
 import { createCheckout, StripeError } from "@/server/billing/stripe";
 import { getPlanState } from "@/server/entitlements";
+import { memberAccess } from "@/server/membership/access";
 import { getSession } from "@/server/session";
 
 const Body = z.object({ plan: z.enum(["essential", "premium"]), interval: z.enum(["monthly", "annual"]) });
@@ -14,6 +15,12 @@ export async function POST(req: Request) {
   const b = Body.safeParse(await req.json().catch(() => null));
   if (!b.success) return NextResponse.json({ error: "Choose a plan and billing period." }, { status: 400 });
   if (!rateLimit(`checkout:${s.user.id}`, 10, 3600_000).ok) return NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 });
+  // Until public subscriptions open (TREIDIFY_PUBLIC_SUBSCRIPTIONS=1), only approved members can start checkout;
+  // the waitlist is the public flow and nobody is charged from it.
+  if (process.env.TREIDIFY_PUBLIC_SUBSCRIPTIONS !== "1") {
+    const a = await memberAccess(s.user.id);
+    if (!a.owner && a.status !== "approved") return NextResponse.json({ error: "Subscriptions open soon. We'll email you when your place is ready." }, { status: 403 });
+  }
   const plan = await getPlanState(s.user.id);
   if (plan.source === "stripe") return NextResponse.json({ error: "You already have a subscription. Change it from Manage billing." }, { status: 409 });
   try {

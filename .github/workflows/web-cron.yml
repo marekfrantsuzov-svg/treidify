@@ -8,6 +8,7 @@ on:
     - cron: "*/10 * * * *"   # account sync
     - cron: "7 * * * *"      # virtual analysts, hourly
     - cron: "23,53 * * * *"  # market-data coverage check, a few instruments per run
+    - cron: "41 * * * *"     # membership: expiry statuses, reminder and expiry emails
   workflow_dispatch:
 
 jobs:
@@ -19,7 +20,7 @@ jobs:
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           APP_URL: ${{ vars.APP_URL }}
-          WHICH: ${{ github.event.schedule == '7 * * * *' && 'community' || github.event.schedule == '23,53 * * * *' && 'coverage' || 'sync' }}
+          WHICH: ${{ github.event.schedule == '7 * * * *' && 'community' || github.event.schedule == '23,53 * * * *' && 'coverage' || github.event.schedule == '41 * * * *' && 'membership' || 'sync' }}
         run: |
           if [ -z "$CRON_SECRET" ] || [ -z "$APP_URL" ]; then echo "CRON_SECRET or APP_URL not set; skipping."; exit 0; fi
           curl -fsS -m 90 -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/$WHICH"

@@ -14,12 +14,12 @@ import { audit } from "../audit";
 import { accountLimit } from "../entitlements";
 import { db, schema } from "../db";
 import { deleteSampleAccounts, insertSampleAccount } from "../sample-account";
-import { requireUser } from "../session";
+import { requireMember } from "../session";
 import type { ActionResult } from "./settings";
 
 /** Adds one labelled sample account so every screen can be explored before a real account is connected. */
 export async function loadDemoAccount(): Promise<ActionResult> {
-  const s = await requireUser();
+  const s = await requireMember();
   const existing = await db.select({ id: schema.tradingAccount.id }).from(schema.tradingAccount)
     .where(and(eq(schema.tradingAccount.userId, s.user.id), eq(schema.tradingAccount.source, "sample"))).limit(1);
   if (existing.length) return { ok: false, error: "You already have a demo account." };
@@ -30,7 +30,7 @@ export async function loadDemoAccount(): Promise<ActionResult> {
 }
 
 export async function removeDemoAccount(): Promise<ActionResult> {
-  const s = await requireUser();
+  const s = await requireMember();
   const n = await deleteSampleAccounts(db, s.user.id);
   if (!n) return { ok: false, error: "There is no demo account to remove." };
   await audit("account.demo_removed", { actorId: s.user.id, targetType: "user", targetId: s.user.id });
@@ -49,7 +49,7 @@ const connectSchema = z.object({
 
 /** Whether the signed-in user is the verified owner (server-side check; shown so the form can offer the master option). */
 export async function connectOptions(): Promise<{ owner: boolean }> {
-  const s = await requireUser();
+  const s = await requireMember();
   return { owner: (await ownerForUserId(s.user.id, { impersonatedBy: s.session.impersonatedBy })).owner };
 }
 
@@ -59,7 +59,7 @@ export async function connectOptions(): Promise<{ owner: boolean }> {
  * is stored. The verified owner may also use the master password; Treidify still never trades.
  */
 export async function connectTradingAccount(input: z.input<typeof connectSchema>): Promise<ActionResult & { accountId?: string }> {
-  const s = await requireUser();
+  const s = await requireMember();
   const p = connectSchema.safeParse(input);
   if (!p.success) return { ok: false, error: p.error.issues[0]?.message ?? "Please check the form." };
   if (!rateLimit(`connect:${s.user.id}`, 5, 3600_000).ok) return { ok: false, error: "Too many connection attempts. Try again in an hour." };
@@ -107,7 +107,7 @@ export interface ConnectionProgress { ok: boolean; phase: "connecting" | "verify
  * 8 seconds per account. Owner-scoped: another user's account id returns "not found".
  */
 export async function connectionProgress(accountId: string): Promise<ConnectionProgress> {
-  const s = await requireUser();
+  const s = await requireMember();
   const row = await ownedConnection(s.user.id, z.string().uuid().parse(accountId));
   if (!row) return { ok: false, phase: "inactive", status: null, accessMode: null, message: "Account not found." };
   let { c } = row;
@@ -123,7 +123,7 @@ export async function connectionProgress(accountId: string): Promise<ConnectionP
 }
 
 export async function syncTradingAccount(accountId: string): Promise<ActionResult> {
-  const s = await requireUser();
+  const s = await requireMember();
   if (!rateLimit(`sync:${s.user.id}`, 12, 3600_000).ok) return { ok: false, error: "Please wait a little before syncing again." };
   const row = await ownedConnection(s.user.id, accountId);
   if (!row) return { ok: false, error: "Account not found." };
@@ -134,7 +134,7 @@ export async function syncTradingAccount(accountId: string): Promise<ActionResul
 
 /** Disconnect and revoke: removes the account (and the password MetaApi holds) from MetaApi. Synced history stays until the user deletes it. */
 export async function disconnectTradingAccount(accountId: string): Promise<ActionResult> {
-  const s = await requireUser();
+  const s = await requireMember();
   const r = await revokeConnection(s.user.id, accountId);
   if (!r.ok) return { ok: false, error: r.error ?? "Could not disconnect." };
   await audit("account.disconnected", { actorId: s.user.id, targetType: "trading_account", targetId: accountId });
@@ -144,7 +144,7 @@ export async function disconnectTradingAccount(accountId: string): Promise<Actio
 
 /** Disconnect (revoking MetaApi access) and permanently delete the account and all of its synced data from Treidify. */
 export async function deleteTradingAccount(accountId: string): Promise<ActionResult> {
-  const s = await requireUser();
+  const s = await requireMember();
   const r = await deleteConnectedAccount(s.user.id, z.string().uuid().parse(accountId));
   if (!r.ok) return { ok: false, error: r.error ?? "Could not delete." };
   await audit("account.deleted", { actorId: s.user.id, targetType: "trading_account", targetId: accountId });

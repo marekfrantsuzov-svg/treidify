@@ -39,7 +39,7 @@ function encode(obj: Record<string, unknown>, prefix = "", out = new URLSearchPa
   return out;
 }
 
-async function call<T>(method: "GET" | "POST", path: string, params?: Record<string, unknown>, idempotencyKey?: string): Promise<T> {
+async function call<T>(method: "GET" | "POST" | "DELETE", path: string, params?: Record<string, unknown>, idempotencyKey?: string): Promise<T> {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new StripeError("Billing is not connected.", 503);
   const body = params ? encode(params).toString() : undefined;
@@ -180,4 +180,15 @@ export async function handleEvent(event: { type: string; data: { object: Record<
     default:
       return { ok: true as const, skipped: event.type };
   }
+}
+
+/**
+ * Cancels a subscription for an admin: at the end of the paid period (Stripe keeps access until then) or immediately.
+ * The resulting state is applied the same way a webhook would apply it.
+ */
+export async function cancelSubscription(stripeSubscriptionId: string, atPeriodEnd: boolean) {
+  const sub = atPeriodEnd
+    ? await call<StripeSubscription>("POST", `/subscriptions/${encodeURIComponent(stripeSubscriptionId)}`, { cancel_at_period_end: true })
+    : await call<StripeSubscription>("DELETE", `/subscriptions/${encodeURIComponent(stripeSubscriptionId)}`);
+  return applySubscription(sub);
 }
