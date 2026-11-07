@@ -67,6 +67,37 @@ export async function metaApiProbe(now = Date.now()) {
   return value;
 }
 
+/** Strips anything identifying (logins, ids, long numbers) from diagnostic text. */
+const scrub = (t: string | null | undefined) => (t ? t.replace(/[0-9a-f]{16,}/gi, "<id>").replace(/\d{4,}/g, "<n>").slice(0, 160) : null);
+
+/**
+ * Public, anonymous sync diagnostics for /api/health (cached 2 min): per connection only its state, region, timings and
+ * scrubbed last error; per MetaApi account only its state and whether Treidify tracks it. No logins, servers, names or ids.
+ */
+let diagCache: { at: number; value: unknown } | null = null;
+export async function syncDiagnostics(now = Date.now()) {
+  if (diagCache && now - diagCache.at < 120_000) return diagCache.value;
+  const rows = await db.select().from(schema.providerConnection).orderBy(desc(schema.providerConnection.lastErrorAt)).limit(10);
+  const connections = await Promise.all(rows.map(async (c) => {
+    const [run] = await db.select().from(schema.syncRun).where(eq(schema.syncRun.connectionId, c.id)).orderBy(desc(schema.syncRun.startedAt)).limit(1);
+    return {
+      status: c.status, accessMode: c.accessMode, region: c.externalId ? split(c.externalId).region : null, failures: c.consecutiveFailures,
+      lastSyncAt: c.lastSyncAt?.toISOString() ?? null, lastError: scrub(c.lastError), lastErrorAt: c.lastErrorAt?.toISOString() ?? null,
+      lastRun: run ? { at: run.startedAt.toISOString(), ok: run.ok, error: scrub(run.error), deals: run.dealsImported } : null,
+    };
+  }));
+  let metaapi: unknown = null;
+  if (syncStatus().configured) {
+    try {
+      const held = new Set(rows.filter((r) => r.externalId).map((r) => split(r.externalId!).id));
+      metaapi = (await client().list()).slice(0, 20).map((m) => ({ state: m.state, connectionStatus: m.connectionStatus ?? null, region: m.region ?? null, type: m.type ?? null, tracked: held.has(m._id ?? m.id ?? "") }));
+    } catch (e) { metaapi = { error: scrub(e instanceof Error ? e.message : "list failed") }; }
+  }
+  const value = { connections, metaapi };
+  diagCache = { at: now, value };
+  return value;
+}
+
 /** Active = holds a MetaApi account (externalId set). Disconnected rows hold none and cost nothing. */
 async function activeCount(userId?: string) {
   const q = db.select({ n: count() }).from(schema.providerConnection)
@@ -90,21 +121,27 @@ export async function createConnection(user: ConnectUser, a: { platform: "mt4" |
     if ((await activeCount()) >= lim.total) return { ok: false, code: "capacity", error: "Treidify has reached its connected-account capacity for now. Nothing was sent; please try again later." };
   }
   const api = client();
+  const name = `treidify-${user.id.slice(0, 8)}-${a.login}`;
+  // A request that timed out earlier can leave this user's MetaApi account created but not recorded in Treidify.
+  // Reuse it (same Treidify user prefix, login, server and platform, and not already held by any Treidify row).
+  let created: { id: string } | null = await leftBehind(api, name, a).catch(() => null);
+  const adopted = Boolean(created);
   const transactionId = randomUUID().replace(/-/g, "");
-  let created: { id: string } | null = null;
-  // MetaApi answers 202 while it validates the server and login; poll the same transaction id.
-  for (let attempt = 0; attempt < 5 && !created; attempt++) {
+  // MetaApi answers 202 while it validates the server and login; poll the same transaction id, about 20 s at most here.
+  for (let attempt = 0; attempt < 4 && !created; attempt++) {
     try {
-      created = await api.createAccount({ platform: a.platform, server: a.server, login: a.login, password: a.password, name: `treidify-${user.id.slice(0, 8)}-${a.login}`, transactionId, reliability: reliability() });
+      created = await api.createAccount({ platform: a.platform, server: a.server, login: a.login, password: a.password, name, transactionId, reliability: reliability() });
     } catch (e) {
-      if (e instanceof MetaApiError && e.status === 202) { await sleep(Math.min(10, e.retryAfter ?? 5) * 1000); continue; }
+      if (e instanceof MetaApiError && e.status === 202) { await sleep(Math.min(5, e.retryAfter ?? 5) * 1000); continue; }
       throw e;
     }
   }
-  if (!created) return { ok: false, code: "pending", error: "The broker check is still running. Try again in a minute; nothing was saved." };
-  const acc = await api.account(created.id).catch(() => null);
-  const region = acc?.region ?? "new-york";
-  const externalId = `${region}:${created.id}`;
+  if (!created) return { ok: false, code: "pending", error: "MetaApi is still checking your login with the broker. Press Connect again in a minute; it will pick up the same connection." };
+  let region: string | null = null;
+  for (let attempt = 0; attempt < 2 && !region; attempt++) region = (await api.account(created.id).catch(() => null))?.region ?? null;
+  // If the region is still unknown, the first sync reads it from MetaApi and corrects it before any regional call.
+  const externalId = `${region ?? "new-york"}:${created.id}`;
+  if (adopted) await audit("account.connect_adopted", { actorId: user.id, targetType: "user", targetId: user.id });
   const fresh = { externalId, status: "pending" as const, lastError: null, lastErrorAt: null, consecutiveFailures: 0, credential: a.credential, accessMode: null, accessVerifiedAt: null, lastLiveAt: null, secretCiphertext: null };
   // Reconnecting the same login reuses its Treidify account, so synced history is never duplicated.
   if (existing) {
@@ -116,6 +153,18 @@ export async function createConnection(user: ConnectUser, a: { platform: "mt4" |
   const [row] = await db.insert(schema.tradingAccount).values({ userId: user.id, platform: a.platform, server: a.server, login: a.login, source: "provider" }).returning();
   await db.insert(schema.providerConnection).values({ tradingAccountId: row!.id, provider: "metaapi", historyFrom: new Date(Date.now() - HISTORY_DAYS * 86_400_000), ...fresh });
   return { ok: true, accountId: row!.id, reconnected: false };
+}
+
+/** A MetaApi account an earlier, interrupted connect created for this same user and login, not held by any Treidify row. */
+async function leftBehind(api: MetaApiClient, name: string, a: { platform: "mt4" | "mt5"; server: string; login: string }) {
+  const held = new Set((await db.select({ e: schema.providerConnection.externalId }).from(schema.providerConnection).where(isNotNull(schema.providerConnection.externalId)))
+    .map((r) => split(r.e!).id));
+  const match = (await api.list()).find((m) => {
+    const id = m._id ?? m.id;
+    return !!id && !held.has(id) && m.name === name && String(m.login) === a.login && (m.server ?? "").toLowerCase() === a.server.toLowerCase() && (!m.platform || m.platform === a.platform);
+  });
+  const id = match?._id ?? match?.id;
+  return id ? { id } : null;
 }
 
 /** The user's existing provider account for this platform, server and login, if any (used by Reconnect). */
@@ -162,10 +211,17 @@ export async function syncConnection(connectionId: string): Promise<SyncResult> 
   if (!conn?.externalId || conn.status === "disconnected") return { ok: false, phase: "inactive", error: "No active connection." };
   const [run] = await db.insert(schema.syncRun).values({ connectionId, kind: conn.lastSyncAt ? "incremental" : "backfill" }).returning();
   const api = client();
-  const { region, id } = split(conn.externalId);
+  const { id } = split(conn.externalId);
+  let { region } = split(conn.externalId);
   const finish = (ok: boolean, error?: string, deals = 0) => db.update(schema.syncRun).set({ finishedAt: new Date(), ok, error: error?.slice(0, 300) ?? null, dealsImported: deals }).where(eq(schema.syncRun.id, run!.id));
   try {
     const acc = await api.account(id);
+    // Regional calls must go to the region MetaApi actually placed the account in; correct a stored guess.
+    if (acc.region && acc.region !== region) {
+      region = acc.region;
+      await db.update(schema.providerConnection).set({ externalId: `${region}:${id}` }).where(eq(schema.providerConnection.id, connectionId));
+      conn.externalId = `${region}:${id}`;
+    }
     if (acc.state !== "DEPLOYED" || acc.connectionStatus !== "CONNECTED") {
       const rejected = acc.state === "DEPLOYED" && acc.connectionStatus === "DISCONNECTED_FROM_BROKER";
       if (acc.state === "UNDEPLOYED") await api.deploy(id).catch(() => {});
@@ -217,8 +273,8 @@ export async function syncConnection(connectionId: string): Promise<SyncResult> 
     await finish(true, undefined, deals.length);
     return { ok: true, phase: "synced" };
   } catch (e) {
-    const msg = e instanceof MetaApiError ? e.message : "Sync failed.";
-    reportError(new Error(redact(msg)), { where: "sync.syncConnection", extra: { connectionId, status: e instanceof MetaApiError ? e.status : undefined } });
+    const msg = redact(e instanceof MetaApiError ? e.message : `Sync failed: ${e instanceof Error ? e.message : String(e)}`);
+    reportError(new Error(msg), { where: "sync.syncConnection", extra: { connectionId, status: e instanceof MetaApiError ? e.status : undefined } });
     await db.update(schema.providerConnection).set({ status: "error", lastError: msg.slice(0, 300), lastErrorAt: new Date(), consecutiveFailures: sql`${schema.providerConnection.consecutiveFailures} + 1` }).where(eq(schema.providerConnection.id, connectionId));
     await finish(false, msg);
     return { ok: false, phase: "error", error: "Sync failed. It will retry automatically." };

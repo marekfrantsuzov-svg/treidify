@@ -57,7 +57,7 @@ export function errorDetails(body: unknown): { code?: string; serverNames?: stri
   return pick(d);
 }
 
-export interface MetaAccount { _id?: string; id?: string; state: string; connectionStatus?: string; region?: string; platform?: string; login?: string; server?: string }
+export interface MetaAccount { _id?: string; id?: string; name?: string; state: string; connectionStatus?: string; region?: string; platform?: string; login?: string | number; server?: string; type?: string }
 /** investorMode: "flag indicating that investor password was used (supported for g2 only)" per MetaApi docs. */
 export interface MetaAccountInfo { broker?: string; currency: string; server?: string; balance: number; equity: number; margin?: number; freeMargin?: number; leverage?: number; platform?: string; login?: number | string; investorMode?: boolean; tradeAllowed?: boolean; credit?: number; type?: string; name?: string }
 export interface MetaPosition { id: string; type: string; symbol: string; openPrice: number; currentPrice?: number; volume: number; profit?: number; unrealizedProfit?: number; swap?: number; commission?: number; time: string; stopLoss?: number; takeProfit?: number }
@@ -65,8 +65,15 @@ export interface MetaOrder { id: string; type: string; state?: string; symbol: s
 export interface MetaDeal { id: string; type: string; entryType?: string; symbol?: string; volume?: number; price?: number; profit?: number; commission?: number; swap?: number; time: string; positionId?: string; orderId?: string; comment?: string; stopLoss?: number; takeProfit?: number }
 
 export function metaApi(token: string, fetchImpl: Fetch = fetch) {
-  async function call<T>(url: string, init: RequestInit = {}): Promise<T> {
-    const res = await fetchImpl(url, { ...init, cache: "no-store", headers: { "auth-token": token, "content-type": "application/json", accept: "application/json", ...(init.headers ?? {}) } });
+  /** Every call has a time limit, so a slow broker check can never run into the platform's function limit. */
+  async function call<T>(url: string, init: RequestInit = {}, timeoutMs = 15_000): Promise<T> {
+    let res: Response;
+    try {
+      res = await fetchImpl(url, { ...init, cache: "no-store", signal: AbortSignal.timeout(timeoutMs), headers: { "auth-token": token, "content-type": "application/json", accept: "application/json", ...(init.headers ?? {}) } });
+    } catch (e) {
+      const timedOut = e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError");
+      throw new MetaApiError(timedOut ? `no answer within ${Math.round(timeoutMs / 1000)} s` : "network error", timedOut ? 504 : 503);
+    }
     if (res.status === 202) {
       throw new MetaApiError("request accepted, still processing", 202, Number(res.headers.get("retry-after") ?? 5));
     }
@@ -99,6 +106,11 @@ export function metaApi(token: string, fetchImpl: Fetch = fetch) {
       }),
     /** Read-only check that the token works for account management: lists at most one account. */
     probe: () => call<unknown[]>(`${PROVISIONING}/users/current/accounts?limit=1`),
+    /** Accounts this token holds at MetaApi (read-only listing), used to find connections a timed-out request left behind. */
+    list: async () => {
+      const body = await call<MetaAccount[] | { items?: MetaAccount[] }>(`${PROVISIONING}/users/current/accounts?limit=100`);
+      return Array.isArray(body) ? body : body.items ?? [];
+    },
     account: (id: string) => call<MetaAccount>(`${PROVISIONING}/users/current/accounts/${encodeURIComponent(id)}`),
     deploy: (id: string) => call<void>(`${PROVISIONING}/users/current/accounts/${encodeURIComponent(id)}/deploy`, { method: "POST" }),
     /** Removes the account from MetaApi entirely, which also deletes the stored investor password there. */
@@ -108,7 +120,7 @@ export function metaApi(token: string, fetchImpl: Fetch = fetch) {
     /** Pending orders (limit, stop, stop-limit) currently on the account. */
     orders: (region: string, id: string) => call<MetaOrder[]>(`${clientBase(region)}/users/current/accounts/${encodeURIComponent(id)}/orders`),
     deals: async (region: string, id: string, from: Date, to: Date) => {
-      const body = await call<MetaDeal[] | { deals: MetaDeal[] }>(`${clientBase(region)}/users/current/accounts/${encodeURIComponent(id)}/history-deals/time/${from.toISOString()}/${to.toISOString()}`);
+      const body = await call<MetaDeal[] | { deals: MetaDeal[] }>(`${clientBase(region)}/users/current/accounts/${encodeURIComponent(id)}/history-deals/time/${from.toISOString()}/${to.toISOString()}`, {}, 40_000);
       return Array.isArray(body) ? body : body.deals ?? [];
     },
   };

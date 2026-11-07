@@ -56,6 +56,7 @@ function ConnectProgress({ accountId, onDone }: { accountId: string; onDone: (p:
       </ol>
       {phase === "synced" && <Alert tone="up">Connected{p?.accessMode === "master" ? " with the owner's master password. Treidify still only reads data" : " read-only (investor password confirmed by MetaApi)"}. Your dashboard now shows real broker data.</Alert>}
       {failed && p?.message && <Alert tone="down">{p.message}</Alert>}
+      {phase === "error" && p?.message && <Alert tone="warn">{p.message}</Alert>}
       {!failed && phase !== "synced" && <p className="text-xs text-ink-3">{elapsed < 20 ? "This usually takes one to three minutes." : `Still working (${elapsed}s). You can close this; the connection continues in the background.`}</p>}
     </div>
   );

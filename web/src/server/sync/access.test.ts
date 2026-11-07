@@ -114,7 +114,7 @@ describe("freshness labels", () => {
 describe("Treidify never trades", () => {
   it("the MetaApi client exposes only read and account-management methods", () => {
     const keys = Object.keys(metaApi("t")).sort();
-    expect(keys).toEqual(["account", "createAccount", "deals", "deploy", "info", "orders", "positions", "probe", "remove", "vendor"]);
+    expect(keys).toEqual(["account", "createAccount", "deals", "deploy", "info", "list", "orders", "positions", "probe", "remove", "vendor"]);
   });
   it("no source file calls a MetaApi trade endpoint", () => {
     const root = path.resolve(import.meta.dirname, "../..");
