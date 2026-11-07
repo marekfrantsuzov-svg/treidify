@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, CalendarDays, Check, ChevronDown, Crown, LogOut, Menu, Monitor, Moon, Search, Settings, ShieldCheck, Sun, UserRound, Volume2, VolumeX, X, ArrowRight } from "lucide-react";
+import { Bell, CalendarDays, Check, ChevronDown, ChevronsLeft, Crown, LogOut, Menu, Monitor, Moon, Search, Settings, ShieldCheck, Sun, UserRound, Volume2, VolumeX, X, ArrowRight } from "lucide-react";
 import { useFreshness } from "@/components/intel/freshness-store";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -12,6 +12,7 @@ import { cn } from "@/lib/cn";
 import { PERIOD_IDS, PERIOD_NAMES, readPeriod } from "@/lib/period-param";
 import { onSoundPrefs, playSound, readSoundPrefs, writeSoundPrefs, type SoundPrefs } from "@/lib/sound";
 import { SlidingPill } from "@/components/ui/sliding-pill";
+import { switchTheme, type ThemeChoice } from "@/lib/theme-switch";
 import { Toaster, toast } from "@/components/ui/toast";
 import { LogoMark } from "@/components/brand/logo-mark";
 import { appNav, isActive, mobileTabBar, primaryNav, toolNav, type NavItem } from "./nav";
@@ -57,31 +58,18 @@ function useNow(every = 30_000) {
   return now;
 }
 
-/** Switches theme with a short crossfade where the View Transitions API exists; instant otherwise or with reduced motion. */
-function crossfadeTheme(setTheme: (t: string) => void, t: string) {
-  const doc = document as Document & { startViewTransition?: (cb: () => void) => unknown };
-  const apply = () => {
-    const resolved = t === "system" ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : t;
-    document.documentElement.setAttribute("data-theme", resolved);
-    document.documentElement.style.colorScheme = resolved;
-    setTheme(t);
-  };
-  if (!doc.startViewTransition || matchMedia("(prefers-reduced-motion: reduce)").matches) return setTheme(t);
-  doc.startViewTransition(apply);
-}
-
-/** Light / Dark / System, persisted by next-themes (localStorage). */
+/** Light / Dark / System, persisted by next-themes (localStorage) and on the account (every device). */
 function ThemeSwitch() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  const current = mounted ? theme ?? "light" : "light";
+  const current = mounted ? theme ?? "dark" : "dark";
   const opts = [{ id: "light", label: "Light", Icon: Sun }, { id: "dark", label: "Dark", Icon: Moon }, { id: "system", label: "System", Icon: Monitor }] as const;
   return (
     <div role="radiogroup" aria-label="Theme" className="inset relative grid grid-cols-3 rounded-full p-1">
       <SlidingPill watch={current} className="rounded-full bg-[var(--surface-strong)] shadow-[var(--shadow)]" />
       {opts.map(({ id, label, Icon }) => (
-        <button key={id} role="radio" aria-checked={current === id} data-active={current === id} onClick={() => crossfadeTheme(setTheme, id)}
+        <button key={id} role="radio" aria-checked={current === id} data-active={current === id} onClick={() => switchTheme(setTheme, id)}
           className={cn("relative z-[1] flex h-8 items-center justify-center gap-1.5 rounded-full px-2 text-[12.5px] font-medium text-ink-3 transition-colors hover:text-ink", current === id && "text-ink")}>
           <Icon className="h-[15px] w-[15px]" />{label}
         </button>
@@ -97,10 +85,25 @@ function ThemeToggle({ className }: { className?: string }) {
   useEffect(() => setMounted(true), []);
   const dark = mounted && resolvedTheme === "dark";
   return (
-    <button onClick={() => { crossfadeTheme(setTheme, dark ? "light" : "dark"); playSound("tap"); }} aria-label={dark ? "Switch to light theme" : "Switch to dark theme"} title={dark ? "Light theme" : "Dark theme"} className={cn("hdr-btn press", className)}>
+    <button onClick={() => { switchTheme(setTheme, dark ? "light" : "dark"); playSound("tap"); }} aria-label={dark ? "Switch to light theme" : "Switch to dark theme"} title={dark ? "Light theme" : "Dark theme"} className={cn("hdr-btn press", className)}>
       {dark ? <Sun className="h-[19px] w-[19px]" /> : <Moon className="h-[19px] w-[19px]" />}
     </button>
   );
+}
+
+/**
+ * Applies the theme saved on the account when this browser shows something else, so a choice made on one device
+ * follows the person to the next. Runs once per page load; the stored choice already wins over the dark default.
+ */
+function AccountThemeSync({ saved }: { saved: ThemeChoice | null }) {
+  const { theme, setTheme } = useTheme();
+  const done = useRef(false);
+  useEffect(() => {
+    if (done.current || !saved || theme === undefined) return;
+    done.current = true;
+    if (theme !== saved) switchTheme(setTheme, saved, { sync: false });
+  }, [saved, theme, setTheme]);
+  return null;
 }
 
 /** Session, market open/closed and the freshness of the last data the dashboard received. */
@@ -391,7 +394,7 @@ function PremiumCard({ plan }: { plan: ShellPlan }) {
   );
 }
 
-function ShellInner({ user, plan, account, greeting, unread, children }: { user: ShellUser; plan: ShellPlan; account: ShellAccount | null; timezone: string; greeting: string; unread: number; children: React.ReactNode }) {
+function ShellInner({ user, plan, account, greeting, unread, theme, children }: { user: ShellUser; plan: ShellPlan; account: ShellAccount | null; timezone: string; greeting: string; unread: number; theme: ThemeChoice | null; children: React.ReactNode }) {
   const path = usePathname();
   const params = useSearchParams();
   const search = params.toString();
@@ -406,29 +409,36 @@ function ShellInner({ user, plan, account, greeting, unread, children }: { user:
   const closeMenu = useCallback(() => setMenu(false), []);
   const [more, setMore] = useState(false);
   useEffect(() => { setMore(localStorage.getItem("treidify.side-more") === "open" || toolNav.some((n) => isActive(path, n.href, search))); }, [path, search]);
+  const [rail, setRail] = useState(false);
+  useEffect(() => { setRail(localStorage.getItem("treidify.side-rail") === "1"); }, []);
+  const toggleRail = useCallback(() => setRail((r) => { localStorage.setItem("treidify.side-rail", r ? "0" : "1"); return !r; }), []);
   const first = user.name.split(" ")[0] ?? "";
   const dashboard = path === "/app";
   const showPeriod = path === "/app/performance" || path === "/app/journal";
 
   return (
-    <div className="min-h-dvh lg:pl-[224px]">
+    <div className="shell min-h-dvh" data-rail={rail}>
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-accent focus:px-4 focus:py-2 focus:text-white">Skip to content</a>
 
       <aside className="side-panel hidden lg:flex" aria-label="Main">
-        <Link href="/app" className="flex items-center gap-2.5 px-2 pb-6 pt-1">
+        <div className="side-brand flex items-center gap-2 px-2 pb-6 pt-1">
+        <Link href="/app" className="flex min-w-0 items-center gap-2.5">
           <LogoMark size={38} priority />
-          <span className="leading-none">
+          <span className="side-brand-text leading-none">
             <span className="block text-[24px] font-bold tracking-[-0.045em] text-ink">Treidify<sup className="ml-0.5 align-super text-[10px] font-semibold tracking-normal">™</sup></span>
             <span className="mt-1 block text-[11.5px] font-medium text-ink-2">Your Trading Intelligence</span>
           </span>
         </Link>
-        <nav className="grid gap-1" aria-label="Sections">
-          {primaryNav.map((n) => <SideLink key={n.href} item={n} path={path} search={search} account={account} />)}
-          <button onClick={() => setMore((m) => { localStorage.setItem("treidify.side-more", m ? "closed" : "open"); return !m; })} aria-expanded={more} className="side-sub mt-1 w-full">
-            <ChevronDown className={cn("transition-transform duration-200", !more && "-rotate-90")} />More tools
+        </div>
+        <nav className="side-nav grid gap-1" aria-label="Sections">
+          <SlidingPill watch={`${path}?${search}|${more}|${rail}`} className="side-pill" />
+          {primaryNav.map((n) => <SideLink key={n.href} item={n} path={path} search={search} account={account} collapsed={rail} />)}
+          <button onClick={() => setMore((m) => { localStorage.setItem("treidify.side-more", m ? "closed" : "open"); return !m; })} aria-expanded={more} className="side-sub side-more mt-1 w-full">
+            <ChevronDown className={cn("transition-transform duration-200", !more && "-rotate-90")} /><span>More tools</span>
           </button>
-          {more && toolNav.map((n) => <SideLink key={n.href} item={n} path={path} search={search} sub />)}
+          {(more || rail) && toolNav.map((n) => <SideLink key={n.href} item={n} path={path} search={search} sub={!rail} collapsed={rail} />)}
         </nav>
+        <button onClick={toggleRail} aria-label={rail ? "Expand sidebar" : "Collapse sidebar"} title={rail ? "Expand sidebar" : "Collapse sidebar"} className="side-collapse mx-auto mt-3"><ChevronsLeft className="h-4 w-4" /></button>
         <div className="mt-auto grid gap-3 pt-4">
           {/* eslint-disable-next-line @next/next/no-img-element -- static decorative brand illustration */}
           <img src="/brand/bull.webp" alt="" aria-hidden width={411} height={320} className="side-bull" decoding="async" draggable={false} />
@@ -469,11 +479,12 @@ function ShellInner({ user, plan, account, greeting, unread, children }: { user:
       <MenuSheet open={menu} onClose={closeMenu} path={path} search={search} onSearch={() => setSearchOpen(true)} account={account} />
       <SearchPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
       <Toaster />
+      <AccountThemeSync saved={theme} />
     </div>
   );
 }
 
-export function AppShell(props: { user: ShellUser; plan: ShellPlan; account: ShellAccount | null; timezone: string; greeting: string; unread: number; children: React.ReactNode }) {
+export function AppShell(props: { user: ShellUser; plan: ShellPlan; account: ShellAccount | null; timezone: string; greeting: string; unread: number; theme: ThemeChoice | null; children: React.ReactNode }) {
   // useSearchParams needs a Suspense boundary for static rendering; the shell itself renders immediately.
   return <Suspense fallback={null}><ShellInner {...props} /></Suspense>;
 }
@@ -484,9 +495,10 @@ function SideLink({ item, path, search, collapsed, sub, onClick, account }: { it
   const Icon = item.line;
   const mt5 = item.href === "/app/accounts" && account !== undefined;
   return (
-    <Link href={item.href} title={collapsed ? item.label : undefined} data-active={active} aria-current={active ? "page" : undefined} onClick={() => { playSound("nav"); onClick?.(); }} className={sub ? "side-sub" : "side-link"}>
+    <Link href={item.href} aria-label={collapsed ? item.label : undefined} data-active={active} aria-current={active ? "page" : undefined} onClick={() => { playSound("nav"); onClick?.(); }} className={sub ? "side-sub" : "side-link"}>
       <Icon aria-hidden strokeWidth={active ? 2.1 : 1.8} />
       <span className="min-w-0 flex-1 truncate">{item.label}</span>
+      {collapsed && <i className="side-tip not-italic" aria-hidden>{item.label}</i>}
       {item.badge && <span className="rounded-lg bg-accent-soft px-2 py-0.5 text-[12px] font-semibold text-accent">{item.badge}</span>}
       {mt5 && <span title={account ? (account.sample ? "Sample account" : account.status === "connected" ? "Connected" : "Connecting") : "Not connected"} className={cn("h-2.5 w-2.5 rounded-full", account?.status === "connected" && !account.sample ? "bg-up shadow-[0_0_8px_var(--up)]" : account?.sample ? "bg-warn" : "bg-[var(--border-strong)]")}><span className="sr-only">{account ? (account.sample ? "Sample account" : account.status === "connected" ? "Connected" : "Connecting") : "Not connected"}</span></span>}
     </Link>

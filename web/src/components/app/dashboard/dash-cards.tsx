@@ -1,13 +1,11 @@
 "use client";
 
-import { ArrowRight, ArrowUpRight, ArrowDownRight, CalendarDays, ChartNoAxesColumn, ExternalLink, Landmark, Layers, MoveRight, Newspaper, TrendingUp, UsersRound, X } from "lucide-react";
+import { ArrowRight, ArrowUpRight, ArrowDownRight, CalendarDays, ChartNoAxesColumn, ExternalLink, Landmark, Layers, MoveRight, Newspaper, UsersRound, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { GoldImpact } from "@/lib/intelligence";
-import type { OverviewCategory, OverviewRow } from "@/server/market/overview";
 import { cn } from "@/lib/cn";
 import { AssetMark, CURRENCY, Flag } from "@/components/ui/flags";
-import { SlidingPill } from "@/components/ui/sliding-pill";
 import { NewsThumb } from "@/components/news/news-thumb";
 
 export interface NewsItem { id: string; title: string; summary: string; source: string; url: string; publishedAt: string; instruments: string[]; importance: "high" | "medium" | "low"; image?: string | null; categories?: string[] }
@@ -205,52 +203,4 @@ export function CommunityCard({ members, faces }: { members: number; faces: Comm
 }
 
 /* ── Market Overview ── */
-const CATS: ("All" | OverviewCategory)[] = ["All", "Forex", "Metals", "Indices", "Crypto"];
-export function OverviewCard({ rows }: { rows: OverviewRow[] }) {
-  const [cat, setCat] = useState<(typeof CATS)[number]>("All");
-  const shown = rows.filter((r) => cat === "All" || r.category === cat);
-  const anySample = rows.some((r) => r.status === "sample");
-  return (
-    <section id="market-overview" aria-labelledby="ov-title" className="dcard dcard-pad d-overview flex flex-col">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <h2 id="ov-title" className="dcard-title"><ChartNoAxesColumn />Market Overview</h2>
-        <div role="tablist" aria-label="Category" className="relative order-3 flex w-full gap-1 overflow-x-auto [scrollbar-width:none] sm:order-none sm:w-auto">
-          <SlidingPill watch={cat} className="rounded-full bg-accent shadow-[0_6px_14px_-8px_var(--accent-glow)]" />
-          {CATS.map((c) => (
-            <button key={c} role="tab" aria-selected={cat === c} data-active={cat === c} onClick={() => setCat(c)} className={cn("relative z-[1] shrink-0 rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-colors duration-150", cat === c ? "text-white" : "bg-[var(--surface-inset)] text-ink-2 hover:text-ink")}>{c}</button>
-          ))}
-        </div>
-        <Link href="/app/markets" className="see-all ml-auto">See All<ArrowRight /></Link>
-      </div>
-      <table className="mt-3 w-full text-[14px]">
-        <thead>
-          <tr className="text-left text-[12.5px] font-medium text-ink-3">
-            <th scope="col" className="pb-2 font-medium">Asset</th>
-            <th scope="col" className="pb-2 text-right font-medium">Price</th>
-            <th scope="col" className="pb-2 pl-3 text-center font-medium sm:pl-6">Trend (TF)</th>
-            <th scope="col" className="hidden pb-2 text-right font-medium sm:table-cell">24h Change</th>
-          </tr>
-        </thead>
-        <tbody>
-          {shown.map((r) => (
-            <tr key={r.symbol} className="border-t border-line">
-              <td className="py-2.5 pr-2"><span className="flex items-center gap-2.5"><AssetMark symbol={r.symbol} size={26} /><span className="font-semibold text-ink">{r.symbol}</span></span></td>
-              <td className="num py-2.5 text-right font-semibold text-ink">{r.price === null ? <span className="font-normal text-ink-3">—</span> : r.price.toLocaleString("en-US", { minimumFractionDigits: r.digits, maximumFractionDigits: r.digits })}</td>
-              <td className="py-2.5 pl-3 text-center sm:pl-6"><TrendChip r={r} /></td>
-              <td className={cn("num hidden py-2.5 text-right font-semibold sm:table-cell", r.changePct === null ? "text-ink-3" : r.changePct >= 0 ? "text-up-ink" : "text-down-ink")}>{r.changePct === null ? "—" : `${r.changePct >= 0 ? "+" : "−"}${Math.abs(r.changePct).toFixed(2)}%`}</td>
-            </tr>
-          ))}
-          {shown.length === 0 && <tr><td colSpan={4} className="py-4 text-center text-[13px] text-ink-3">No {cat.toLowerCase()} instruments tracked yet.</td></tr>}
-        </tbody>
-      </table>
-      <p className="mt-auto pt-2 text-[11px] text-ink-3">Trend = market structure (swings, BOS / CHOCH) on the timeframe shown, not the 24h change.{anySample ? " Gold, Silver and DXY use sample bars." : ""}</p>
-    </section>
-  );
-}
-
-function TrendChip({ r }: { r: OverviewRow }) {
-  if (r.status === "unavailable" || r.trend === null) return <span className="trend-chip is-flat">Not connected</span>;
-  if (r.trend === "none") return <span className="trend-chip is-flat">RANGE ({r.trendTf})</span>;
-  const up = r.trend === "bullish";
-  return <span className={cn("trend-chip", up ? "is-up" : "is-down")}>{up ? <TrendingUp className="h-4 w-4" /> : <ArrowDownRight className="h-4 w-4" />}{up ? "BULLISH" : "BEARISH"} ({r.trendTf})</span>;
-}
+export { OverviewCard } from "./market-overview";

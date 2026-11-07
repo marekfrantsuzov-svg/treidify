@@ -2,10 +2,12 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import "./system.css";
+import "./glass.css";
 import { site } from "@/config/site";
 import { Providers } from "@/components/providers/providers";
 import { GlassIconDefs } from "@/components/icons/glass-icon";
 import { Waves } from "@/components/brand/waves";
+import { Ambient } from "@/components/brand/ambient";
 
 /**
  * Inter 4 (variable, latin) with the optical-size axis: text sizes get the Text cut, headings and large figures get the
@@ -37,8 +39,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#08070d" },
-    { media: "(prefers-color-scheme: light)", color: "#f0f0f0" },
+    // Dark is the default for every visitor; the provider swaps this to the light value once someone picks light.
+    { color: "#07060c" },
   ],
 };
 
@@ -47,7 +49,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning className={inter.variable}>
       <body className="min-h-dvh">
         <Providers>
-          <div className="atmosphere" aria-hidden />
+          <Ambient />
           <Waves />
           <GlassIconDefs />
           {children}

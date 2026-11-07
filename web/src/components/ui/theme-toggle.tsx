@@ -5,6 +5,7 @@ import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
 import { SlidingPill } from "@/components/ui/sliding-pill";
+import { switchTheme } from "@/lib/theme-switch";
 
 const options = [
   { id: "light", label: "Light", Icon: Sun },
@@ -28,7 +29,7 @@ export function ThemeToggle({ className }: { className?: string }) {
             aria-checked={active}
             aria-label={label}
             title={label}
-            onClick={() => setTheme(id)}
+            onClick={() => switchTheme(setTheme, id)}
             data-active={active}
             className={cn("relative z-[1] grid h-7 w-7 place-items-center rounded-full text-ink-3 transition-[color,transform] duration-200 hover:text-ink active:scale-90", active && "text-accent")}
           >

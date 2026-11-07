@@ -4,6 +4,7 @@ import { analyzeStructure, type InstrumentIntel, type Trend } from "@/lib/intell
 import type { Candle } from "@/lib/analytics/types";
 import { reportError } from "@/lib/monitoring";
 import { loadIntel } from "./load";
+import { window24 } from "./intelligence";
 import { getSeries, marketDataStatus } from "./service";
 
 export type OverviewCategory = "Forex" | "Metals" | "Indices" | "Crypto";
@@ -18,6 +19,10 @@ export interface OverviewRow {
   trend: Trend | null;
   trendTf: "4H" | "1H" | null;
   status: "live" | "sample" | "unavailable";
+  /** Closes of the same fetched 1H bars as the price and change (last 25), never interpolated or invented. */
+  spark: number[] | null;
+  high24: number | null;
+  low24: number | null;
 }
 
 const EXTRA: { symbol: string; vendor: string; name: string; category: OverviewCategory; digits: number }[] = [
@@ -37,12 +42,17 @@ export function structureTrend(h4: Trend | null, h1: Trend | null): { trend: Tre
 
 function change(h1: Candle[]) {
   const last = h1.at(-1)?.c ?? null, ref = h1.at(-25)?.c ?? h1[0]?.c ?? null;
-  return { price: last, changePct: last !== null && ref ? ((last - ref) / ref) * 100 : null };
+  const w = window24(h1);
+  return { price: last, changePct: last !== null && ref ? ((last - ref) / ref) * 100 : null, spark: w.spark.length > 1 ? w.spark : null, high24: w.high24, low24: w.low24 };
 }
 
-function fromIntel(i: InstrumentIntel, name: string, category: OverviewCategory, q: { last: number | null; changePct: number | null }, sample: boolean): OverviewRow {
+function fromIntel(i: InstrumentIntel, name: string, category: OverviewCategory, q: { last: number | null; changePct: number | null; spark?: number[]; high24?: number | null; low24?: number | null }, sample: boolean): OverviewRow {
   const t = structureTrend(i.trends["4H"], i.trends["1H"]);
-  return { symbol: i.symbol, name, category, digits: i.digits, price: q.last, changePct: q.changePct, trend: t.trend, trendTf: t.tf, status: sample ? "sample" : i.lastPrice === null ? "unavailable" : "live" };
+  const status = sample ? "sample" : i.lastPrice === null ? "unavailable" : "live";
+  return {
+    symbol: i.symbol, name, category, digits: i.digits, price: q.last, changePct: q.changePct, trend: t.trend, trendTf: t.tf, status,
+    spark: status !== "unavailable" && q.spark && q.spark.length > 1 ? q.spark : null, high24: q.high24 ?? null, low24: q.low24 ?? null,
+  };
 }
 
 /**
@@ -59,7 +69,7 @@ export const marketOverview = cache(async (): Promise<OverviewRow[]> => {
     fromIntel(snap.dxy, "US Dollar Index", "Indices", snap.quotes.DXY, sample),
   ];
   const st = marketDataStatus();
-  const unavailable = (e: (typeof EXTRA)[number]): OverviewRow => ({ symbol: e.symbol, name: e.name, category: e.category, digits: e.digits, price: null, changePct: null, trend: null, trendTf: null, status: "unavailable" });
+  const unavailable = (e: (typeof EXTRA)[number]): OverviewRow => ({ symbol: e.symbol, name: e.name, category: e.category, digits: e.digits, price: null, changePct: null, trend: null, trendTf: null, status: "unavailable", spark: null, high24: null, low24: null });
   const extra = await Promise.all(EXTRA.map(async (e): Promise<OverviewRow> => {
     if (!st.configured) return unavailable(e);
     try {

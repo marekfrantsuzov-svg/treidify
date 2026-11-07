@@ -4,6 +4,7 @@ import { Check, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { TRIAL_HOURS, plans } from "@/config/plans";
+import { cn } from "@/lib/cn";
 import { beginTrial, type ActionResult } from "@/server/actions/settings";
 import { Alert, Spinner } from "@/components/auth/auth-ui";
 import { Button } from "@/components/ui/button";
@@ -28,7 +29,7 @@ export function PlanPanel({ plan, source, trialAvailable, trialEndsAt, billing, 
     <div className="grid gap-4">
       <Section title="Your plan">
         <div className="flex flex-wrap items-center gap-3">
-          <span className="text-2xl font-semibold tracking-[-0.02em] text-ink">{plan === "premium" ? "Premium" : "Free"}</span>
+          <span className={cn("text-2xl font-semibold tracking-[-0.02em]", plan === "premium" ? "text-brand" : "text-ink")}>{plan === "premium" ? "Premium" : "Free"}</span>
           {source === "trial" && <Pill tone="accent">Trial</Pill>}
         </div>
         {source === "trial" && trialEndsAt && (

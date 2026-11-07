@@ -9,7 +9,7 @@ function ThemeColorSync() {
   const { resolvedTheme } = useTheme();
   useEffect(() => {
     if (!resolvedTheme) return;
-    const c = resolvedTheme === "dark" ? "#08070d" : "#f0f0f0";
+    const c = resolvedTheme === "dark" ? "#07060c" : "#f3f2f7";
     document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((m) => m.setAttribute("content", c));
   }, [resolvedTheme]);
   return null;
@@ -17,7 +17,7 @@ function ThemeColorSync() {
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider attribute="data-theme" defaultTheme="light" enableSystem disableTransitionOnChange>
+    <ThemeProvider attribute="data-theme" defaultTheme="dark" enableSystem disableTransitionOnChange>
       <ThemeColorSync />
       <MotionConfig reducedMotion="user">{children}</MotionConfig>
     </ThemeProvider>

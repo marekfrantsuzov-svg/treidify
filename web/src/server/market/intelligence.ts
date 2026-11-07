@@ -7,7 +7,8 @@ import { CORE_SYMBOLS, type CoreSymbol } from "./instruments";
 import { getMultiTimeframe, marketDataStatus, type SeriesResult } from "./service";
 import type { Freshness } from "./freshness";
 
-type Quote = { last: number | null; changePct: number | null; lastBarAt: string | null };
+/** Latest price, change over the last 24 hourly bars, and that window's closes and range (for sparklines). */
+type Quote = { last: number | null; changePct: number | null; lastBarAt: string | null; spark?: number[]; high24?: number | null; low24?: number | null };
 
 /** One instrument on a multi-asset surface (Macro Desk card, Markets tab). */
 export interface DeskItem {
@@ -54,10 +55,16 @@ export interface IntelSnapshot {
 const TFS: EngineTf[] = ["4H", "1H", "15M", "5M"];
 const worst = (xs: Freshness[]): Freshness | null => (["stale", "delayed", "live", "closed"] as Freshness[]).find((f) => xs.includes(f)) ?? null;
 
+/** The last 25 hourly bars (the same window as the 24h change): closes for the sparkline, plus the high and low. */
+export function window24(h1: Candle[]) {
+  const w = h1.slice(-25);
+  return { spark: w.map((b) => b.c), high24: w.length ? Math.max(...w.map((b) => b.h)) : null, low24: w.length ? Math.min(...w.map((b) => b.l)) : null };
+}
+
 function quoteFrom(h1: Candle[] | undefined, lastBarAt: string | null): Quote {
   if (!h1?.length) return { last: null, changePct: null, lastBarAt };
   const last = h1.at(-1)!.c, ref = h1.at(-25)?.c ?? h1[0]!.c;
-  return { last, changePct: ((last - ref) / ref) * 100, lastBarAt };
+  return { last, changePct: ((last - ref) / ref) * 100, lastBarAt, ...window24(h1) };
 }
 
 /** Event risk only from the countries whose releases move this instrument (the registry's calendar list). */
