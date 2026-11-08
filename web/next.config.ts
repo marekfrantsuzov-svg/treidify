@@ -17,9 +17,9 @@ const config: NextConfig = {
   typescript: { tsconfigPath: "tsconfig.build.json" },
   experimental: {
     serverActions: { bodySizeLimit: "6mb" },
-    // Client router cache: going back to a page visited in the last 30 s (dynamic) or 3 min (static/prefetched) is
+    // Client router cache: going back to a page visited in the last 60 s (dynamic) or 3 min (static/prefetched) is
     // instant, no server round trip. Server actions and router.refresh() still invalidate it.
-    staleTimes: { dynamic: 30, static: 180 },
+    staleTimes: { dynamic: 60, static: 180 },
     optimizePackageImports: ["lucide-react", "motion"],
   },
   async headers() {

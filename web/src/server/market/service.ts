@@ -80,9 +80,29 @@ function takeBudget(n: number, plan: PlanTier, nowMs = Date.now()): boolean {
   return true;
 }
 const FREE_PER_MINUTE = 8;
-export const _resetMarketBudget = () => { sent.length = 0; };
+export const _resetMarketBudget = () => { sent.length = 0; _resetMarketMemo(); };
 
 type Saved = { candles: Candle[]; vendor: string; method: SeriesOk["method"]; fetchedAt: Date };
+
+// This instance's copy of the shared saved bars. The database copy stays the source of truth between instances; the
+// memo only spares a database read (up to ~40 KB of bars per series) while the copy is still inside the plan's refresh
+// window, the same rule the database copy is held to. Freshness is still judged from the last bar's own time.
+const memo = new Map<string, Saved>();
+const inflightRead = new Map<string, Promise<Saved | null>>();
+const inflightFetch = new Map<string, Promise<Fetched>>();
+export const _resetMarketMemo = () => { memo.clear(); inflightRead.clear(); inflightFetch.clear(); };
+
+/** One read per series at a time on this instance; concurrent callers share it. */
+function readSavedShared(symbol: string, tf: Timeframe): Promise<Saved | null> {
+  const key = `${symbol}|${tf}`;
+  let p = inflightRead.get(key);
+  if (!p) {
+    p = readSaved(symbol, tf).then((r) => { if (r) { const m = memo.get(key); if (!m || m.fetchedAt <= r.fetchedAt) memo.set(key, r); } return r; }).finally(() => inflightRead.delete(key));
+    inflightRead.set(key, p);
+  }
+  return p;
+}
+
 async function readSaved(symbol: string, tf: Timeframe): Promise<Saved | null> {
   if (!dbConfigured) return null;
   try {
@@ -166,15 +186,31 @@ export async function getSeries(symbol: MarketSymbol, timeframe: Timeframe, coun
     };
   };
 
-  const saved = await readSaved(symbol, timeframe);
-  if (saved && now.getTime() - saved.fetchedAt.getTime() < cacheSeconds[timeframe] * 1000 && saved.candles.length) return result(saved, false);
+  const key = `${symbol}|${timeframe}`;
+  const isFresh = (s: Saved | null | undefined): boolean => !!s && now.getTime() - s.fetchedAt.getTime() < cacheSeconds[timeframe] * 1000 && s.candles.length > 0;
+  const mem = memo.get(key);
+  if (mem && isFresh(mem)) return result(mem, false);
+  const saved = await readSavedShared(symbol, timeframe);
+  if (saved && isFresh(saved)) return result(saved, false);
 
-  const got = await fetchSeries(symbol, timeframe, plan, cacheSeconds);
+  // Several sections asking for the same series at once send one provider request, not one each.
+  let pending = inflightFetch.get(key);
+  if (!pending) {
+    pending = fetchSeries(symbol, timeframe, plan, cacheSeconds).then(async (got) => {
+      if (got.ok && got.candles.length) {
+        const fresh: Saved = { candles: got.candles, vendor: "twelvedata", method: got.method, fetchedAt: now };
+        memo.set(key, fresh);
+        await writeSaved(symbol, timeframe, fresh, now);
+      }
+      return got;
+    }).finally(() => inflightFetch.delete(key));
+    inflightFetch.set(key, pending);
+  }
+  const got = await pending;
   if (got.ok) {
     if (!got.candles.length) return { ok: false, symbol, timeframe, reason: "empty", message: "The provider returned no bars." };
-    const fresh: Saved = { candles: got.candles, vendor: "twelvedata", method: got.method, fetchedAt: now };
-    await writeSaved(symbol, timeframe, fresh, now);
-    return result(fresh, false);
+    const fresh = memo.get(key);
+    return result(fresh && fresh.candles === got.candles ? fresh : { candles: got.candles, vendor: "twelvedata", method: got.method, fetchedAt: now }, false);
   }
   // Rate limited or the provider failed: the last real bars we hold are better than nothing, and say how old they are.
   if ((got.reason === "rate-limited" || got.reason === "vendor-error") && saved?.candles.length) return result(saved, true);

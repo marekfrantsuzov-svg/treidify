@@ -1,0 +1,50 @@
+name: Production performance check
+
+# Measures the live public site from a GitHub runner (the Claude sandbox cannot reach treidify.com):
+# Lighthouse (mobile + desktop) for the public pages, and server response times for public endpoints.
+# Read-only: no sign-in, no writes. Results are printed in the job log.
+on:
+  push:
+    branches: ["claude/**"]
+    paths: [".github/workflows/perf-prod.yml"]
+  workflow_dispatch:
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Server response times (5 requests each)
+        run: |
+          for u in https://treidify.com/ https://treidify.com/pricing https://app.treidify.com/login https://app.treidify.com/api/health; do
+            for i in 1 2 3 4 5; do curl -s -o /dev/null -m 30 -w "%{http_code} ttfb=%{time_starttransfer}s total=%{time_total}s size=%{size_download} $u\n" "$u"; done
+          done
+          echo "health:"; curl -s -m 30 https://app.treidify.com/api/health | python3 -c 'import json,sys; d=json.load(sys.stdin); print({k: d.get(k) for k in ("commit","database","perf")})'
+      - name: Lighthouse
+        run: |
+          npm i -g lighthouse@12 >/dev/null 2>&1
+          mkdir -p lh
+          for u in https://treidify.com/ https://treidify.com/pricing https://app.treidify.com/login; do
+            n=$(echo "$u" | sed 's#https://##; s#[/.]#_#g')
+            for f in mobile desktop; do
+              for run in 1 2 3; do
+                extra=""; [ "$f" = desktop ] && extra="--preset=desktop"
+                lighthouse "$u" $extra --only-categories=performance --output=json --output-path="lh/$n-$f-$run.json" --quiet --chrome-flags="--headless=new --no-sandbox" || true
+              done
+            done
+          done
+          python3 - <<'PY'
+          import json, glob, statistics, collections
+          rows = collections.defaultdict(list)
+          for p in sorted(glob.glob("lh/*.json")):
+              d = json.load(open(p)); a = d["audits"]; key = p.rsplit("-", 1)[0].replace("lh/", "")
+              rows[key].append(dict(score=round(d["categories"]["performance"]["score"]*100), fcp=a["first-contentful-paint"]["numericValue"], lcp=a["largest-contentful-paint"]["numericValue"], tbt=a["total-blocking-time"]["numericValue"], cls=a["cumulative-layout-shift"]["numericValue"], si=a["speed-index"]["numericValue"], kb=a["total-byte-weight"]["numericValue"]/1024))
+          for k, rs in rows.items():
+              med = {m: statistics.median([r[m] for r in rs]) for m in rs[0]}
+              print(f"{k:40s} score {med['score']:.0f}  FCP {med['fcp']:.0f}ms  LCP {med['lcp']:.0f}ms  TBT {med['tbt']:.0f}ms  CLS {med['cls']:.3f}  SI {med['si']:.0f}ms  weight {med['kb']:.0f}KB  (median of {len(rs)})")
+          d = json.load(open(sorted(glob.glob("lh/treidify_com_-mobile-*.json"))[0])); a = d["audits"]
+          el = a["largest-contentful-paint-element"]["details"]["items"]
+          print("LCP element:", el[0]["items"][0]["node"]["snippet"][:160])
+          if len(el) > 1: print("LCP phases:", [(i.get("phase"), round(i.get("timing", 0))) for i in el[1]["items"]])
+          print("main thread:", [(i["groupLabel"], round(i["duration"])) for i in a["mainthread-work-breakdown"]["details"]["items"]])
+          PY

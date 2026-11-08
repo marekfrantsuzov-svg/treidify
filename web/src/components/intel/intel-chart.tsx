@@ -22,6 +22,10 @@ const fmtP = (v: number, d: number) => v.toLocaleString("en-US", { minimumFracti
  * Interactive candlestick chart (TradingView Lightweight Charts, Apache-2.0, attribution kept on).
  * Overlays come only from the engine output passed in; zones are drawn as glass bands between their exact prices.
  */
+/** Bars this tab already received for a symbol and timeframe, reused for one minute (these charts do not poll). */
+const barsCache = new Map<string, { at: number; candles: Candle[]; meta: { sample: boolean; freshness: string | null; method: string | null } }>();
+const BARS_TTL_MS = 60_000;
+
 export function IntelChart({ symbol, intel, initial, initialTf = "1H", sample, height = 420, className, compact = false, fill = false, lead, actions }: { symbol: string; intel: InstrumentIntel; initial?: Candle[]; initialTf?: Tf; sample?: boolean; height?: number; className?: string; compact?: boolean; fill?: boolean; lead?: React.ReactNode; actions?: React.ReactNode }) {
   const box = useRef<HTMLDivElement>(null);
   const chart = useRef<IChartApi | null>(null);
@@ -80,13 +84,19 @@ export function IntelChart({ symbol, intel, initial, initialTf = "1H", sample, h
   useEffect(() => {
     if (tf === initialTf && initial?.length) { setCandles(initial); setState("ready"); return; }
     let live = true;
+    const key = `${symbol}|${tf}`;
+    const hit = barsCache.get(key);
+    // Re-opening a section within a minute shows the bars this tab just received instead of asking again.
+    if (hit && Date.now() - hit.at < BARS_TTL_MS) { setCandles(hit.candles); setMeta(hit.meta); setState("ready"); return; }
     setState("loading");
     fetch(`/api/market/candles?symbol=${symbol}&tf=${tf}`, { cache: "no-store" })
       .then(async (r) => ({ ok: r.ok, body: await r.json() }))
       .then(({ ok, body }) => {
         if (!live) return;
         if (!ok || !body.candles) { setErr(body.message ?? "Data unavailable."); setState("error"); return; }
-        setCandles(body.candles); setMeta({ sample: !!body.sample, freshness: body.freshness ?? null, method: body.method ?? null }); setState("ready");
+        const m = { sample: !!body.sample, freshness: body.freshness ?? null, method: body.method ?? null };
+        setCandles(body.candles); setMeta(m); setState("ready");
+        if (!body.sample) barsCache.set(key, { at: Date.now(), candles: body.candles, meta: m });
       })
       .catch(() => { if (live) { setErr("Data unavailable."); setState("error"); } });
     return () => { live = false; };

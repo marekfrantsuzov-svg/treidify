@@ -23,12 +23,18 @@ export async function requireUser(next?: string) {
  */
 export async function requireOnboarded(next?: string) {
   const s = await requireUser(next);
-  const [p] = await db.select().from(schema.profile).where(eq(schema.profile.userId, s.user.id));
+  // Profile and membership are independent reads: one database round trip instead of two. Both are memoised per
+  // request, so the layout and the page of the same render share them.
+  const [p, access] = await Promise.all([profileFor(s.user.id), memberAccess(s.user.id)]);
   if (!p?.onboardedAt) redirect("/onboarding");
-  const access = await memberAccess(s.user.id);
   if (!access.allowed) redirect("/waitlist");
   return { ...s, profile: p, access };
 }
+
+const profileFor = cache(async (userId: string) => {
+  const [p] = await db.select().from(schema.profile).where(eq(schema.profile.userId, userId));
+  return p;
+});
 
 /** For server actions that change or read member data: same gate as pages, without needing the profile. */
 export async function requireMember() {

@@ -88,11 +88,14 @@ export async function accountOverview(userId: string, accountId: string | undefi
 }
 
 async function singleOverview(account: AccountSummary): Promise<AccountOverview> {
-  const [snap] = await db.select().from(S.accountSnapshot).where(eq(S.accountSnapshot.tradingAccountId, account.id)).orderBy(desc(S.accountSnapshot.at)).limit(1);
-  const rows = await db.select().from(S.closedTrade).where(eq(S.closedTrade.tradingAccountId, account.id)).orderBy(asc(S.closedTrade.closeTime));
-  const positions = await db.select().from(S.position).where(eq(S.position.tradingAccountId, account.id)).orderBy(desc(S.position.openedAt));
-  const orders = await db.select().from(S.pendingOrder).where(eq(S.pendingOrder.tradingAccountId, account.id)).orderBy(desc(S.pendingOrder.placedAt));
-  const flows = await db.select({ amount: S.cashFlow.amount }).from(S.cashFlow).where(and(eq(S.cashFlow.tradingAccountId, account.id), inArray(S.cashFlow.kind, ["deposit", "withdrawal", "transfer_in", "transfer_out"])));
+  // Five independent reads in one round trip instead of five (every account page waits on this).
+  const [[snap], rows, positions, orders, flows] = await Promise.all([
+    db.select().from(S.accountSnapshot).where(eq(S.accountSnapshot.tradingAccountId, account.id)).orderBy(desc(S.accountSnapshot.at)).limit(1),
+    db.select().from(S.closedTrade).where(eq(S.closedTrade.tradingAccountId, account.id)).orderBy(asc(S.closedTrade.closeTime)),
+    db.select().from(S.position).where(eq(S.position.tradingAccountId, account.id)).orderBy(desc(S.position.openedAt)),
+    db.select().from(S.pendingOrder).where(eq(S.pendingOrder.tradingAccountId, account.id)).orderBy(desc(S.pendingOrder.placedAt)),
+    db.select({ amount: S.cashFlow.amount }).from(S.cashFlow).where(and(eq(S.cashFlow.tradingAccountId, account.id), inArray(S.cashFlow.kind, ["deposit", "withdrawal", "transfer_in", "transfer_out"]))),
+  ]);
 
   const trades: ClosedTrade[] = rows.map((r) => ({
     id: r.id,

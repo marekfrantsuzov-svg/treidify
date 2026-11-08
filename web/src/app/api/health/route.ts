@@ -17,8 +17,13 @@ export const maxDuration = 60;
  */
 export async function GET() {
   let database: "up" | "down" | "not configured" = "not configured";
+  // Round-trip time from this function to the database (three pings after the first, median), for performance checks.
+  const rtt: number[] = [];
   if (dbConfigured) {
-    try { await db.execute(sql`select 1`); database = "up"; } catch { database = "down"; }
+    try {
+      await db.execute(sql`select 1`); database = "up";
+      for (let i = 0; i < 3; i++) { const t = performance.now(); await db.execute(sql`select 1`); rtt.push(performance.now() - t); }
+    } catch { database = "down"; }
   }
   const ok = database === "up";
   if (ok) after(async () => { await backgroundSync().catch(() => {}); await regionalProbe().catch(() => {}); });
@@ -36,6 +41,7 @@ export async function GET() {
       encryption: Boolean(process.env.DATA_ENCRYPTION_KEY),
       commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null,
       environment: process.env.VERCEL_ENV ?? process.env.NODE_ENV,
+      perf: { region: process.env.VERCEL_REGION ?? null, dbRttMs: rtt.length ? Math.round(rtt.sort((x, y) => x - y)[1]! * 10) / 10 : null },
     },
     { status: ok ? 200 : 503, headers: { "Cache-Control": "no-store" } },
   );

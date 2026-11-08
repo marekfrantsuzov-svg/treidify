@@ -25,6 +25,10 @@ body:has(.v5-hero) .mk-header .mk-bar { max-width: 1560px; height: 84px; padding
 .v5-hero::before { animation: v5-fade 250ms linear both; }
 body:has(.v5-hero) .mk-header .mk-bar { animation: v5-nav 250ms var(--ease-out-expo) both; }
 .v5-in { animation: v5-rise 450ms var(--ease-out-expo) var(--d, 0ms) both; }
+/* The lead paragraph is the hero's largest text: it rises into place without fading in, so it is readable at the
+   first paint instead of waiting for the main thread to run the fade (that wait was most of the mobile LCP). */
+@keyframes v5-rise-solid { from { transform: translate3d(0, 14px, 0); } to { transform: none; } }
+.v5-lead.v5-in { animation-name: v5-rise-solid; }
 .v5-line { display: block; overflow: hidden; padding-bottom: 0.1em; margin-bottom: -0.1em; }
 .v5-in-line { display: inline-block; animation: v5-line 500ms var(--ease-out-expo) var(--d, 0ms) both; }
 .v5-in-stage { animation: v5-stage 700ms var(--ease-out-expo) 600ms both; }

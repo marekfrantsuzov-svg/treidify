@@ -295,7 +295,7 @@ function UserMenu({ user, plan, size = 44, chevron = false }: { user: ShellUser;
 }
 
 /** Mobile menu: every section, in the same order as the desktop sidebar, plus search and theme. */
-function MenuSheet({ open, onClose, path, search, onSearch, account }: { open: boolean; onClose: () => void; path: string; search: string; onSearch: () => void; account: ShellAccount | null }) {
+function MenuSheet({ open, onClose, path, search, onSearch, account, onNavigate }: { open: boolean; onClose: () => void; path: string; search: string; onSearch: () => void; account: ShellAccount | null; onNavigate: (href: string, e: React.MouseEvent) => void }) {
   useEffect(() => {
     if (!open) return;
     const prev = document.documentElement.style.overflow;
@@ -314,9 +314,9 @@ function MenuSheet({ open, onClose, path, search, onSearch, account }: { open: b
         </div>
         <button onClick={() => { onClose(); onSearch(); }} className="hdr-pill mb-3 w-full gap-2.5 px-4 text-[14px] text-ink-3"><Search className="h-[18px] w-[18px] text-ink-2" />Search pairs, news, macro…</button>
         <nav aria-label="All sections" className="grid gap-0.5">
-          {primaryNav.map((n) => <SideLink key={n.href} item={n} path={path} search={search} onClick={onClose} account={account} />)}
+          {primaryNav.map((n) => <SideLink key={n.href} item={n} path={path} search={search} onClick={onClose} onNavigate={onNavigate} account={account} />)}
           <p className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3">More</p>
-          {toolNav.map((n) => <SideLink key={n.href} item={n} path={path} search={search} onClick={onClose} sub />)}
+          {toolNav.map((n) => <SideLink key={n.href} item={n} path={path} search={search} onClick={onClose} onNavigate={onNavigate} sub />)}
         </nav>
         <div className="mt-4 border-t border-line pt-4"><ThemeSwitch /></div>
       </div>
@@ -360,7 +360,7 @@ function NotificationBell({ unread, plain }: { unread: number; plain?: boolean }
 }
 
 /** Phone bottom navigation (reference 1): Dashboard, Markets, Analysis, Calendar, Community. */
-function BottomNav({ path, search }: { path: string; search: string }) {
+function BottomNav({ path, search, onNavigate }: { path: string; search: string; onNavigate: (href: string, e: React.MouseEvent) => void }) {
   return (
     <nav aria-label="Main" className="m-nav">
       <div className="m-nav-inner">
@@ -369,7 +369,7 @@ function BottomNav({ path, search }: { path: string; search: string }) {
           const active = isActive(path, t.href, search);
           const Icon = t.line;
           return (
-            <Link key={t.href} href={t.href} data-active={active} aria-current={active ? "page" : undefined} onClick={() => playSound("nav")}>
+            <Link key={t.href} href={t.href} data-active={active} aria-current={active ? "page" : undefined} onClick={(e) => { onNavigate(t.href, e); playSound("nav"); }}>
               <Icon aria-hidden strokeWidth={active ? 2.2 : 1.8} />
               <span>{t.label}</span>
             </Link>
@@ -396,9 +396,22 @@ function PremiumCard({ plan }: { plan: ShellPlan }) {
 }
 
 function ShellInner({ user, plan, account, greeting, unread, theme, children }: { user: ShellUser; plan: ShellPlan; account: ShellAccount | null; timezone: string; greeting: string; unread: number; theme: ThemeChoice | null; children: React.ReactNode }) {
-  const path = usePathname();
+  const realPath = usePathname();
   const params = useSearchParams();
-  const search = params.toString();
+  const realSearch = params.toString();
+  // Optimistic selection: the clicked section is highlighted on the click itself, not when the server answers, so
+  // navigation feedback never waits for the network. Cleared as soon as the URL changes (or after 8 s if it never does).
+  const [pending, setPending] = useState<string | null>(null);
+  useEffect(() => setPending(null), [realPath, realSearch]);
+  useEffect(() => { if (!pending) return; const t = setTimeout(() => setPending(null), 8000); return () => clearTimeout(t); }, [pending]);
+  const onNavigate = useCallback((href: string, e: React.MouseEvent) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const [p, q = ""] = href.split("?");
+    if (p === realPath && new URLSearchParams(q).toString() === realSearch) return;
+    setPending(href);
+  }, [realPath, realSearch]);
+  const path = pending ? pending.split("?")[0]! : realPath;
+  const search = pending ? (pending.split("?")[1] ?? "") : realSearch;
   const [searchOpen, setSearchOpen] = useState(false);
   const [menu, setMenu] = useState(false);
   const now = useNow();
@@ -406,16 +419,16 @@ function ShellInner({ user, plan, account, greeting, unread, theme, children }: 
     const onKey = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setSearchOpen(true); } };
     window.addEventListener("keydown", onKey); return () => window.removeEventListener("keydown", onKey);
   }, []);
-  useEffect(() => setMenu(false), [path, search]);
+  useEffect(() => setMenu(false), [realPath, realSearch]);
   const closeMenu = useCallback(() => setMenu(false), []);
   const [more, setMore] = useState(false);
-  useEffect(() => { setMore(localStorage.getItem("treidify.side-more") === "open" || toolNav.some((n) => isActive(path, n.href, search))); }, [path, search]);
+  useEffect(() => { setMore(localStorage.getItem("treidify.side-more") === "open" || toolNav.some((n) => isActive(realPath, n.href, realSearch))); }, [realPath, realSearch]);
   const [rail, setRail] = useState(false);
   useEffect(() => { setRail(localStorage.getItem("treidify.side-rail") === "1"); }, []);
   const toggleRail = useCallback(() => setRail((r) => { localStorage.setItem("treidify.side-rail", r ? "0" : "1"); return !r; }), []);
   const first = user.name.split(" ")[0] ?? "";
-  const dashboard = path === "/app";
-  const showPeriod = path === "/app/performance" || path === "/app/journal";
+  const dashboard = realPath === "/app";
+  const showPeriod = realPath === "/app/performance" || realPath === "/app/journal";
 
   return (
     <div className="shell min-h-dvh" data-rail={rail}>
@@ -433,11 +446,11 @@ function ShellInner({ user, plan, account, greeting, unread, theme, children }: 
         </div>
         <nav className="side-nav grid gap-1" aria-label="Sections">
           <SlidingPill watch={`${path}?${search}|${more}|${rail}`} className="side-pill" />
-          {primaryNav.map((n) => <SideLink key={n.href} item={n} path={path} search={search} account={account} collapsed={rail} />)}
+          {primaryNav.map((n) => <SideLink key={n.href} item={n} path={path} search={search} account={account} collapsed={rail} onNavigate={onNavigate} />)}
           <button onClick={() => setMore((m) => { localStorage.setItem("treidify.side-more", m ? "closed" : "open"); return !m; })} aria-expanded={more} className="side-sub side-more mt-1 w-full">
             <ChevronDown className={cn("transition-transform duration-200", !more && "-rotate-90")} /><span>More tools</span>
           </button>
-          {(more || rail) && toolNav.map((n) => <SideLink key={n.href} item={n} path={path} search={search} sub={!rail} collapsed={rail} />)}
+          {(more || rail) && toolNav.map((n) => <SideLink key={n.href} item={n} path={path} search={search} sub={!rail} collapsed={rail} onNavigate={onNavigate} />)}
         </nav>
         <button onClick={toggleRail} aria-label={rail ? "Expand sidebar" : "Collapse sidebar"} title={rail ? "Expand sidebar" : "Collapse sidebar"} className="side-collapse mx-auto mt-3"><ChevronsLeft className="h-4 w-4" /></button>
         <div className="mt-auto grid gap-3 pt-4">
@@ -476,8 +489,8 @@ function ShellInner({ user, plan, account, greeting, unread, theme, children }: 
         {children}
       </main>
 
-      <BottomNav path={path} search={search} />
-      <MenuSheet open={menu} onClose={closeMenu} path={path} search={search} onSearch={() => setSearchOpen(true)} account={account} />
+      <BottomNav path={path} search={search} onNavigate={onNavigate} />
+      <MenuSheet open={menu} onClose={closeMenu} path={path} search={search} onSearch={() => setSearchOpen(true)} account={account} onNavigate={onNavigate} />
       <SearchPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
       <Toaster />
       <AccountThemeSync saved={theme} />
@@ -491,12 +504,12 @@ export function AppShell(props: { user: ShellUser; plan: ShellPlan; account: She
 }
 
 /** Sidebar and menu entry: one Lucide icon, label, optional badge, and the MT5 connection dot. */
-function SideLink({ item, path, search, collapsed, sub, onClick, account }: { item: NavItem; path: string; search: string; collapsed?: boolean; sub?: boolean; onClick?: () => void; account?: ShellAccount | null }) {
+function SideLink({ item, path, search, collapsed, sub, onClick, onNavigate, account }: { item: NavItem; path: string; search: string; collapsed?: boolean; sub?: boolean; onClick?: () => void; onNavigate?: (href: string, e: React.MouseEvent) => void; account?: ShellAccount | null }) {
   const active = isActive(path, item.href, search);
   const Icon = item.line;
   const mt5 = item.href === "/app/accounts" && account !== undefined;
   return (
-    <Link href={item.href} aria-label={collapsed ? item.label : undefined} data-active={active} aria-current={active ? "page" : undefined} onClick={() => { playSound("nav"); onClick?.(); }} className={sub ? "side-sub" : "side-link"}>
+    <Link href={item.href} aria-label={collapsed ? item.label : undefined} data-active={active} aria-current={active ? "page" : undefined} onClick={(e) => { onNavigate?.(item.href, e); playSound("nav"); onClick?.(); }} className={sub ? "side-sub" : "side-link"}>
       <Icon aria-hidden strokeWidth={active ? 2.1 : 1.8} />
       <span className="min-w-0 flex-1 truncate">{item.label}</span>
       {collapsed && <i className="side-tip not-italic" aria-hidden>{item.label}</i>}
