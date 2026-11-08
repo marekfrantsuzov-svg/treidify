@@ -28,6 +28,9 @@ export function V5Hero() {
   return (
     <section className="v5-hero" aria-labelledby="hero-title">
       <script dangerouslySetInnerHTML={{ __html: SEEN }} />
+      {/* The backdrop is the hero's largest paint; it is a CSS background, so announce it before the stylesheet is read. */}
+      <link rel="preload" as="image" href="/brand/backdrop/city-1920.webp" type="image/webp" media="(min-width: 1024px)" fetchPriority="high" />
+      <link rel="preload" as="image" href="/brand/backdrop/city-900.webp" type="image/webp" media="(max-width: 1023.98px)" fetchPriority="high" />
       <LightTrails />
       <div className="v5-hero-inner">
         <div className="v5-copy">

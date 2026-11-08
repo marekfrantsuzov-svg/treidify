@@ -225,6 +225,8 @@ body:has(.mk-root) .waves, body:has(.auth-shell) .waves { display: none; }
 /* ── Motion: page arrivals are a short fade and a 6px rise, no blur ── */
 @keyframes page-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .page-in, .stagger > *, .page-flow > :not(:only-child), .page-flow > :only-child > * { animation-duration: 280ms; animation-timing-function: var(--ease-std); }
+/* The first page of a visit paints at once (no fade held behind script loading); later pages keep the entrance. */
+html:not([data-nav]) .page-in { animation: none; }
 .float-y { animation: none; }
 .tab-icon.is-active { animation: none; filter: none; }
 .skeleton { animation-duration: 1.8s; }

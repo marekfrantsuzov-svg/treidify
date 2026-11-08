@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { _resetCoverageMemory, coverageMap, probeCoverage } from "./coverage";
-import { _resetMarketBudget, getSeries } from "./service";
+import { _resetMarketBudget, _resetMarketMemo, getSeries } from "./service";
 import { deskIntelligence } from "./intelligence";
 
 const bars = (n: number, start = 100) => ({ status: "ok", values: Array.from({ length: n }, (_, i) => ({ datetime: new Date(Date.UTC(2026, 9, 28, 0, 0) + i * 3600_000).toISOString().slice(0, 19).replace("T", " "), open: String(start + i), high: String(start + i + 1), low: String(start + i - 1), close: String(start + i + 0.5) })) });
@@ -26,6 +26,11 @@ describe("provider coverage is verified, never assumed", () => {
     const r = await getSeries("US100", "1H", 50, new Date("2026-10-30T14:00:00Z"));
     expect(r.ok).toBe(true);
     expect(calls).toEqual(["NDX", "IXIC"]);
+    // Inside the refresh window this instance serves its own copy: no second provider request.
+    const cached = await getSeries("US100", "1H", 50, new Date("2026-10-30T14:00:00Z"));
+    expect(cached.ok).toBe(true);
+    expect(calls).toHaveLength(2);
+    _resetMarketMemo();
     const again = await getSeries("US100", "1H", 50, new Date("2026-10-30T14:00:00Z"));
     expect(again.ok).toBe(true);
     expect(calls.slice(2)).toEqual(["IXIC"]);
@@ -108,5 +113,25 @@ describe("multi-asset desk", () => {
     expect(d.items[0]!.intel.components.some((c) => c.id === "dxy")).toBe(true);
     expect(d.items[1]!.intel.components.some((c) => c.id === "dxy")).toBe(false);
     expect(d.items[2]!.intel.components.some((c) => c.id === "dxy")).toBe(false);
+  });
+});
+
+describe("request sharing", () => {
+  beforeEach(() => { vi.stubEnv("MARKET_DATA_PROVIDER", "twelvedata"); vi.stubEnv("MARKET_DATA_API_KEY", "test"); vi.stubEnv("MARKET_DATA_PLAN", "paid"); vi.stubEnv("DATABASE_URL", ""); _resetCoverageMemory(); _resetMarketBudget(); });
+  afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
+
+  it("concurrent requests for the same series send one provider request", async () => {
+    const calls = mockVendor({ "EUR/USD": bars(50, 1.1) });
+    const now = new Date("2026-10-30T14:00:00Z");
+    const [a, b] = await Promise.all([getSeries("EURUSD", "15M", 50, now), getSeries("EURUSD", "15M", 50, now)]);
+    expect(a.ok && b.ok).toBe(true);
+    expect(calls).toEqual(["EUR/USD"]);
+  });
+
+  it("a copy older than the refresh window is fetched again", async () => {
+    const calls = mockVendor({ "EUR/USD": bars(50, 1.1) });
+    await getSeries("EURUSD", "15M", 50, new Date("2026-10-30T14:00:00Z"));
+    await getSeries("EURUSD", "15M", 50, new Date("2026-10-30T18:00:00Z"));
+    expect(calls).toEqual(["EUR/USD", "EUR/USD"]);
   });
 });

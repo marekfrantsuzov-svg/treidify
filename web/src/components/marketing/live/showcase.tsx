@@ -142,6 +142,7 @@ export function LiveShowcase() {
   const remaining = useRef<number>(SCENES[0].ms);
   const version = useRef(0); // bumped on every scene change, so a stopped timer only books time against its own scene
   const bar = useRef<HTMLDivElement>(null);
+  const seenAtLoad = useRef<boolean | null>(null); // was the showcase on screen at the first visibility check?
 
   const scene = SCENES[idx]!;
   // Generation at which each scene last started, so a panel keeps its content while it fades out.
@@ -165,12 +166,17 @@ export function LiveShowcase() {
   useEffect(() => {
     const el = root.current;
     if (!el) return;
-    const io = new IntersectionObserver(([e]) => setInView(!!e?.isIntersecting), { threshold: 0.12 });
+    const io = new IntersectionObserver(([e]) => { if (seenAtLoad.current === null) seenAtLoad.current = !!e?.isIntersecting; setInView(!!e?.isIntersecting); }, { threshold: 0.12 });
     io.observe(el);
     return () => io.disconnect();
   }, []);
+  // Already on screen when the page opens: the server-rendered first scene is the beginning, so it keeps playing
+  // instead of being rebuilt (rebuilding it right after load cost a second full render and delayed the largest paint).
   useEffect(() => {
-    if (inView && !started) { setStarted(true); setGen((g) => g + 1); version.current++; remaining.current = SCENES[0].ms; }
+    if (inView && !started) {
+      setStarted(true);
+      if (!seenAtLoad.current) { setGen((g) => g + 1); version.current++; remaining.current = SCENES[0].ms; }
+    }
   }, [inView, started]);
 
   const go = useCallback((next: number) => {

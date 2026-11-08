@@ -42,6 +42,9 @@ const MIN_ZONE_PX = 6;
  * computed by computeOverlays() from the very candles on screen. Changing timeframe refetches the bars and recomputes
  * every overlay for that timeframe. Zones are clear price-range rectangles that start at their origin candle.
  */
+/** Bars this browser tab already received, per symbol and timeframe (kept for the series' refresh window only). */
+const barsCache = new Map<string, { at: number; candles: Candle[]; meta: ChartMeta }>();
+
 export function TerminalChart({
   symbol, digits, htfTrend, sample: sampleProp, initialTf = "1H", tfs = CHART_TFS, defaultLayers, showToggles = true, height = 460, fill = false, className,
   lead, actions, onOverlays, selectedZoneId, onSelectZone, fibSide: fibSideProp, onLayers, onTf, maxZonesPerSide = 2,
@@ -119,7 +122,16 @@ export function TerminalChart({
   const [refreshErr, setRefreshErr] = useState(false);
   useEffect(() => {
     let live = true, timer: ReturnType<typeof setTimeout> | null = null, first = true;
-    setState("loading"); setRefreshErr(false);
+    setRefreshErr(false);
+    const key = `${symbol}|${tf}`;
+    // Coming back to a chart (another section, another timeframe) inside its refresh window shows the bars this tab
+    // already received at once and only asks again when the window ends. Older copies are never shown: they load fresh.
+    const hit = barsCache.get(key);
+    const wait = (refreshSeconds: unknown) => Math.max(REFRESH_MS[tf], (Number(refreshSeconds) || 0) * 1000);
+    const age = hit ? Date.now() - hit.at : Infinity;
+    if (hit && age < wait(hit.meta.refreshSeconds)) {
+      setCandles(hit.candles); setMeta(hit.meta); setState("ready"); first = false;
+    } else setState("loading");
     const load = () => {
       fetch(`/api/market/candles?symbol=${symbol}&tf=${tf}`, { cache: "no-store" })
         .then(async (r) => ({ ok: r.ok, body: await r.json() }))
@@ -128,19 +140,19 @@ export function TerminalChart({
           if (!ok || !body.candles?.length) {
             if (first) { setErr(body.message ?? "Market data unavailable."); setState("error"); setCandles([]); } else setRefreshErr(true);
           } else {
-            setCandles(body.candles); setRefreshErr(false);
-            setMeta({ sample: !!body.sample, freshness: body.freshness ?? null, method: body.method ?? null, lastBarAt: body.lastBarAt ?? null, vendor: body.vendor ?? null, fetchedAt: body.fetchedAt ?? null, plan: body.plan ?? null, refreshSeconds: body.refreshSeconds ?? null, savedCopy: !!body.savedCopy });
-            setState("ready");
+            const m: ChartMeta = { sample: !!body.sample, freshness: body.freshness ?? null, method: body.method ?? null, lastBarAt: body.lastBarAt ?? null, vendor: body.vendor ?? null, fetchedAt: body.fetchedAt ?? null, plan: body.plan ?? null, refreshSeconds: body.refreshSeconds ?? null, savedCopy: !!body.savedCopy };
+            setCandles(body.candles); setRefreshErr(false); setMeta(m); setState("ready");
+            if (!body.sample) barsCache.set(key, { at: Date.now(), candles: body.candles, meta: m });
           }
           if (body.sample) return; // sample bars never refresh: there is nothing live to follow
           first = false;
           // The server says how long its copy stays current for the connected data plan; never poll faster than that.
-          timer = setTimeout(tick, Math.max(REFRESH_MS[tf], (Number(body.refreshSeconds) || 0) * 1000));
+          timer = setTimeout(tick, wait(body.refreshSeconds));
         })
         .catch(() => { if (!live) return; if (first) { setErr("Market data unavailable."); setState("error"); } else setRefreshErr(true); timer = setTimeout(tick, REFRESH_MS[tf] * 2); });
     };
     const tick = () => { if (!live) return; if (document.visibilityState === "visible") load(); else timer = setTimeout(tick, REFRESH_MS[tf]); };
-    load();
+    if (first) load(); else timer = setTimeout(tick, Math.max(1000, wait(hit!.meta.refreshSeconds) - age));
     return () => { live = false; if (timer) clearTimeout(timer); };
   }, [tf, symbol]);
 

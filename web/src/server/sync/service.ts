@@ -428,10 +428,13 @@ export async function liveRefresh(userId: string, accountId: string, now = new D
       }
     }
   }
-  const [fresh] = await db.select().from(schema.providerConnection).where(eq(schema.providerConnection.id, c.id));
-  const [snap] = await db.select().from(schema.accountSnapshot).where(eq(schema.accountSnapshot.tradingAccountId, a.id)).orderBy(desc(schema.accountSnapshot.at)).limit(1);
-  const positions = await db.select().from(schema.position).where(eq(schema.position.tradingAccountId, a.id)).orderBy(desc(schema.position.openedAt));
-  const [acct] = await db.select({ currency: schema.tradingAccount.currency }).from(schema.tradingAccount).where(eq(schema.tradingAccount.id, a.id));
+  // Independent reads, one round trip (the dashboard waits on this for its first paint of the live account).
+  const [[fresh], [snap], positions, [acct]] = await Promise.all([
+    db.select().from(schema.providerConnection).where(eq(schema.providerConnection.id, c.id)),
+    db.select().from(schema.accountSnapshot).where(eq(schema.accountSnapshot.tradingAccountId, a.id)).orderBy(desc(schema.accountSnapshot.at)).limit(1),
+    db.select().from(schema.position).where(eq(schema.position.tradingAccountId, a.id)).orderBy(desc(schema.position.openedAt)),
+    db.select({ currency: schema.tradingAccount.currency }).from(schema.tradingAccount).where(eq(schema.tradingAccount.id, a.id)),
+  ]);
   return {
     accountId: a.id, status: fresh?.status ?? c.status, accessMode: fresh?.accessMode ?? null, currency: acct?.currency ?? null,
     balance: snap?.balance ?? null, equity: snap?.equity ?? null, floating: snap ? (snap.floatingPnl ?? snap.equity - snap.balance) : null,
