@@ -43,7 +43,8 @@ jobs:
               med = {m: statistics.median([r[m] for r in rs]) for m in rs[0]}
               print(f"{k:40s} score {med['score']:.0f}  FCP {med['fcp']:.0f}ms  LCP {med['lcp']:.0f}ms  TBT {med['tbt']:.0f}ms  CLS {med['cls']:.3f}  SI {med['si']:.0f}ms  weight {med['kb']:.0f}KB  (median of {len(rs)})")
           d = json.load(open(sorted(glob.glob("lh/treidify_com_-mobile-*.json"))[0])); a = d["audits"]
-          print("LCP element:", a.get("largest-contentful-paint-element", {}).get("details", {}).get("items", [{}])[0].get("items", [{}])[0].get("node", {}).get("snippet"))
-          for o in ("render-blocking-resources", "unused-javascript", "bootup-time", "mainthread-work-breakdown", "font-display", "uses-responsive-images", "total-byte-weight"):
-              au = a.get(o, {}); print(o, "->", au.get("displayValue"), [ (i.get("url","")[-70:], round(i.get("wastedBytes", i.get("totalBytes", i.get("total", 0)) or 0)/1024 if "Bytes" in str(i) else i.get("total", i.get("duration", 0))) for i in (au.get("details", {}).get("items") or [])[:6]])
+          el = a["largest-contentful-paint-element"]["details"]["items"]
+          print("LCP element:", el[0]["items"][0]["node"]["snippet"][:160])
+          if len(el) > 1: print("LCP phases:", [(i.get("phase"), round(i.get("timing", 0))) for i in el[1]["items"]])
+          print("main thread:", [(i["groupLabel"], round(i["duration"])) for i in a["mainthread-work-breakdown"]["details"]["items"]])
           PY
